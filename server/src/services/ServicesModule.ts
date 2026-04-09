@@ -47,6 +47,8 @@ import type {
   GenericMediaSourceScannerFactory,
 } from './scanner/MediaSourceScanner.ts';
 import type { GenericMediaSourceTvShowLibraryScanner } from './scanner/MediaSourceTvShowLibraryScanner.ts';
+import { EmbyCollectionScanner } from './scanner/EmbyCollectionScanner.ts';
+import { JellyfinCollectionScanner } from './scanner/JellyfinCollectionScanner.ts';
 import { PlexCollectionScanner } from './scanner/PlexCollectionScanner.ts';
 import { PlexMediaSourceMovieScanner } from './scanner/PlexMediaSourceMovieScanner.ts';
 import { PlexMediaSourceMusicScanner } from './scanner/PlexMediaSourceMusicScanner.ts';
@@ -196,6 +198,15 @@ export const ServicesModule = new ContainerModule((bind) => {
   bind<GenericExternalCollectionScanner>(KEYS.ExternalCollectionScanner)
     .to(PlexCollectionScanner)
     .whenTargetNamed(MediaSourceType.Plex);
+
+  bind<GenericExternalCollectionScanner>(KEYS.ExternalCollectionScanner)
+    .to(JellyfinCollectionScanner)
+    .whenTargetNamed(MediaSourceType.Jellyfin);
+
+  bind<GenericExternalCollectionScanner>(KEYS.ExternalCollectionScanner)
+    .to(EmbyCollectionScanner)
+    .whenTargetNamed(MediaSourceType.Emby);
+
   bindFactoryFunc(
     bind,
     KEYS.ExternalCollectionScannerFactory,

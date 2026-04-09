@@ -3,20 +3,20 @@ import { inject, injectable } from 'inversify';
 import { ExternalCollectionRepo } from '../../db/ExternalCollectionRepo.ts';
 import { IProgramDB } from '../../db/interfaces/IProgramDB.ts';
 import { MediaSourceDB } from '../../db/mediaSourceDB.ts';
-import type { RemoteSourceType } from '../../db/schema/base.ts';
 import type { MediaSourceWithRelations } from '../../db/schema/derivedTypes.ts';
+import type { RemoteSourceType } from '../../db/schema/base.ts';
 import { TagRepo } from '../../db/TagRepo.ts';
 import { MediaSourceApiFactory } from '../../external/MediaSourceApiFactory.ts';
-import type { PlexApiClient } from '../../external/plex/PlexApiClient.ts';
+import type { EmbyApiClient } from '../../external/emby/EmbyApiClient.ts';
 import { KEYS } from '../../types/inject.ts';
 import { Logger } from '../../util/logging/LoggerFactory.ts';
 import { MeilisearchService } from '../MeilisearchService.ts';
 import { ExternalCollectionScanner } from './ExternalCollectionScanner.ts';
 
 @injectable()
-export class PlexCollectionScanner extends ExternalCollectionScanner<PlexApiClient> {
+export class EmbyCollectionScanner extends ExternalCollectionScanner<EmbyApiClient> {
   get sourceType(): RemoteSourceType {
-    return 'plex';
+    return 'emby';
   }
 
   constructor(
@@ -46,24 +46,24 @@ export class PlexCollectionScanner extends ExternalCollectionScanner<PlexApiClie
 
   protected getApiClient(
     mediaSource: MediaSourceWithRelations,
-  ): Promise<PlexApiClient> {
-    return this.mediaSourceApiFactory.getPlexApiClientForMediaSource(
+  ): Promise<EmbyApiClient> {
+    return this.mediaSourceApiFactory.getEmbyApiClientForMediaSource(
       mediaSource,
     );
   }
 
   getAllLibraryCollections(
-    apiClient: PlexApiClient,
+    apiClient: EmbyApiClient,
     libraryExternalKey: string,
   ): AsyncIterable<Collection> {
     return apiClient.getAllLibraryCollections(libraryExternalKey);
   }
 
   getCollectionItems(
-    apiClient: PlexApiClient,
-    libraryId: string,
+    apiClient: EmbyApiClient,
+    _libraryId: string,
     collectionId: string,
   ): AsyncIterable<ProgramOrFolder> {
-    return apiClient.getCollectionItems(libraryId, collectionId);
+    return apiClient.getCollectionItems(collectionId);
   }
 }
