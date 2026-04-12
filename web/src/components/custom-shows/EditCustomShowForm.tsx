@@ -26,13 +26,13 @@ import { type CustomShow } from '@tunarr/types';
 import { useEffect } from 'react';
 import { Controller, type SubmitHandler, useForm } from 'react-hook-form';
 import {
-  getApiCustomShowsByIdProgramsQueryKey,
-  getApiCustomShowsByIdQueryKey,
-  getApiCustomShowsQueryKey,
+  getCustomShowProgramsQueryKey,
+  getCustomShowQueryKey,
+  getCustomShowsQueryKey,
 } from '../../generated/@tanstack/react-query.gen.ts';
 import {
   createCustomShow,
-  putApiCustomShowsById,
+  updateCustomShow,
 } from '../../generated/sdk.gen.ts';
 import ChannelLineupList from '../channel_config/ChannelLineupList.tsx';
 import { CustomShowSortToolsMenu } from './CustomShowSortToolsMenu.tsx';
@@ -84,7 +84,7 @@ export function EditCustomShowsForm({
       if (isNew) {
         return createCustomShow({ body: data, throwOnError: true });
       } else {
-        return putApiCustomShowsById({
+        return updateCustomShow({
           path: {
             id: customShow.id,
           },
@@ -96,16 +96,16 @@ export function EditCustomShowsForm({
     onSuccess: async (updatedShow) => {
       reset({ name: updatedShow.data.name });
       await queryClient.invalidateQueries({
-        queryKey: getApiCustomShowsQueryKey(),
+        queryKey: getCustomShowsQueryKey(),
       });
       await queryClient.invalidateQueries({
-        queryKey: getApiCustomShowsByIdQueryKey({
+        queryKey: getCustomShowQueryKey({
           path: { id: updatedShow.data.id },
         }),
         exact: true,
       });
       await queryClient.invalidateQueries({
-        queryKey: getApiCustomShowsByIdProgramsQueryKey({
+        queryKey: getCustomShowProgramsQueryKey({
           path: { id: updatedShow.data.id },
         }),
         exact: true,

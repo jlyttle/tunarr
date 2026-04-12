@@ -1,7 +1,7 @@
 import { NumericFormControllerText } from '@/components/util/TypedController.tsx';
 import {
-  getApiSettingsMediaSourceOptions,
-  putApiSettingsMediaSourceMutation,
+  getGlobalMediaSourceSettingsOptions,
+  updateGlobalMediaSourceSettingsMutation,
 } from '@/generated/@tanstack/react-query.gen.ts';
 import { Box, Button, Stack } from '@mui/material';
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
@@ -12,7 +12,7 @@ import { useForm } from 'react-hook-form';
 
 export const ScannerSettingsPage = () => {
   const { data: mediaSourceSettings } = useSuspenseQuery(
-    getApiSettingsMediaSourceOptions(),
+    getGlobalMediaSourceSettingsOptions(),
   );
 
   const settingsForm = useForm<GlobalMediaSourceSettings>({
@@ -22,7 +22,7 @@ export const ScannerSettingsPage = () => {
   const snackbar = useSnackbar();
 
   const updateMediaSourceSettingsMut = useMutation({
-    ...putApiSettingsMediaSourceMutation(),
+    ...updateGlobalMediaSourceSettingsMutation(),
     onSuccess: (returned) => {
       settingsForm.reset(returned);
       snackbar.enqueueSnackbar({

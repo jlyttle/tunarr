@@ -26,6 +26,8 @@ export const customShowsApiV2: RouterPluginAsyncCallback = async (fastify) => {
     '/custom-shows',
     {
       schema: {
+        operationId: 'getCustomShows',
+        summary: 'List all custom shows',
         tags: ['Custom Shows'],
         response: {
           200: z.array(CustomShowSchema),
@@ -50,6 +52,8 @@ export const customShowsApiV2: RouterPluginAsyncCallback = async (fastify) => {
     '/custom-shows/:id',
     {
       schema: {
+        operationId: 'getCustomShow',
+        summary: 'Get a custom show by ID',
         tags: ['Custom Shows'],
         params: IdPathParamSchema,
         response: {
@@ -83,6 +87,8 @@ export const customShowsApiV2: RouterPluginAsyncCallback = async (fastify) => {
     '/custom-shows/:id',
     {
       schema: {
+        operationId: 'updateCustomShow',
+        summary: 'Update a custom show',
         tags: ['Custom Shows'],
         params: IdPathParamSchema,
         body: UpdateCustomShowRequestSchema,
@@ -118,6 +124,8 @@ export const customShowsApiV2: RouterPluginAsyncCallback = async (fastify) => {
     '/custom-shows/:id/programs',
     {
       schema: {
+        operationId: 'getCustomShowPrograms',
+        summary: 'List programs in a custom show',
         tags: ['Custom Shows'],
         params: IdPathParamSchema,
         response: {
@@ -159,6 +167,7 @@ export const customShowsApiV2: RouterPluginAsyncCallback = async (fastify) => {
       schema: {
         tags: ['Custom Shows'],
         operationId: 'createCustomShow',
+        summary: 'Create a custom show',
         description: 'Creates a new Custom Show',
         body: CreateCustomShowRequestSchema,
         response: {
@@ -190,7 +199,8 @@ export const customShowsApiV2: RouterPluginAsyncCallback = async (fastify) => {
       schema: {
         tags: ['Custom Shows'],
         operationId: 'deleteCustomShow',
-        description: 'Delets a custom show with the given ID',
+        summary: 'Delete a custom show',
+        description: 'Deletes a custom show with the given ID',
         params: IdPathParamSchema,
         response: {
           200: z.object({ id: z.string() }),

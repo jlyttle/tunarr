@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import type { PlexLibrarySections, PlexPlaylists } from '@tunarr/types/plex';
 import {
-  getApiPlexByMediaSourceIdLibrariesOptions,
-  getApiPlexByMediaSourceIdPlaylistsOptions,
+  getPlexLibrariesOptions,
+  getPlexPlaylistsOptions,
 } from '../../generated/@tanstack/react-query.gen.ts';
 
 export type PlexPathMappings = [
@@ -13,7 +13,7 @@ export type PlexPathMappings = [
 
 export const usePlexLibraries = (serverId: string, enabled: boolean = true) =>
   useQuery({
-    ...getApiPlexByMediaSourceIdLibrariesOptions({
+    ...getPlexLibrariesOptions({
       path: {
         mediaSourceId: serverId,
       },
@@ -23,7 +23,7 @@ export const usePlexLibraries = (serverId: string, enabled: boolean = true) =>
 
 export const usePlexPlaylists = (serverId: string, enabled: boolean = true) =>
   useQuery({
-    ...getApiPlexByMediaSourceIdPlaylistsOptions({
+    ...getPlexPlaylistsOptions({
       path: {
         mediaSourceId: serverId,
       },

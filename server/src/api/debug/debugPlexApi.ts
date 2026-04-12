@@ -13,6 +13,8 @@ export const DebugPlexApiRouter: RouterPluginAsyncCallback = async (
     '/plex/stream_details',
     {
       schema: {
+        operationId: 'debugGetPlexStreamDetails',
+        summary: 'Debug: get Plex stream details for a program',
         tags: ['Debug'],
         querystring: z.object({
           key: z.string(),

@@ -36,12 +36,12 @@ import { LanguagePreferencesList } from '@/components/LanguagePreferencesList';
 import type { DeepRequired } from 'ts-essentials';
 import { TranscodeConfigsTable } from '../../components/settings/ffmpeg/TranscodeConfigsTable.tsx';
 import {
-  deleteApiTranscodeConfigsByIdMutation,
-  getApiFfmpegInfoOptions,
-  getApiFfmpegInfoQueryKey,
-  getApiFfmpegSettingsQueryKey,
-  getApiVersionQueryKey,
-  putApiFfmpegSettingsMutation,
+  deleteTranscodeConfigMutation,
+  getFfmpegInfoOptions,
+  getFfmpegInfoQueryKey,
+  getFfmpegSettingsQueryKey,
+  getVersionQueryKey,
+  updateFfmpegSettingsMutation as updateFfmpegSettingsMutationOptions,
 } from '../../generated/@tanstack/react-query.gen.ts';
 import { useFfmpegSettings } from '../../hooks/settingsHooks.ts';
 
@@ -53,7 +53,7 @@ type FfmpegFormValues = DeepRequired<Omit<FfmpegSettings, 'configVersion'>>;
 export default function FfmpegSettingsPage() {
   const { data: ffmpegSettings, error } = useFfmpegSettings();
   const ffmpegInfo = useQuery({
-    ...getApiFfmpegInfoOptions(),
+    ...getFfmpegInfoOptions(),
   });
 
   const queryClient = useQueryClient();
@@ -122,7 +122,7 @@ export default function FfmpegSettingsPage() {
   const snackbar = useSnackbar();
 
   const updateFfmpegSettingsMutation = useMutation({
-    ...putApiFfmpegSettingsMutation(),
+    ...updateFfmpegSettingsMutationOptions(),
     // mutationFn: apiClient.updateFfmpegSettings,
     onSuccess: (data) => {
       setRestoreTunarrDefaults(false);
@@ -134,9 +134,9 @@ export default function FfmpegSettingsPage() {
         predicate(query) {
           return some(
             [
-              getApiFfmpegSettingsQueryKey(),
-              getApiFfmpegInfoQueryKey(),
-              getApiVersionQueryKey(),
+              getFfmpegSettingsQueryKey(),
+              getFfmpegInfoQueryKey(),
+              getVersionQueryKey(),
             ],
             (key) => isEqual(query.queryKey, key),
           );
@@ -146,7 +146,7 @@ export default function FfmpegSettingsPage() {
   });
 
   const deleteTranscodeConfig = useMutation({
-    ...deleteApiTranscodeConfigsByIdMutation(),
+    ...deleteTranscodeConfigMutation(),
     // mutationFn: (id: string) =>
     //   apiClient.deleteTranscodeConfig(undefined, { params: { id } }),
   });

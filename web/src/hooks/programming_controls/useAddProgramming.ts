@@ -3,7 +3,7 @@ import { useKnownMedia } from '@/store/programmingSelector/selectors.ts';
 import { flattenDeep, map } from 'lodash-es';
 import { type MouseEventHandler, useCallback, useState } from 'react';
 import { match, P } from 'ts-pattern';
-import { getApiProgramsByIdDescendants } from '../../generated/sdk.gen.ts';
+import { getProgramDescendants } from '../../generated/sdk.gen.ts';
 import { Emby, Imported, Jellyfin, Plex } from '../../helpers/constants.ts';
 import { enumerateEmbyItem } from '../../helpers/embyUtil.ts';
 import { sequentialPromises } from '../../helpers/util.ts';
@@ -105,7 +105,7 @@ export const useAddSelectedItems = () => {
               return [];
             }
 
-            const { data } = await getApiProgramsByIdDescendants({
+            const { data } = await getProgramDescendants({
               path: {
                 id: selected.id,
               },

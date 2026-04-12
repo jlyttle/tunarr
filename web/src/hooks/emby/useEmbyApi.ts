@@ -9,9 +9,9 @@ import { type EmbyItemKind } from '@tunarr/types/emby';
 import { every, flatMap, isEmpty, isNil, omitBy, sumBy } from 'lodash-es';
 import { useCallback, useMemo } from 'react';
 import type { StrictOmit } from 'ts-essentials';
-import { getApiEmbyByMediaSourceIdUserLibrariesOptions } from '../../generated/@tanstack/react-query.gen.ts';
-import { getApiEmbyByMediaSourceIdLibrariesByLibraryIdItems } from '../../generated/sdk.gen.ts';
-import type { GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsData } from '../../generated/types.gen.ts';
+import { getEmbyLibrariesOptions } from '../../generated/@tanstack/react-query.gen.ts';
+import { getEmbyLibraryItems } from '../../generated/sdk.gen.ts';
+import type { GetEmbyLibraryItemsData } from '../../generated/types.gen.ts';
 import { Emby } from '../../helpers/constants.ts';
 import { useQueryObserver } from '../useQueryObserver.ts';
 
@@ -20,7 +20,7 @@ export const useEmbyUserLibraries = (
   enabled: boolean = true,
 ) => {
   return useQuery({
-    ...getApiEmbyByMediaSourceIdUserLibrariesOptions({
+    ...getEmbyLibrariesOptions({
       path: { mediaSourceId },
     }),
     enabled: enabled && isNonEmptyString(mediaSourceId),
@@ -52,7 +52,7 @@ export const useInfiniteEmbyLibraryItems = (
   additionalFilters: Partial<
     StrictOmit<
       NonNullable<
-        GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsData['query']
+        GetEmbyLibraryItemsData['query']
       >,
       'offset' | 'limit' | 'itemTypes'
     >
@@ -72,7 +72,7 @@ export const useInfiniteEmbyLibraryItems = (
           { itemTypes, additionalFilters, parentId },
         ],
         queryFn: ({ pageParam: { offset, pageSize } }) =>
-          getApiEmbyByMediaSourceIdLibrariesByLibraryIdItems({
+          getEmbyLibraryItems({
             path: {
               mediaSourceId,
               libraryId,

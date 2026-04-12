@@ -56,6 +56,8 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources',
     {
       schema: {
+        operationId: 'getMediaSources',
+        summary: 'List all media sources',
         tags: ['Media Source'],
         response: {
           200: z.array(MediaSourceSettingsSchema),
@@ -84,6 +86,8 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources/:mediaSourceId',
     {
       schema: {
+        operationId: 'getMediaSourceById',
+        summary: 'Get a media source by ID',
         tags: ['Media Source'],
         params: z.object({
           mediaSourceId: z.uuid(),
@@ -119,6 +123,8 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources/:id/libraries',
     {
       schema: {
+        operationId: 'getMediaSourceLibraries',
+        summary: 'List libraries for a media source',
         tags: ['Media Source'],
         params: BasicIdParamSchema,
         response: {
@@ -179,6 +185,9 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources/:id/libraries/:libraryId',
     {
       schema: {
+        operationId: 'updateMediaSourceLibrary',
+        summary: 'Update a media source library',
+        description: 'Enables or disables a library. Enabling a library triggers an initial scan.',
         tags: ['Media Source'],
         params: BasicIdParamSchema.extend({
           libraryId: z.string(),
@@ -255,6 +264,8 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-libraries/:libraryId',
     {
       schema: {
+        operationId: 'getMediaLibraryById',
+        summary: 'Get a media library by ID',
         tags: ['Media Library'],
         params: z.object({
           libraryId: z.string(),
@@ -299,6 +310,8 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-libraries/:libraryId/programs',
     {
       schema: {
+        operationId: 'getMediaLibraryPrograms',
+        summary: 'List programs in a media library',
         tags: ['Media Library'],
         params: z.object({
           libraryId: z.string(),
@@ -338,6 +351,10 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources/:mediaSourceId/:libraryId/status',
     {
       schema: {
+        operationId: 'getMediaSourceScanStatus',
+        summary: 'Get scan status for a media source or library',
+        description: 'Returns the current scan progress for a media source library. Use "all" as libraryId to get aggregate status.',
+        tags: ['Media Source'],
         params: z.object({
           mediaSourceId: z.string(),
           libraryId: z.string(),
@@ -391,6 +408,9 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources/:id/libraries/refresh',
     {
       schema: {
+        operationId: 'refreshMediaSourceLibraries',
+        summary: 'Refresh libraries for a media source',
+        description: 'Re-fetches available libraries from the external media source (Plex, Jellyfin, or Emby).',
         tags: ['Media Source'],
         params: BasicIdParamSchema,
         response: {
@@ -423,6 +443,8 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources/:id/scan',
     {
       schema: {
+        operationId: 'scanMediaSource',
+        summary: 'Trigger a scan of all libraries in a media source',
         tags: ['Media Source'],
         params: BasicIdParamSchema.extend({
           libraryId: z.string(),
@@ -452,6 +474,9 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources/:id/libraries/:libraryId/scan',
     {
       schema: {
+        operationId: 'scanMediaSourceLibrary',
+        summary: 'Trigger a scan of a specific library',
+        description: 'Queues a scan for the specified library. Use "all" as libraryId to scan all enabled libraries. Set forceScan=true to rescan already-indexed items.',
         tags: ['Media Source'],
         params: BasicIdParamSchema.extend({
           libraryId: z.string(),
@@ -521,6 +546,8 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources/:id/status',
     {
       schema: {
+        operationId: 'getMediaSourceStatus',
+        summary: 'Check if a media source is reachable',
         tags: ['Media Source'],
         params: BasicIdParamSchema,
         response: {
@@ -603,6 +630,9 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources/foreignstatus',
     {
       schema: {
+        operationId: 'checkForeignMediaSourceStatus',
+        summary: 'Check the status of an unconfigured media source',
+        description: 'Tests connectivity to a media source without saving it. Useful for validating credentials before adding.',
         tags: ['Media Source'],
         body: z
           .object({
@@ -725,6 +755,8 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources/:id',
     {
       schema: {
+        operationId: 'deleteMediaSource',
+        summary: 'Delete a media source',
         tags: ['Media Source'],
         params: BasicIdParamSchema,
         response: {
@@ -785,6 +817,8 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources/:id',
     {
       schema: {
+        operationId: 'updateMediaSource',
+        summary: 'Update a media source',
         tags: ['Media Source'],
         params: BasicIdParamSchema,
         body: UpdateMediaSourceRequestSchema,
@@ -837,6 +871,9 @@ export const mediaSourceRouter: RouterPluginAsyncCallback = async (
     '/media-sources',
     {
       schema: {
+        operationId: 'createMediaSource',
+        summary: 'Add a media source',
+        description: 'Registers a new external media source (Plex, Jellyfin, Emby, or local).',
         tags: ['Media Source'],
         body: InsertMediaSourceRequestSchema,
         response: {

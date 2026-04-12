@@ -5,8 +5,8 @@ import { seq } from '@tunarr/shared/util';
 import type { PlexServerSettings } from '@tunarr/types';
 import { flatten, isNil, reject, sumBy } from 'lodash-es';
 import { useCallback, useMemo } from 'react';
-import { getApiPlexByMediaSourceIdLibrariesByLibraryIdCollectionsInfiniteQueryKey } from '../../generated/@tanstack/react-query.gen.ts';
-import { getApiPlexByMediaSourceIdLibrariesByLibraryIdCollections } from '../../generated/sdk.gen.ts';
+import { getPlexLibraryCollectionsInfiniteQueryKey } from '../../generated/@tanstack/react-query.gen.ts';
+import { getPlexLibraryCollections } from '../../generated/sdk.gen.ts';
 import { addKnownMediaForServer } from '../../store/programmingSelector/actions.ts';
 import { useQueryObserver } from '../useQueryObserver.ts';
 
@@ -19,7 +19,7 @@ export const usePlexCollectionsInfinite = (
   const queryOpts = useMemo(() => {
     return infiniteQueryOptions({
       queryKey:
-        getApiPlexByMediaSourceIdLibrariesByLibraryIdCollectionsInfiniteQueryKey(
+        getPlexLibraryCollectionsInfiniteQueryKey(
           {
             path: {
               mediaSourceId: plexServer?.id ?? '',
@@ -34,7 +34,7 @@ export const usePlexCollectionsInfinite = (
       queryFn: async (ctx) => {
         const { pageParam } = ctx;
         const result =
-          await getApiPlexByMediaSourceIdLibrariesByLibraryIdCollections({
+          await getPlexLibraryCollections({
             path: {
               mediaSourceId: plexServer!.id,
               libraryId: currentLibrary!.library.externalId,

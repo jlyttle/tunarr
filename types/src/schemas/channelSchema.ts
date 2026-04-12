@@ -40,7 +40,7 @@ export const WatermarkSchema = z.object({
 });
 
 export const FillerCollectionSchema = z.object({
-  id: z.string(),
+  id: z.string().uuid(),
   weight: z.number(),
   cooldownSeconds: z.number(),
 });
@@ -131,7 +131,7 @@ export const ChannelSchema = z.object({
   guideFlexTitle: z.string().optional(),
   guideMinimumDuration: z.number(),
   icon: ChannelIconSchema,
-  id: z.string(),
+  id: z.string().uuid(),
   name: z.string(),
   number: z.number(),
   offline: ChannelOfflineSchema,
@@ -144,7 +144,7 @@ export const ChannelSchema = z.object({
   }),
   programCount: z.number(),
   streamMode: ChannelStreamModeSchema,
-  transcodeConfigId: z.string(),
+  transcodeConfigId: z.string().uuid(),
   sessions: z.array(ChannelSessionSchema).optional(),
   subtitlesEnabled: z.boolean(),
   subtitlePreferences: z.array(SubtitlePreference).nonempty().optional(),

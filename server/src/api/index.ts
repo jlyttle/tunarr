@@ -87,6 +87,8 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
     '/version',
     {
       schema: {
+        operationId: 'getVersion',
+        summary: 'Get version information',
         tags: ['System'],
         response: {
           200: VersionApiResponseSchema,
@@ -113,6 +115,9 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
     '/ffmpeg-info',
     {
       schema: {
+        operationId: 'getFfmpegInfo',
+        summary: 'Get FFmpeg capabilities',
+        description: 'Returns available audio/video encoders and hardware acceleration types detected from the configured FFmpeg binary.',
         tags: ['System'],
         response: {
           200: z.object({
@@ -152,6 +157,9 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
     '/upload/image',
     {
       schema: {
+        operationId: 'uploadImage',
+        summary: 'Upload an image',
+        tags: ['System'],
         consumes: ['multipart/form-data'],
         body: z.any(),
         response: {
@@ -208,7 +216,7 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
     },
   );
 
-  fastify.get('/xmltv-last-refresh', (_req, res) => {
+  fastify.get('/xmltv-last-refresh', { schema: { operationId: 'getXmltvLastRefresh', summary: 'Get XMLTV last refresh time', tags: ['Guide'] } }, (_req, res) => {
     try {
       return res.send({
         value: GlobalScheduler.getScheduledJob(
@@ -226,6 +234,8 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
     url: '/xmltv.xml',
     method: ['HEAD', 'GET'],
     schema: {
+      operationId: 'getXmltvFeed',
+      summary: 'Download XMLTV guide data',
       tags: ['Streaming'],
     },
     handler: async (req, res) => {
@@ -250,7 +260,7 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
   });
 
   // Force an XMLTV refresh
-  fastify.post('/xmltv/refresh', async (_, res) => {
+  fastify.post('/xmltv/refresh', { schema: { operationId: 'refreshXmltv', summary: 'Force XMLTV guide refresh', tags: ['Guide'] } }, async (_, res) => {
     await GlobalScheduler.getScheduledJob(UpdateXmlTvTask.ID).runNow(false);
     return res.status(200);
   });
@@ -259,6 +269,8 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
   fastify.route({
     url: '/channels.m3u',
     schema: {
+      operationId: 'getM3uFeed',
+      summary: 'Download channels M3U playlist',
       querystring: z.object({
         forceHttps: TruthyQueryParam.optional(),
         hostOverride: z.string().optional(),
@@ -292,6 +304,8 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
     '/channels.m3u',
     {
       schema: {
+        operationId: 'clearM3uCache',
+        summary: 'Clear channels M3U cache',
         tags: ['Streaming'],
         description: 'Clears the channels m3u cache',
         response: {

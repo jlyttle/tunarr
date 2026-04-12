@@ -13,7 +13,7 @@ import {
 import type { SearchRequest } from '@tunarr/types/schemas';
 import dayjs from 'dayjs';
 import { match, P } from 'ts-pattern';
-import { postApiProgramsSearch } from '../generated/sdk.gen.ts';
+import { searchPrograms } from '../generated/sdk.gen.ts';
 import type { Nullable } from '../types/util.ts';
 import { prettyItemDuration } from './util.ts';
 
@@ -69,7 +69,7 @@ export async function enumerateSyncedItems(
 ) {
   const results: ProgramOrFolder[] = [];
   const loop = async (page?: number): Promise<ProgramOrFolder[]> => {
-    const result = await postApiProgramsSearch({
+    const result = await searchPrograms({
       body: {
         mediaSourceId,
         libraryId: libraryId ?? undefined,

@@ -4,8 +4,8 @@ import { isEmpty } from 'lodash-es';
 import { useSnackbar } from 'notistack';
 import { useCallback } from 'react';
 import {
-  getApiMediaSourcesQueryKey,
-  postApiMediaSourcesMutation,
+  getMediaSourcesQueryKey,
+  createMediaSourceMutation,
 } from '../../generated/@tanstack/react-query.gen.ts';
 
 export const usePlexLogin = () => {
@@ -13,10 +13,10 @@ export const usePlexLogin = () => {
   const snackbar = useSnackbar();
 
   const addPlexServerMutation = useMutation({
-    ...postApiMediaSourcesMutation(),
+    ...createMediaSourceMutation(),
     onSuccess: () => {
       return queryClient.invalidateQueries({
-        queryKey: getApiMediaSourcesQueryKey(),
+        queryKey: getMediaSourcesQueryKey(),
         exact: false,
       });
     },

@@ -10,7 +10,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Channel } from '@tunarr/types';
 import type { SyntheticEvent } from 'react';
 import {
-  deleteApiChannelsByIdMutation,
+  deleteChannelMutation,
   getChannelsQueryKey,
 } from '../../generated/@tanstack/react-query.gen.ts';
 
@@ -34,7 +34,7 @@ export const ChannelDeleteDialog = ({ open, onClose, channel }: Props) => {
   const queryClient = useQueryClient();
 
   const removeChannelMutation = useMutation({
-    ...deleteApiChannelsByIdMutation(),
+    ...deleteChannelMutation(),
     onSuccess: () => {
       return queryClient.invalidateQueries({
         queryKey: getChannelsQueryKey(),

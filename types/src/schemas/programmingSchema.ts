@@ -31,14 +31,14 @@ export const ProgramSchema = z.object({
   albumName: z.string().optional(),
   channel: z.string().optional(), // Redirect
   customOrder: z.number().optional(),
-  customShowId: z.string().optional(),
+  customShowId: z.uuid().optional(),
   customShowName: z.string().optional(),
   date: z.string().optional(),
   duration: z.number(),
   episode: z.number().optional(),
   episodeIcon: z.string().optional(),
   file: z.string().optional(),
-  id: z.string(),
+  id: z.uuid(),
   icon: z.string().optional(),
   // Deprecated
   key: z.string().optional(),
@@ -81,7 +81,7 @@ export const FlexProgramSchema = BaseProgramSchema.extend({
 
 export const RedirectProgramSchema = BaseProgramSchema.extend({
   type: z.literal('redirect'),
-  channel: z.string(), // Channel ID
+  channel: z.uuid(), // Channel ID
   channelNumber: z.number(),
   channelName: z.string(),
 });
@@ -111,7 +111,7 @@ export type ContentProgramOriginalProgram = z.infer<
 
 export const CondensedContentProgramSchema = BaseProgramSchema.extend({
   type: z.literal('content'),
-  id: z.string().optional(), // Populated if persisted
+  id: z.uuid().optional(), // Populated if persisted
   duration: z.number().min(0),
 });
 
@@ -123,7 +123,7 @@ export type ContentProgramType = z.infer<typeof ContentProgramTypeSchema>;
 
 const BaseContentProgramParentSchema = z.object({
   // ID of the program_grouping in Tunarr
-  id: z.string().optional(),
+  id: z.uuid().optional(),
   // title - e.g. album, show, etc
   title: z.string().optional(),
   // Index of this parent relative to its grandparent
@@ -216,8 +216,8 @@ export const ContentProgramSchema = CondensedContentProgramSchema.extend({
 export const CondensedCustomProgramSchema = BaseProgramSchema.extend({
   type: z.literal('custom'),
   // The ID of the underlying program
-  id: z.string(),
-  customShowId: z.string(),
+  id: z.uuid(),
+  customShowId: z.uuid(),
   index: z.number(),
   program: CondensedContentProgramSchema.optional(),
 });
@@ -229,8 +229,8 @@ export type CondensedCustomProgram = z.infer<
 export const CustomProgramSchema = BaseProgramSchema.extend({
   type: z.literal('custom'),
   // The ID of the underlying program
-  id: z.string(),
-  customShowId: z.string(),
+  id: z.uuid(),
+  customShowId: z.uuid(),
   index: z.number(),
   program: ContentProgramSchema.optional(),
 });

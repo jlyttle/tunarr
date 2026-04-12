@@ -53,7 +53,7 @@ import { RouterLink } from '../../components/base/RouterLink.tsx';
 import NoChannelsCreated from '../../components/channel_config/NoChannelsCreated.tsx';
 import { ChannelOptionsMenu } from '../../components/channels/ChannelOptionsMenu.tsx';
 import { ChannelSessionsDialog } from '../../components/channels/ChannelSessionsDialog.tsx';
-import { deleteApiChannelsByIdMutation } from '../../generated/@tanstack/react-query.gen.ts';
+import { deleteChannelMutation } from '../../generated/@tanstack/react-query.gen.ts';
 import { isNonEmptyString } from '../../helpers/util.ts';
 import { useChannelsSuspense } from '../../hooks/useChannels.ts';
 import { useServerEvents } from '../../hooks/useServerEvents.ts';
@@ -158,7 +158,7 @@ export default function ChannelsPage() {
   };
 
   const removeChannelMutation = useMutation({
-    ...deleteApiChannelsByIdMutation(),
+    ...deleteChannelMutation(),
     onSuccess: () => {
       return queryClient.invalidateQueries({
         queryKey: ['Channels'],

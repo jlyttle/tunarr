@@ -57,6 +57,9 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     '/system/health',
     {
       schema: {
+        operationId: 'getSystemHealth',
+        summary: 'Get system health status',
+        description: 'Runs all health checks and returns their results.',
         tags: ['System'],
         response: {
           200: z.record(z.string(), HealthCheckSchema),
@@ -73,6 +76,8 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     '/system/settings',
     {
       schema: {
+        operationId: 'getSystemSettings',
+        summary: 'Get system settings',
         tags: ['System', 'Settings'],
         response: {
           200: SystemSettingsResponseSchema,
@@ -89,6 +94,9 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     '/system/state',
     {
       schema: {
+        operationId: 'getSystemState',
+        summary: 'Get system environment state',
+        description: 'Returns information about the environment Tunarr is running in (Docker, Podman, etc.).',
         tags: ['System'],
         response: {
           200: z.object({
@@ -112,6 +120,8 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     '/system/migration-state',
     {
       schema: {
+        operationId: 'getMigrationState',
+        summary: 'Get database migration state',
         tags: ['System'],
         response: {
           200: MigrationStateSchema,
@@ -127,6 +137,9 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     '/system/fixers/:fixerId/run',
     {
       schema: {
+        operationId: 'runFixer',
+        summary: 'Run a data fixer',
+        description: 'Triggers a named data fixer to run, which corrects known data inconsistencies.',
         tags: ['System'],
         params: z.object({
           fixerId: z.string(),
@@ -158,6 +171,8 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     '/system/settings',
     {
       schema: {
+        operationId: 'updateSystemSettings',
+        summary: 'Update system settings',
         tags: ['System', 'Settings'],
         body: UpdateSystemSettingsRequestSchema,
         response: {
@@ -223,6 +238,8 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     '/system/settings/backup',
     {
       schema: {
+        operationId: 'updateBackupSettings',
+        summary: 'Update backup settings',
         tags: ['System', 'Settings'],
         body: UpdateBackupSettingsRequestSchema,
         response: {
@@ -246,7 +263,9 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     '/system/debug/nvidia',
     {
       schema: {
-        tags: ['System'],
+        operationId: 'getNvidiaDebugInfo',
+        summary: 'Get NVIDIA GPU debug info',
+        tags: ['Debug'],
         response: {
           200: z.string(),
         },
@@ -282,7 +301,9 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     '/system/debug/vaapi',
     {
       schema: {
-        tags: ['System'],
+        operationId: 'getVaapiDebugInfo',
+        summary: 'Get VAAPI device debug info',
+        tags: ['Debug'],
         response: {
           200: z.string(),
         },
@@ -320,6 +341,10 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     '/system/debug/logs/stream',
     {
       schema: {
+        operationId: 'streamLogs',
+        summary: 'Stream server logs (SSE)',
+        description: 'Returns a streaming response of the server log file. Set pretty=true for human-readable output.',
+        tags: ['System', 'Logs'],
         querystring: z.object({
           pretty: z.stringbool().optional().default(false),
         }),
@@ -380,6 +405,9 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     '/system/debug/logs',
     {
       schema: {
+        operationId: 'getLogs',
+        summary: 'Get server logs',
+        description: 'Returns server log content. Set download=true to receive as a file attachment, or use SSE mode for streaming.',
         tags: ['System', 'Logs'],
         querystring: z.object({
           download: TruthyQueryParam.optional(),
@@ -467,7 +495,10 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     '/system/debug/env',
     {
       schema: {
-        tags: ['System'],
+        operationId: 'getSystemEnvVars',
+        summary: 'Get Tunarr environment variables',
+        description: 'Returns currently set Tunarr-specific environment variables.',
+        tags: ['Debug'],
         response: {
           200: z.record(z.string(), z.string()),
         },
@@ -491,7 +522,7 @@ export const systemApiRouter: RouterPluginAsyncCallback = async (
     },
   );
 
-  fastify.get('/system/debug/loggers', (_, res) => {
+  fastify.get('/system/debug/loggers', { schema: { operationId: 'getLoggers', summary: 'Get logger hierarchy', tags: ['Debug'] } }, (_, res) => {
     return res.send(
       mapToObj([...LoggerFactory.traverseHierarchy()], ([k, v]) => ({
         [k]: v,

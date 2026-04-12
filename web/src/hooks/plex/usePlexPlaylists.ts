@@ -7,8 +7,8 @@ import type { PlexServerSettings } from '@tunarr/types';
 import { flatten, isNil, reject, sumBy } from 'lodash-es';
 import { useCallback, useMemo } from 'react';
 import {
-  getApiPlexByMediaSourceIdLibrariesByLibraryIdPlaylists,
-  getApiPlexByMediaSourceIdPlaylists,
+  getPlexLibraryPlaylists,
+  getPlexPlaylists,
 } from '../../generated/sdk.gen.ts';
 import { useQueryObserver } from '../useQueryObserver.ts';
 
@@ -33,7 +33,7 @@ export const usePlexPlaylistsInfinite = (
       ],
       queryFn: async ({ pageParam = 0 }) => {
         const result =
-          await getApiPlexByMediaSourceIdLibrariesByLibraryIdPlaylists({
+          await getPlexLibraryPlaylists({
             path: {
               mediaSourceId: plexServer!.id,
               libraryId: currentLibrary!.library.externalId,
@@ -100,7 +100,7 @@ export const usePlexTopLevelPlaylistsInfinite = (
         'infinite',
       ],
       queryFn: async ({ pageParam = 0 }) => {
-        const result = await getApiPlexByMediaSourceIdPlaylists({
+        const result = await getPlexPlaylists({
           path: {
             mediaSourceId: plexServer!.id,
           },

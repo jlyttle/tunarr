@@ -36,7 +36,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FieldErrors } from 'react-hook-form';
 import { Controller, useForm } from 'react-hook-form';
 import type { MarkOptional, StrictOmit } from 'ts-essentials';
-import { postApiMediaSourcesForeignstatus } from '../../../generated/sdk.gen.ts';
+import { checkForeignMediaSourceStatus } from '../../../generated/sdk.gen.ts';
 import {
   useCreateMediaSource,
   useUpdateMediaSource,
@@ -174,7 +174,7 @@ const LocalMediaEditDialogContent = ({ onClose, source }: Props) => {
     const getStatus = async () => {
       setCurrentPathCheckLoading(true);
       try {
-        const result = await postApiMediaSourcesForeignstatus({
+        const result = await checkForeignMediaSourceStatus({
           body: {
             type: 'local',
             paths: [throttledPath],

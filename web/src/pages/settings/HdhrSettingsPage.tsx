@@ -21,8 +21,8 @@ import {
   NumericFormControllerText,
 } from '../../components/util/TypedController.tsx';
 import {
-  getApiHdhrSettingsQueryKey,
-  putApiHdhrSettingsMutation,
+  getHdhrSettingsQueryKey,
+  updateHdhrSettingsMutation as updateHdhrSettingsMutationOptions,
 } from '../../generated/@tanstack/react-query.gen.ts';
 import { useHdhrSettings } from '../../hooks/settingsHooks.ts';
 
@@ -52,7 +52,7 @@ export default function HdhrSettingsPage() {
   const queryClient = useQueryClient();
 
   const updateHdhrSettingsMutation = useMutation({
-    ...putApiHdhrSettingsMutation(),
+    ...updateHdhrSettingsMutationOptions(),
     onSuccess: (data) => {
       snackbar.enqueueSnackbar('Settings Saved!', {
         variant: 'success',
@@ -60,7 +60,7 @@ export default function HdhrSettingsPage() {
       setRestoreTunarrDefaults(false);
       reset(data, { keepValues: true });
       return queryClient.invalidateQueries({
-        queryKey: getApiHdhrSettingsQueryKey(),
+        queryKey: getHdhrSettingsQueryKey(),
       });
     },
   });

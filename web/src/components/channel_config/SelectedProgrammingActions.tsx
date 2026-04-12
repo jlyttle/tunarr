@@ -23,7 +23,7 @@ import pluralize from 'pluralize';
 import { useCallback, useState } from 'react';
 import { match, P } from 'ts-pattern';
 import {
-  getApiEmbyByMediaSourceIdLibrariesByLibraryIdItems,
+  getEmbyLibraryItems,
   getJellyfinLibraryItems,
 } from '../../generated/sdk.gen.ts';
 import { Emby, Imported, Jellyfin, Plex } from '../../helpers/constants.ts';
@@ -172,7 +172,7 @@ export default function SelectedProgrammingActions({
           case Emby: {
             const library = selectedLibrary as EmbyMediaSourceView;
 
-            prom = getApiEmbyByMediaSourceIdLibrariesByLibraryIdItems({
+            prom = getEmbyLibraryItems({
               path: {
                 mediaSourceId: selectedServer.id,
                 libraryId: library.view.externalId,

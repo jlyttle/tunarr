@@ -22,7 +22,7 @@ import type { SearchFilter, SearchRequest } from '@tunarr/types/schemas';
 import { useSnackbar } from 'notistack';
 import { useMemo, useState } from 'react';
 import { LibraryProgramGrid } from '../../components/library/LibraryProgramGrid.tsx';
-import { deleteApiTrashMutation } from '../../generated/@tanstack/react-query.gen.ts';
+import { emptyTrashMutation } from '../../generated/@tanstack/react-query.gen.ts';
 import { invalidateQueryPrefix } from '../../helpers/queryUtil.ts';
 
 export const TrashPage = () => {
@@ -31,7 +31,7 @@ export const TrashPage = () => {
   const queryClient = useQueryClient();
 
   const emptyTrashMut = useMutation({
-    ...deleteApiTrashMutation(),
+    ...emptyTrashMutation(),
     onSuccess: async () => {
       snackbar.enqueueSnackbar({
         message: 'Successfully emptied trash.',

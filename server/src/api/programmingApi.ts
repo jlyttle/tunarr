@@ -93,6 +93,10 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programs/search',
     {
       schema: {
+        operationId: 'searchPrograms',
+        summary: 'Search programs',
+        description: 'Searches the program library using filters, text query, and pagination.',
+        tags: ['Programs'],
         body: ProgramSearchRequest,
         response: {
           200: ProgramSearchResponse,
@@ -111,6 +115,10 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programs/:id/descendants',
     {
       schema: {
+        operationId: 'getProgramDescendants',
+        summary: 'Get all descendants of a program or grouping',
+        description: 'Returns all leaf-level content programs under the given program or program grouping (e.g. all episodes in a season).',
+        tags: ['Programs'],
         params: z.object({
           id: z.uuid(),
         }),
@@ -159,6 +167,10 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programs/facets/:facetName',
     {
       schema: {
+        operationId: 'getProgramFacets',
+        summary: 'Get facet values for a program field',
+        description: 'Returns aggregated facet values and counts for the specified field, useful for building filter UIs.',
+        tags: ['Programs'],
         params: z.object({
           facetName: z.string(),
         }),
@@ -199,6 +211,10 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programs/facets/:facetName',
     {
       schema: {
+        operationId: 'getProgramFacetsWithFilter',
+        summary: 'Get facet values for a program field with a filter',
+        description: 'Returns aggregated facet values filtered by an additional search filter body.',
+        tags: ['Programs'],
         params: z.object({
           facetName: z.string(),
         }),
@@ -243,6 +259,9 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programs/:id',
     {
       schema: {
+        operationId: 'getProgramById',
+        summary: 'Get a program by ID',
+        description: 'Returns detailed information for a single program, including stream details, grouping hierarchy, and credits.',
         tags: ['Programs'],
         params: BasicIdParamSchema,
         response: {
@@ -351,7 +370,10 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/program_groupings/:id',
     {
       schema: {
-        tags: ['Programs'],
+        operationId: 'getProgramGroupingById',
+        summary: 'Get a program grouping by ID',
+        description: 'Returns a program grouping (show, season, album, or artist) with its nested children.',
+        tags: ['Programs', 'Program Groupings'],
         params: BasicIdParamSchema,
         response: {
           200: ProgramGroupingSchema,
@@ -376,6 +398,10 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programs/:id/artwork/:artworkType',
     {
       schema: {
+        operationId: 'getProgramArtwork',
+        summary: 'Get artwork for a program or grouping',
+        description: 'Returns or proxies artwork from the media source for the given program or grouping.',
+        tags: ['Programs'],
         produces: ['image/jpeg', 'image/png'],
         params: z.object({
           id: z.uuid(),
@@ -485,6 +511,9 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programs/:id/stream_details',
     {
       schema: {
+        operationId: 'getProgramStreamDetails',
+        summary: 'Get stream details for a program',
+        description: 'Fetches stream metadata (codecs, resolution, bitrate) from the media source for the given program.',
         tags: ['Programs'],
         params: BasicIdParamSchema,
       },
@@ -562,7 +591,10 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programs/:id/children',
     {
       schema: {
-        tags: ['Programs'],
+        operationId: 'getProgramChildren',
+        summary: 'Get direct children of a program grouping',
+        description: 'Returns direct children of a grouping: seasons for shows, albums for artists, episodes for seasons, or tracks for albums.',
+        tags: ['Programs', 'Program Groupings'],
         params: BasicIdParamSchema,
         querystring: z.object({
           ...PagingParams.shape,
@@ -660,6 +692,9 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programs/:id/thumb',
     {
       schema: {
+        operationId: 'getProgramThumb',
+        summary: 'Get a thumbnail for a program',
+        description: 'Returns or proxies a thumbnail image from the media source for the given program or grouping.',
         tags: ['Programs'],
         params: BasicIdParamSchema,
         querystring: z.object({
@@ -900,6 +935,9 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programs/:id/external-link',
     {
       schema: {
+        operationId: 'getProgramExternalLink',
+        summary: 'Get external media source link for a program',
+        description: 'Returns or redirects to the deep-link URL in the program\'s media source (Plex or Jellyfin). Set forward=false to get the URL instead of following the redirect.',
         tags: ['Programs'],
         params: BasicIdParamSchema,
         querystring: z.object({
@@ -980,6 +1018,8 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
       schema: {
         tags: ['Programs'],
         operationId: 'getProgramByExternalId',
+        summary: 'Get a program by external ID',
+        description: 'Looks up a program by its external source identifier in the format "sourceType|serverId|itemId".',
         params: LookupExternalProgrammingSchema,
         response: {
           200: ContentProgramSchema,
@@ -1027,6 +1067,8 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
       schema: {
         tags: ['Programs'],
         operationId: 'batchGetProgramsByExternalIds',
+        summary: 'Batch look up programs by external IDs',
+        description: 'Returns a map of programs keyed by their UUID, looked up by external source IDs.',
         body: BatchLookupExternalProgrammingSchema,
         response: {
           200: z.record(z.string(), TerminalProgramSchema),
@@ -1065,7 +1107,9 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programming/shows/:id',
     {
       schema: {
-        tags: ['Programs'],
+        operationId: 'getShow',
+        summary: 'Get a TV show with seasons',
+        tags: ['Programs', 'Program Groupings'],
         params: z.object({
           id: z.uuid(),
         }),
@@ -1126,7 +1170,9 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programming/seasons/:id',
     {
       schema: {
-        tags: ['Programs'],
+        operationId: 'getSeason',
+        summary: 'Get a TV season',
+        tags: ['Programs', 'Program Groupings'],
         params: z.object({
           id: z.string().uuid(),
         }),
@@ -1160,7 +1206,9 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programming/shows/:id/seasons',
     {
       schema: {
-        tags: ['Programs'],
+        operationId: 'getShowSeasons',
+        summary: 'List seasons in a TV show',
+        tags: ['Programs', 'Program Groupings'],
         params: z.object({
           id: z.string().uuid(),
         }),
@@ -1183,6 +1231,10 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
     '/programs/:id/scan',
     {
       schema: {
+        operationId: 'scanProgram',
+        summary: 'Force re-scan a program',
+        description: 'Triggers an immediate re-scan of a program to refresh metadata and file availability.',
+        tags: ['Programs'],
         params: z.object({
           id: z.uuid(),
         }),

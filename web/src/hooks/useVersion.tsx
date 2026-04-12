@@ -4,17 +4,17 @@ import { useQuery } from '@tanstack/react-query';
 import { trimStart } from 'lodash-es';
 import { useSnackbar } from 'notistack';
 import type { StrictOmit } from 'ts-essentials';
-import { getApiVersionOptions } from '../generated/@tanstack/react-query.gen.ts';
+import { getVersionOptions } from '../generated/@tanstack/react-query.gen.ts';
 
 export const useVersion = (
   extraOpts: StrictOmit<
-    ReturnType<typeof getApiVersionOptions>,
+    ReturnType<typeof getVersionOptions>,
     'queryKey' | 'queryFn'
   > = {},
 ) => {
   const snackbar = useSnackbar();
   const query = useQuery({
-    ...getApiVersionOptions(),
+    ...getVersionOptions(),
     ...extraOpts,
     staleTime: extraOpts.staleTime ?? 30 * 1000,
     refetchOnReconnect: true,

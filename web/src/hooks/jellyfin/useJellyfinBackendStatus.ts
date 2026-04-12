@@ -2,7 +2,7 @@ import { isNonEmptyString, isValidUrl } from '@/helpers/util';
 import { useQuery } from '@tanstack/react-query';
 import type { JellyfinServerSettings } from '@tunarr/types';
 import type { MarkOptional } from 'ts-essentials';
-import { postApiMediaSourcesForeignstatusOptions } from '../../generated/@tanstack/react-query.gen.ts';
+import { checkForeignMediaSourceStatusOptions } from '../../generated/@tanstack/react-query.gen.ts';
 import { Jellyfin } from '../../helpers/constants.ts';
 
 export const useJellyfinBackendStatus = (
@@ -20,7 +20,7 @@ export const useJellyfinBackendStatus = (
   enabled: boolean = true,
 ) => {
   return useQuery({
-    ...postApiMediaSourcesForeignstatusOptions({
+    ...checkForeignMediaSourceStatusOptions({
       body: {
         accessToken,
         type: Jellyfin,

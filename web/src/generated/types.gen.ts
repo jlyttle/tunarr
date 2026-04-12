@@ -1894,14 +1894,14 @@ export type SearchFilter = {
     };
 };
 
-export type GetApiTasksData = {
+export type GetTasksData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/tasks';
 };
 
-export type GetApiTasksResponses = {
+export type GetTasksResponses = {
     /**
      * Default Response
      */
@@ -1922,9 +1922,9 @@ export type GetApiTasksResponses = {
     }>;
 };
 
-export type GetApiTasksResponse = GetApiTasksResponses[keyof GetApiTasksResponses];
+export type GetTasksResponse = GetTasksResponses[keyof GetTasksResponses];
 
-export type PostApiTasksByIdRunData = {
+export type RunTaskData = {
     body?: unknown;
     path: {
         id: string;
@@ -1935,7 +1935,7 @@ export type PostApiTasksByIdRunData = {
     url: '/api/tasks/{id}/run';
 };
 
-export type PostApiTasksByIdRunErrors = {
+export type RunTaskErrors = {
     /**
      * Default Response
      */
@@ -1946,9 +1946,9 @@ export type PostApiTasksByIdRunErrors = {
     404: string;
 };
 
-export type PostApiTasksByIdRunError = PostApiTasksByIdRunErrors[keyof PostApiTasksByIdRunErrors];
+export type RunTaskError = RunTaskErrors[keyof RunTaskErrors];
 
-export type PostApiTasksByIdRunResponses = {
+export type RunTaskResponses = {
     /**
      * Default Response
      */
@@ -2090,7 +2090,7 @@ export type GetChannelsResponses = {
 
 export type GetChannelsResponse = GetChannelsResponses[keyof GetChannelsResponses];
 
-export type CreateChannelV2Data = {
+export type CreateChannelData = {
     body?: {
         type: 'new';
         channel: {
@@ -2161,7 +2161,7 @@ export type CreateChannelV2Data = {
     url: '/api/channels';
 };
 
-export type CreateChannelV2Errors = {
+export type CreateChannelErrors = {
     /**
      * Default Response
      */
@@ -2174,9 +2174,9 @@ export type CreateChannelV2Errors = {
     };
 };
 
-export type CreateChannelV2Error = CreateChannelV2Errors[keyof CreateChannelV2Errors];
+export type CreateChannelError = CreateChannelErrors[keyof CreateChannelErrors];
 
-export type CreateChannelV2Responses = {
+export type CreateChannelResponses = {
     /**
      * Default Response
      */
@@ -2289,9 +2289,9 @@ export type CreateChannelV2Responses = {
     };
 };
 
-export type CreateChannelV2Response = CreateChannelV2Responses[keyof CreateChannelV2Responses];
+export type CreateChannelResponse = CreateChannelResponses[keyof CreateChannelResponses];
 
-export type DeleteApiChannelsByIdData = {
+export type DeleteChannelData = {
     body?: never;
     path: {
         id: string;
@@ -2300,30 +2300,33 @@ export type DeleteApiChannelsByIdData = {
     url: '/api/channels/{id}';
 };
 
-export type DeleteApiChannelsByIdErrors = {
+export type DeleteChannelErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type DeleteApiChannelsByIdResponses = {
+export type DeleteChannelResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetChannelsByNumberV2Data = {
+export type GetChannelByIdData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: never;
     url: '/api/channels/{id}';
 };
 
-export type GetChannelsByNumberV2Errors = {
+export type GetChannelByIdErrors = {
     /**
      * Default Response
      */
@@ -2334,7 +2337,7 @@ export type GetChannelsByNumberV2Errors = {
     500: unknown;
 };
 
-export type GetChannelsByNumberV2Responses = {
+export type GetChannelByIdResponses = {
     /**
      * Default Response
      */
@@ -2447,9 +2450,9 @@ export type GetChannelsByNumberV2Responses = {
     };
 };
 
-export type GetChannelsByNumberV2Response = GetChannelsByNumberV2Responses[keyof GetChannelsByNumberV2Responses];
+export type GetChannelByIdResponse = GetChannelByIdResponses[keyof GetChannelByIdResponses];
 
-export type PutApiChannelsByIdData = {
+export type UpdateChannelData = {
     body: {
         disableFillerOverlay: boolean;
         duration: number;
@@ -2516,7 +2519,7 @@ export type PutApiChannelsByIdData = {
     url: '/api/channels/{id}';
 };
 
-export type PutApiChannelsByIdErrors = {
+export type UpdateChannelErrors = {
     /**
      * Default Response
      */
@@ -2527,7 +2530,7 @@ export type PutApiChannelsByIdErrors = {
     500: unknown;
 };
 
-export type PutApiChannelsByIdResponses = {
+export type UpdateChannelResponses = {
     /**
      * Default Response
      */
@@ -2640,11 +2643,14 @@ export type PutApiChannelsByIdResponses = {
     };
 };
 
-export type PutApiChannelsByIdResponse = PutApiChannelsByIdResponses[keyof PutApiChannelsByIdResponses];
+export type UpdateChannelResponse = UpdateChannelResponses[keyof UpdateChannelResponses];
 
-export type GetApiChannelsByIdProgramsData = {
+export type GetChannelProgramsData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: {
@@ -2655,14 +2661,14 @@ export type GetApiChannelsByIdProgramsData = {
     url: '/api/channels/{id}/programs';
 };
 
-export type GetApiChannelsByIdProgramsErrors = {
+export type GetChannelProgramsErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiChannelsByIdProgramsResponses = {
+export type GetChannelProgramsResponses = {
     /**
      * Default Response
      */
@@ -3095,11 +3101,14 @@ export type GetApiChannelsByIdProgramsResponses = {
     };
 };
 
-export type GetApiChannelsByIdProgramsResponse = GetApiChannelsByIdProgramsResponses[keyof GetApiChannelsByIdProgramsResponses];
+export type GetChannelProgramsResponse = GetChannelProgramsResponses[keyof GetChannelProgramsResponses];
 
-export type GetApiChannelsByIdShowsData = {
+export type GetChannelShowsData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: {
@@ -3109,7 +3118,7 @@ export type GetApiChannelsByIdShowsData = {
     url: '/api/channels/{id}/shows';
 };
 
-export type GetApiChannelsByIdShowsResponses = {
+export type GetChannelShowsResponses = {
     /**
      * Default Response
      */
@@ -3121,11 +3130,14 @@ export type GetApiChannelsByIdShowsResponses = {
     };
 };
 
-export type GetApiChannelsByIdShowsResponse = GetApiChannelsByIdShowsResponses[keyof GetApiChannelsByIdShowsResponses];
+export type GetChannelShowsResponse = GetChannelShowsResponses[keyof GetChannelShowsResponses];
 
-export type GetApiChannelsByIdArtistsData = {
+export type GetChannelArtistsData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: {
@@ -3135,7 +3147,7 @@ export type GetApiChannelsByIdArtistsData = {
     url: '/api/channels/{id}/artists';
 };
 
-export type GetApiChannelsByIdArtistsResponses = {
+export type GetChannelArtistsResponses = {
     /**
      * Default Response
      */
@@ -3147,21 +3159,30 @@ export type GetApiChannelsByIdArtistsResponses = {
     };
 };
 
-export type GetApiChannelsByIdArtistsResponse = GetApiChannelsByIdArtistsResponses[keyof GetApiChannelsByIdArtistsResponses];
+export type GetChannelArtistsResponse = GetChannelArtistsResponses[keyof GetChannelArtistsResponses];
 
-export type GetApiChannelsByIdProgrammingData = {
+export type GetChannelProgrammingData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: {
+        /**
+         * Number of results to skip for pagination.
+         */
         offset?: number;
+        /**
+         * Maximum number of results to return. Use -1 for no limit.
+         */
         limit?: number;
     };
     url: '/api/channels/{id}/programming';
 };
 
-export type GetApiChannelsByIdProgrammingErrors = {
+export type GetChannelProgrammingErrors = {
     /**
      * Default Response
      */
@@ -3170,9 +3191,9 @@ export type GetApiChannelsByIdProgrammingErrors = {
     };
 };
 
-export type GetApiChannelsByIdProgrammingError = GetApiChannelsByIdProgrammingErrors[keyof GetApiChannelsByIdProgrammingErrors];
+export type GetChannelProgrammingError = GetChannelProgrammingErrors[keyof GetChannelProgrammingErrors];
 
-export type GetApiChannelsByIdProgrammingResponses = {
+export type GetChannelProgrammingResponses = {
     /**
      * Default Response
      */
@@ -3638,9 +3659,9 @@ export type GetApiChannelsByIdProgrammingResponses = {
     };
 };
 
-export type GetApiChannelsByIdProgrammingResponse = GetApiChannelsByIdProgrammingResponses[keyof GetApiChannelsByIdProgrammingResponses];
+export type GetChannelProgrammingResponse = GetChannelProgrammingResponses[keyof GetChannelProgrammingResponses];
 
-export type PostApiChannelsByIdProgrammingData = {
+export type UpdateChannelProgrammingData = {
     body?: {
         type: 'manual';
         programs: Array<{
@@ -4380,13 +4401,16 @@ export type PostApiChannelsByIdProgrammingData = {
         discardCount?: number;
     };
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: never;
     url: '/api/channels/{id}/programming';
 };
 
-export type PostApiChannelsByIdProgrammingErrors = {
+export type UpdateChannelProgrammingErrors = {
     /**
      * Default Response
      */
@@ -4401,7 +4425,7 @@ export type PostApiChannelsByIdProgrammingErrors = {
     501: unknown;
 };
 
-export type PostApiChannelsByIdProgrammingResponses = {
+export type UpdateChannelProgrammingResponses = {
     /**
      * Default Response
      */
@@ -4867,11 +4891,14 @@ export type PostApiChannelsByIdProgrammingResponses = {
     };
 };
 
-export type PostApiChannelsByIdProgrammingResponse = PostApiChannelsByIdProgrammingResponses[keyof PostApiChannelsByIdProgrammingResponses];
+export type UpdateChannelProgrammingResponse = UpdateChannelProgrammingResponses[keyof UpdateChannelProgrammingResponses];
 
 export type GetChannelFallbacksData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: {
@@ -5056,7 +5083,7 @@ export type GetChannelFallbacksResponses = {
 
 export type GetChannelFallbacksResponse = GetChannelFallbacksResponses[keyof GetChannelFallbacksResponses];
 
-export type GetApiChannelsAllLineupsData = {
+export type GetAllChannelLineupsData = {
     body?: never;
     path?: never;
     query?: {
@@ -5067,16 +5094,16 @@ export type GetApiChannelsAllLineupsData = {
     url: '/api/channels/all/lineups';
 };
 
-export type GetApiChannelsAllLineupsErrors = {
+export type GetAllChannelLineupsErrors = {
     /**
      * Default Response
      */
     400: string;
 };
 
-export type GetApiChannelsAllLineupsError = GetApiChannelsAllLineupsErrors[keyof GetApiChannelsAllLineupsErrors];
+export type GetAllChannelLineupsError = GetAllChannelLineupsErrors[keyof GetAllChannelLineupsErrors];
 
-export type GetApiChannelsAllLineupsResponses = {
+export type GetAllChannelLineupsResponses = {
     /**
      * Default Response
      */
@@ -5441,11 +5468,14 @@ export type GetApiChannelsAllLineupsResponses = {
     }>;
 };
 
-export type GetApiChannelsAllLineupsResponse = GetApiChannelsAllLineupsResponses[keyof GetApiChannelsAllLineupsResponses];
+export type GetAllChannelLineupsResponse = GetAllChannelLineupsResponses[keyof GetAllChannelLineupsResponses];
 
-export type GetApiChannelsByIdLineupData = {
+export type GetChannelLineupData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: {
@@ -5456,7 +5486,7 @@ export type GetApiChannelsByIdLineupData = {
     url: '/api/channels/{id}/lineup';
 };
 
-export type GetApiChannelsByIdLineupErrors = {
+export type GetChannelLineupErrors = {
     /**
      * Default Response
      */
@@ -5471,9 +5501,9 @@ export type GetApiChannelsByIdLineupErrors = {
     };
 };
 
-export type GetApiChannelsByIdLineupError = GetApiChannelsByIdLineupErrors[keyof GetApiChannelsByIdLineupErrors];
+export type GetChannelLineupError = GetChannelLineupErrors[keyof GetChannelLineupErrors];
 
-export type GetApiChannelsByIdLineupResponses = {
+export type GetChannelLineupResponses = {
     /**
      * Default Response
      */
@@ -5838,18 +5868,21 @@ export type GetApiChannelsByIdLineupResponses = {
     };
 };
 
-export type GetApiChannelsByIdLineupResponse = GetApiChannelsByIdLineupResponses[keyof GetApiChannelsByIdLineupResponses];
+export type GetChannelLineupResponse = GetChannelLineupResponses[keyof GetChannelLineupResponses];
 
-export type GetApiChannelsByIdNowPlayingData = {
+export type GetChannelNowPlayingData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: never;
     url: '/api/channels/{id}/now_playing';
 };
 
-export type GetApiChannelsByIdNowPlayingErrors = {
+export type GetChannelNowPlayingErrors = {
     /**
      * Default Response
      */
@@ -5864,9 +5897,9 @@ export type GetApiChannelsByIdNowPlayingErrors = {
     };
 };
 
-export type GetApiChannelsByIdNowPlayingError = GetApiChannelsByIdNowPlayingErrors[keyof GetApiChannelsByIdNowPlayingErrors];
+export type GetChannelNowPlayingError = GetChannelNowPlayingErrors[keyof GetChannelNowPlayingErrors];
 
-export type GetApiChannelsByIdNowPlayingResponses = {
+export type GetChannelNowPlayingResponses = {
     /**
      * Default Response
      */
@@ -6220,9 +6253,9 @@ export type GetApiChannelsByIdNowPlayingResponses = {
     };
 };
 
-export type GetApiChannelsByIdNowPlayingResponse = GetApiChannelsByIdNowPlayingResponses[keyof GetApiChannelsByIdNowPlayingResponses];
+export type GetChannelNowPlayingResponse = GetChannelNowPlayingResponses[keyof GetChannelNowPlayingResponses];
 
-export type GetApiChannelsByIdTranscodeConfigData = {
+export type GetChannelTranscodeConfigData = {
     body?: never;
     path: {
         id: string;
@@ -6231,7 +6264,7 @@ export type GetApiChannelsByIdTranscodeConfigData = {
     url: '/api/channels/{id}/transcode_config';
 };
 
-export type GetApiChannelsByIdTranscodeConfigResponses = {
+export type GetChannelTranscodeConfigResponses = {
     /**
      * Default Response
      */
@@ -6288,9 +6321,9 @@ export type GetApiChannelsByIdTranscodeConfigResponses = {
     };
 };
 
-export type GetApiChannelsByIdTranscodeConfigResponse = GetApiChannelsByIdTranscodeConfigResponses[keyof GetApiChannelsByIdTranscodeConfigResponses];
+export type GetChannelTranscodeConfigResponse = GetChannelTranscodeConfigResponses[keyof GetChannelTranscodeConfigResponses];
 
-export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
+export type ScheduleChannelTimeSlotsData = {
     body: {
         schedule: {
             type: 'time';
@@ -6378,16 +6411,16 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
     url: '/api/channels/{channelId}/schedule-time-slots';
 };
 
-export type PostApiChannelsByChannelIdScheduleTimeSlotsErrors = {
+export type ScheduleChannelTimeSlotsErrors = {
     /**
      * Default Response
      */
     404: string;
 };
 
-export type PostApiChannelsByChannelIdScheduleTimeSlotsError = PostApiChannelsByChannelIdScheduleTimeSlotsErrors[keyof PostApiChannelsByChannelIdScheduleTimeSlotsErrors];
+export type ScheduleChannelTimeSlotsError = ScheduleChannelTimeSlotsErrors[keyof ScheduleChannelTimeSlotsErrors];
 
-export type PostApiChannelsByChannelIdScheduleTimeSlotsResponses = {
+export type ScheduleChannelTimeSlotsResponses = {
     /**
      * Default Response
      */
@@ -6605,9 +6638,9 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsResponses = {
     };
 };
 
-export type PostApiChannelsByChannelIdScheduleTimeSlotsResponse = PostApiChannelsByChannelIdScheduleTimeSlotsResponses[keyof PostApiChannelsByChannelIdScheduleTimeSlotsResponses];
+export type ScheduleChannelTimeSlotsResponse = ScheduleChannelTimeSlotsResponses[keyof ScheduleChannelTimeSlotsResponses];
 
-export type PostApiChannelsByChannelIdScheduleSlotsData = {
+export type ScheduleChannelSlotsData = {
     body: {
         schedule: {
             type: 'random';
@@ -6759,16 +6792,16 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
     url: '/api/channels/{channelId}/schedule-slots';
 };
 
-export type PostApiChannelsByChannelIdScheduleSlotsErrors = {
+export type ScheduleChannelSlotsErrors = {
     /**
      * Default Response
      */
     404: string;
 };
 
-export type PostApiChannelsByChannelIdScheduleSlotsError = PostApiChannelsByChannelIdScheduleSlotsErrors[keyof PostApiChannelsByChannelIdScheduleSlotsErrors];
+export type ScheduleChannelSlotsError = ScheduleChannelSlotsErrors[keyof ScheduleChannelSlotsErrors];
 
-export type PostApiChannelsByChannelIdScheduleSlotsResponses = {
+export type ScheduleChannelSlotsResponses = {
     /**
      * Default Response
      */
@@ -6986,9 +7019,9 @@ export type PostApiChannelsByChannelIdScheduleSlotsResponses = {
     };
 };
 
-export type PostApiChannelsByChannelIdScheduleSlotsResponse = PostApiChannelsByChannelIdScheduleSlotsResponses[keyof PostApiChannelsByChannelIdScheduleSlotsResponses];
+export type ScheduleChannelSlotsResponse = ScheduleChannelSlotsResponses[keyof ScheduleChannelSlotsResponses];
 
-export type GetApiChannelsByIdScheduleData = {
+export type GetChannelScheduleData = {
     body?: never;
     path: {
         id: string;
@@ -6997,7 +7030,7 @@ export type GetApiChannelsByIdScheduleData = {
     url: '/api/channels/{id}/schedule';
 };
 
-export type GetApiChannelsByIdScheduleResponses = {
+export type GetChannelScheduleResponses = {
     /**
      * Default Response
      */
@@ -7486,16 +7519,16 @@ export type GetApiChannelsByIdScheduleResponses = {
     };
 };
 
-export type GetApiChannelsByIdScheduleResponse = GetApiChannelsByIdScheduleResponses[keyof GetApiChannelsByIdScheduleResponses];
+export type GetChannelScheduleResponse = GetChannelScheduleResponses[keyof GetChannelScheduleResponses];
 
-export type GetApiCustomShowsData = {
+export type GetCustomShowsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/custom-shows';
 };
 
-export type GetApiCustomShowsResponses = {
+export type GetCustomShowsResponses = {
     /**
      * Default Response
      */
@@ -7671,7 +7704,7 @@ export type GetApiCustomShowsResponses = {
     }>;
 };
 
-export type GetApiCustomShowsResponse = GetApiCustomShowsResponses[keyof GetApiCustomShowsResponses];
+export type GetCustomShowsResponse = GetCustomShowsResponses[keyof GetCustomShowsResponses];
 
 export type CreateCustomShowData = {
     body: {
@@ -8042,7 +8075,7 @@ export type DeleteCustomShowResponses = {
 
 export type DeleteCustomShowResponse = DeleteCustomShowResponses[keyof DeleteCustomShowResponses];
 
-export type GetApiCustomShowsByIdData = {
+export type GetCustomShowData = {
     body?: never;
     path: {
         id: string;
@@ -8051,14 +8084,14 @@ export type GetApiCustomShowsByIdData = {
     url: '/api/custom-shows/{id}';
 };
 
-export type GetApiCustomShowsByIdErrors = {
+export type GetCustomShowErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiCustomShowsByIdResponses = {
+export type GetCustomShowResponses = {
     /**
      * Default Response
      */
@@ -8234,9 +8267,9 @@ export type GetApiCustomShowsByIdResponses = {
     };
 };
 
-export type GetApiCustomShowsByIdResponse = GetApiCustomShowsByIdResponses[keyof GetApiCustomShowsByIdResponses];
+export type GetCustomShowResponse = GetCustomShowResponses[keyof GetCustomShowResponses];
 
-export type PutApiCustomShowsByIdData = {
+export type UpdateCustomShowData = {
     body?: {
         name?: string;
         programs?: Array<{
@@ -8402,14 +8435,14 @@ export type PutApiCustomShowsByIdData = {
     url: '/api/custom-shows/{id}';
 };
 
-export type PutApiCustomShowsByIdErrors = {
+export type UpdateCustomShowErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type PutApiCustomShowsByIdResponses = {
+export type UpdateCustomShowResponses = {
     /**
      * Default Response
      */
@@ -8585,9 +8618,9 @@ export type PutApiCustomShowsByIdResponses = {
     };
 };
 
-export type PutApiCustomShowsByIdResponse = PutApiCustomShowsByIdResponses[keyof PutApiCustomShowsByIdResponses];
+export type UpdateCustomShowResponse = UpdateCustomShowResponses[keyof UpdateCustomShowResponses];
 
-export type GetApiCustomShowsByIdProgramsData = {
+export type GetCustomShowProgramsData = {
     body?: never;
     path: {
         id: string;
@@ -8596,14 +8629,14 @@ export type GetApiCustomShowsByIdProgramsData = {
     url: '/api/custom-shows/{id}/programs';
 };
 
-export type GetApiCustomShowsByIdProgramsErrors = {
+export type GetCustomShowProgramsErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiCustomShowsByIdProgramsResponses = {
+export type GetCustomShowProgramsResponses = {
     /**
      * Default Response
      */
@@ -8773,16 +8806,16 @@ export type GetApiCustomShowsByIdProgramsResponses = {
     }>;
 };
 
-export type GetApiCustomShowsByIdProgramsResponse = GetApiCustomShowsByIdProgramsResponses[keyof GetApiCustomShowsByIdProgramsResponses];
+export type GetCustomShowProgramsResponse = GetCustomShowProgramsResponses[keyof GetCustomShowProgramsResponses];
 
-export type GetApiFillerListsData = {
+export type GetFillerListsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/filler-lists';
 };
 
-export type GetApiFillerListsResponses = {
+export type GetFillerListsResponses = {
     /**
      * Default Response
      */
@@ -9111,9 +9144,9 @@ export type GetApiFillerListsResponses = {
     }>;
 };
 
-export type GetApiFillerListsResponse = GetApiFillerListsResponses[keyof GetApiFillerListsResponses];
+export type GetFillerListsResponse = GetFillerListsResponses[keyof GetFillerListsResponses];
 
-export type PostApiFillerListsData = {
+export type CreateFillerListData = {
     body: {
         name: string;
         programs: Array<{
@@ -9440,7 +9473,7 @@ export type PostApiFillerListsData = {
     url: '/api/filler-lists';
 };
 
-export type PostApiFillerListsResponses = {
+export type CreateFillerListResponses = {
     /**
      * Default Response
      */
@@ -9449,9 +9482,9 @@ export type PostApiFillerListsResponses = {
     };
 };
 
-export type PostApiFillerListsResponse = PostApiFillerListsResponses[keyof PostApiFillerListsResponses];
+export type CreateFillerListResponse = CreateFillerListResponses[keyof CreateFillerListResponses];
 
-export type DeleteApiFillerListsByIdData = {
+export type DeleteFillerListData = {
     body?: never;
     path: {
         id: string;
@@ -9460,21 +9493,21 @@ export type DeleteApiFillerListsByIdData = {
     url: '/api/filler-lists/{id}';
 };
 
-export type DeleteApiFillerListsByIdErrors = {
+export type DeleteFillerListErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type DeleteApiFillerListsByIdResponses = {
+export type DeleteFillerListResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiFillerListsByIdData = {
+export type GetFillerListData = {
     body?: never;
     path: {
         id: string;
@@ -9483,14 +9516,14 @@ export type GetApiFillerListsByIdData = {
     url: '/api/filler-lists/{id}';
 };
 
-export type GetApiFillerListsByIdErrors = {
+export type GetFillerListErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiFillerListsByIdResponses = {
+export type GetFillerListResponses = {
     /**
      * Default Response
      */
@@ -9819,9 +9852,9 @@ export type GetApiFillerListsByIdResponses = {
     };
 };
 
-export type GetApiFillerListsByIdResponse = GetApiFillerListsByIdResponses[keyof GetApiFillerListsByIdResponses];
+export type GetFillerListResponse = GetFillerListResponses[keyof GetFillerListResponses];
 
-export type PutApiFillerListsByIdData = {
+export type UpdateFillerListData = {
     body?: {
         name?: string;
         programs?: Array<{
@@ -10150,14 +10183,14 @@ export type PutApiFillerListsByIdData = {
     url: '/api/filler-lists/{id}';
 };
 
-export type PutApiFillerListsByIdErrors = {
+export type UpdateFillerListErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type PutApiFillerListsByIdResponses = {
+export type UpdateFillerListResponses = {
     /**
      * Default Response
      */
@@ -10486,9 +10519,9 @@ export type PutApiFillerListsByIdResponses = {
     };
 };
 
-export type PutApiFillerListsByIdResponse = PutApiFillerListsByIdResponses[keyof PutApiFillerListsByIdResponses];
+export type UpdateFillerListResponse = UpdateFillerListResponses[keyof UpdateFillerListResponses];
 
-export type GetApiFillerListsByIdProgramsData = {
+export type GetFillerListProgramsData = {
     body?: never;
     path: {
         id: string;
@@ -10497,14 +10530,14 @@ export type GetApiFillerListsByIdProgramsData = {
     url: '/api/filler-lists/{id}/programs';
 };
 
-export type GetApiFillerListsByIdProgramsErrors = {
+export type GetFillerListProgramsErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiFillerListsByIdProgramsResponses = {
+export type GetFillerListProgramsResponses = {
     /**
      * Default Response
      */
@@ -10828,9 +10861,9 @@ export type GetApiFillerListsByIdProgramsResponses = {
     }>;
 };
 
-export type GetApiFillerListsByIdProgramsResponse = GetApiFillerListsByIdProgramsResponses[keyof GetApiFillerListsByIdProgramsResponses];
+export type GetFillerListProgramsResponse = GetFillerListProgramsResponses[keyof GetFillerListProgramsResponses];
 
-export type PostApiProgramsSearchData = {
+export type SearchProgramsData = {
     body: {
         query: {
             query?: string | null;
@@ -10852,7 +10885,7 @@ export type PostApiProgramsSearchData = {
     url: '/api/programs/search';
 };
 
-export type PostApiProgramsSearchResponses = {
+export type SearchProgramsResponses = {
     /**
      * Default Response
      */
@@ -11320,9 +11353,9 @@ export type PostApiProgramsSearchResponses = {
     };
 };
 
-export type PostApiProgramsSearchResponse = PostApiProgramsSearchResponses[keyof PostApiProgramsSearchResponses];
+export type SearchProgramsResponse = SearchProgramsResponses[keyof SearchProgramsResponses];
 
-export type GetApiProgramsByIdDescendantsData = {
+export type GetProgramDescendantsData = {
     body?: never;
     path: {
         id: string;
@@ -11331,14 +11364,14 @@ export type GetApiProgramsByIdDescendantsData = {
     url: '/api/programs/{id}/descendants';
 };
 
-export type GetApiProgramsByIdDescendantsErrors = {
+export type GetProgramDescendantsErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiProgramsByIdDescendantsResponses = {
+export type GetProgramDescendantsResponses = {
     /**
      * Default Response
      */
@@ -11499,9 +11532,9 @@ export type GetApiProgramsByIdDescendantsResponses = {
     }>;
 };
 
-export type GetApiProgramsByIdDescendantsResponse = GetApiProgramsByIdDescendantsResponses[keyof GetApiProgramsByIdDescendantsResponses];
+export type GetProgramDescendantsResponse = GetProgramDescendantsResponses[keyof GetProgramDescendantsResponses];
 
-export type GetApiProgramsFacetsByFacetNameData = {
+export type GetProgramFacetsData = {
     body?: never;
     path: {
         facetName: string;
@@ -11514,7 +11547,7 @@ export type GetApiProgramsFacetsByFacetNameData = {
     url: '/api/programs/facets/{facetName}';
 };
 
-export type GetApiProgramsFacetsByFacetNameResponses = {
+export type GetProgramFacetsResponses = {
     /**
      * Default Response
      */
@@ -11525,9 +11558,9 @@ export type GetApiProgramsFacetsByFacetNameResponses = {
     };
 };
 
-export type GetApiProgramsFacetsByFacetNameResponse = GetApiProgramsFacetsByFacetNameResponses[keyof GetApiProgramsFacetsByFacetNameResponses];
+export type GetProgramFacetsResponse = GetProgramFacetsResponses[keyof GetProgramFacetsResponses];
 
-export type PostApiProgramsFacetsByFacetNameData = {
+export type GetProgramFacetsWithFilterData = {
     body?: {
         filter?: SearchFilterInput;
     };
@@ -11542,7 +11575,7 @@ export type PostApiProgramsFacetsByFacetNameData = {
     url: '/api/programs/facets/{facetName}';
 };
 
-export type PostApiProgramsFacetsByFacetNameResponses = {
+export type GetProgramFacetsWithFilterResponses = {
     /**
      * Default Response
      */
@@ -11553,18 +11586,21 @@ export type PostApiProgramsFacetsByFacetNameResponses = {
     };
 };
 
-export type PostApiProgramsFacetsByFacetNameResponse = PostApiProgramsFacetsByFacetNameResponses[keyof PostApiProgramsFacetsByFacetNameResponses];
+export type GetProgramFacetsWithFilterResponse = GetProgramFacetsWithFilterResponses[keyof GetProgramFacetsWithFilterResponses];
 
-export type GetApiProgramsByIdData = {
+export type GetProgramByIdData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: never;
     url: '/api/programs/{id}';
 };
 
-export type GetApiProgramsByIdErrors = {
+export type GetProgramByIdErrors = {
     /**
      * Default Response
      */
@@ -11575,7 +11611,7 @@ export type GetApiProgramsByIdErrors = {
     500: unknown;
 };
 
-export type GetApiProgramsByIdResponses = {
+export type GetProgramByIdResponses = {
     /**
      * Default Response
      */
@@ -12003,18 +12039,21 @@ export type GetApiProgramsByIdResponses = {
     };
 };
 
-export type GetApiProgramsByIdResponse = GetApiProgramsByIdResponses[keyof GetApiProgramsByIdResponses];
+export type GetProgramByIdResponse = GetProgramByIdResponses[keyof GetProgramByIdResponses];
 
-export type GetApiProgramGroupingsByIdData = {
+export type GetProgramGroupingByIdData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: never;
     url: '/api/program_groupings/{id}';
 };
 
-export type GetApiProgramGroupingsByIdErrors = {
+export type GetProgramGroupingByIdErrors = {
     /**
      * Default Response
      */
@@ -12025,16 +12064,16 @@ export type GetApiProgramGroupingsByIdErrors = {
     500: unknown;
 };
 
-export type GetApiProgramGroupingsByIdResponses = {
+export type GetProgramGroupingByIdResponses = {
     /**
      * Default Response
      */
     200: Show | Season | MusicArtist | MusicAlbum;
 };
 
-export type GetApiProgramGroupingsByIdResponse = GetApiProgramGroupingsByIdResponses[keyof GetApiProgramGroupingsByIdResponses];
+export type GetProgramGroupingByIdResponse = GetProgramGroupingByIdResponses[keyof GetProgramGroupingByIdResponses];
 
-export type GetApiProgramsByIdArtworkByArtworkTypeData = {
+export type GetProgramArtworkData = {
     body?: never;
     path: {
         id: string;
@@ -12044,39 +12083,45 @@ export type GetApiProgramsByIdArtworkByArtworkTypeData = {
     url: '/api/programs/{id}/artwork/{artworkType}';
 };
 
-export type GetApiProgramsByIdArtworkByArtworkTypeErrors = {
+export type GetProgramArtworkErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiProgramsByIdArtworkByArtworkTypeResponses = {
+export type GetProgramArtworkResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiProgramsByIdStreamDetailsData = {
+export type GetProgramStreamDetailsData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: never;
     url: '/api/programs/{id}/stream_details';
 };
 
-export type GetApiProgramsByIdStreamDetailsResponses = {
+export type GetProgramStreamDetailsResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiProgramsByIdChildrenData = {
+export type GetProgramChildrenData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: {
@@ -12087,7 +12132,7 @@ export type GetApiProgramsByIdChildrenData = {
     url: '/api/programs/{id}/children';
 };
 
-export type GetApiProgramsByIdChildrenErrors = {
+export type GetProgramChildrenErrors = {
     /**
      * Default Response
      */
@@ -12098,7 +12143,7 @@ export type GetApiProgramsByIdChildrenErrors = {
     404: unknown;
 };
 
-export type GetApiProgramsByIdChildrenResponses = {
+export type GetProgramChildrenResponses = {
     /**
      * Default Response
      */
@@ -12122,11 +12167,14 @@ export type GetApiProgramsByIdChildrenResponses = {
     };
 };
 
-export type GetApiProgramsByIdChildrenResponse = GetApiProgramsByIdChildrenResponses[keyof GetApiProgramsByIdChildrenResponses];
+export type GetProgramChildrenResponse = GetProgramChildrenResponses[keyof GetProgramChildrenResponses];
 
-export type GetApiProgramsByIdThumbData = {
+export type GetProgramThumbData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query: {
@@ -12140,16 +12188,19 @@ export type GetApiProgramsByIdThumbData = {
     url: '/api/programs/{id}/thumb';
 };
 
-export type GetApiProgramsByIdThumbResponses = {
+export type GetProgramThumbResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiProgramsByIdExternalLinkData = {
+export type GetProgramExternalLinkData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: {
@@ -12158,7 +12209,7 @@ export type GetApiProgramsByIdExternalLinkData = {
     url: '/api/programs/{id}/external-link';
 };
 
-export type GetApiProgramsByIdExternalLinkErrors = {
+export type GetProgramExternalLinkErrors = {
     /**
      * Default Response
      */
@@ -12169,7 +12220,7 @@ export type GetApiProgramsByIdExternalLinkErrors = {
     405: unknown;
 };
 
-export type GetApiProgramsByIdExternalLinkResponses = {
+export type GetProgramExternalLinkResponses = {
     /**
      * Default Response
      */
@@ -12178,7 +12229,7 @@ export type GetApiProgramsByIdExternalLinkResponses = {
     };
 };
 
-export type GetApiProgramsByIdExternalLinkResponse = GetApiProgramsByIdExternalLinkResponses[keyof GetApiProgramsByIdExternalLinkResponses];
+export type GetProgramExternalLinkResponse = GetProgramExternalLinkResponses[keyof GetProgramExternalLinkResponses];
 
 export type GetProgramByExternalIdData = {
     body?: never;
@@ -12812,7 +12863,7 @@ export type BatchGetProgramsByExternalIdsResponses = {
 
 export type BatchGetProgramsByExternalIdsResponse = BatchGetProgramsByExternalIdsResponses[keyof BatchGetProgramsByExternalIdsResponses];
 
-export type GetApiProgrammingShowsByIdData = {
+export type GetShowData = {
     body?: never;
     path: {
         id: string;
@@ -12823,14 +12874,14 @@ export type GetApiProgrammingShowsByIdData = {
     url: '/api/programming/shows/{id}';
 };
 
-export type GetApiProgrammingShowsByIdResponses = {
+export type GetShowResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiProgrammingSeasonsByIdData = {
+export type GetSeasonData = {
     body?: never;
     path: {
         id: string;
@@ -12839,14 +12890,14 @@ export type GetApiProgrammingSeasonsByIdData = {
     url: '/api/programming/seasons/{id}';
 };
 
-export type GetApiProgrammingSeasonsByIdResponses = {
+export type GetSeasonResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiProgrammingShowsByIdSeasonsData = {
+export type GetShowSeasonsData = {
     body?: never;
     path: {
         id: string;
@@ -12855,14 +12906,14 @@ export type GetApiProgrammingShowsByIdSeasonsData = {
     url: '/api/programming/shows/{id}/seasons';
 };
 
-export type GetApiProgrammingShowsByIdSeasonsResponses = {
+export type GetShowSeasonsResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type PostApiProgramsByIdScanData = {
+export type ScanProgramData = {
     body?: never;
     path: {
         id: string;
@@ -12871,7 +12922,7 @@ export type PostApiProgramsByIdScanData = {
     url: '/api/programs/{id}/scan';
 };
 
-export type PostApiProgramsByIdScanErrors = {
+export type ScanProgramErrors = {
     /**
      * Default Response
      */
@@ -12886,16 +12937,16 @@ export type PostApiProgramsByIdScanErrors = {
     500: string;
 };
 
-export type PostApiProgramsByIdScanError = PostApiProgramsByIdScanErrors[keyof PostApiProgramsByIdScanErrors];
+export type ScanProgramError = ScanProgramErrors[keyof ScanProgramErrors];
 
-export type PostApiProgramsByIdScanResponses = {
+export type ScanProgramResponses = {
     /**
      * Default Response
      */
     202: unknown;
 };
 
-export type GetApiDebugJellyfinLibrariesData = {
+export type DebugGetJellyfinLibrariesData = {
     body?: never;
     path?: never;
     query: {
@@ -12906,14 +12957,14 @@ export type GetApiDebugJellyfinLibrariesData = {
     url: '/api/debug/jellyfin/libraries';
 };
 
-export type GetApiDebugJellyfinLibrariesResponses = {
+export type DebugGetJellyfinLibrariesResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugJellyfinLibraryItemsData = {
+export type DebugGetJellyfinLibraryItemsData = {
     body?: never;
     path?: never;
     query: {
@@ -12926,14 +12977,14 @@ export type GetApiDebugJellyfinLibraryItemsData = {
     url: '/api/debug/jellyfin/library/items';
 };
 
-export type GetApiDebugJellyfinLibraryItemsResponses = {
+export type DebugGetJellyfinLibraryItemsResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugJellyfinMatchProgramByIdData = {
+export type DebugMatchJellyfinProgramData = {
     body?: never;
     path: {
         id: string;
@@ -12942,14 +12993,14 @@ export type GetApiDebugJellyfinMatchProgramByIdData = {
     url: '/api/debug/jellyfin/match_program/{id}';
 };
 
-export type GetApiDebugJellyfinMatchProgramByIdResponses = {
+export type DebugMatchJellyfinProgramResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugJellyfinByLibraryIdEnumerateData = {
+export type DebugEnumerateJellyfinLibraryData = {
     body?: never;
     path: {
         libraryId: string;
@@ -12958,14 +13009,14 @@ export type GetApiDebugJellyfinByLibraryIdEnumerateData = {
     url: '/api/debug/jellyfin/{libraryId}/enumerate';
 };
 
-export type GetApiDebugJellyfinByLibraryIdEnumerateResponses = {
+export type DebugEnumerateJellyfinLibraryResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugStreamsOfflineData = {
+export type DebugStreamOfflineData = {
     body?: never;
     path?: never;
     query?: {
@@ -12974,14 +13025,14 @@ export type GetApiDebugStreamsOfflineData = {
     url: '/api/debug/streams/offline';
 };
 
-export type GetApiDebugStreamsOfflineResponses = {
+export type DebugStreamOfflineResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugStreamsErrorData = {
+export type DebugStreamErrorData = {
     body?: never;
     path?: never;
     query?: {
@@ -12990,28 +13041,28 @@ export type GetApiDebugStreamsErrorData = {
     url: '/api/debug/streams/error';
 };
 
-export type GetApiDebugStreamsErrorResponses = {
+export type DebugStreamErrorResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugStreamsRandomData = {
+export type DebugStreamRandomData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/debug/streams/random';
 };
 
-export type GetApiDebugStreamsRandomResponses = {
+export type DebugStreamRandomResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugStreamsProgramsByIdData = {
+export type DebugStreamProgramData = {
     body?: never;
     path: {
         id: string;
@@ -13022,14 +13073,14 @@ export type GetApiDebugStreamsProgramsByIdData = {
     url: '/api/debug/streams/programs/{id}';
 };
 
-export type GetApiDebugStreamsProgramsByIdResponses = {
+export type DebugStreamProgramResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugFfmpegProbeData = {
+export type DebugFfmpegProbeData = {
     body?: never;
     path?: never;
     query: {
@@ -13038,28 +13089,28 @@ export type GetApiDebugFfmpegProbeData = {
     url: '/api/debug/ffmpeg/probe';
 };
 
-export type GetApiDebugFfmpegProbeResponses = {
+export type DebugFfmpegProbeResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugFfmpegCapabilitiesData = {
+export type DebugFfmpegCapabilitiesData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/debug/ffmpeg/capabilities';
 };
 
-export type GetApiDebugFfmpegCapabilitiesResponses = {
+export type DebugFfmpegCapabilitiesResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugPlexStreamDetailsData = {
+export type DebugGetPlexStreamDetailsData = {
     body?: never;
     path?: never;
     query: {
@@ -13069,28 +13120,45 @@ export type GetApiDebugPlexStreamDetailsData = {
     url: '/api/debug/plex/stream_details';
 };
 
-export type GetApiDebugPlexStreamDetailsResponses = {
+export type DebugGetPlexStreamDetailsResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugHeapData = {
+export type GetHeapStatisticsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/debug/heap';
 };
 
-export type GetApiDebugHeapResponses = {
+export type GetHeapStatisticsResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugHelpersPlayingAtData = {
+export type DebugLogData = {
+    body?: never;
+    path?: never;
+    query?: {
+        level?: 'silent' | 'fatal' | 'error' | 'warn' | 'info' | 'http' | 'debug' | 'http_out' | 'trace';
+        log?: string;
+    };
+    url: '/api/debug/log';
+};
+
+export type DebugLogResponses = {
+    /**
+     * Default Response
+     */
+    200: unknown;
+};
+
+export type DebugGetPlayingAtData = {
     body?: never;
     path?: never;
     query: {
@@ -13100,14 +13168,14 @@ export type GetApiDebugHelpersPlayingAtData = {
     url: '/api/debug/helpers/playing_at';
 };
 
-export type GetApiDebugHelpersPlayingAtResponses = {
+export type DebugGetPlayingAtResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugHelpersCreateGuideData = {
+export type DebugCreateGuideData = {
     body?: never;
     path?: never;
     query: {
@@ -13119,14 +13187,14 @@ export type GetApiDebugHelpersCreateGuideData = {
     url: '/api/debug/helpers/create_guide';
 };
 
-export type GetApiDebugHelpersCreateGuideResponses = {
+export type DebugCreateGuideResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugHelpersChannelsByIdBuildGuideData = {
+export type DebugBuildChannelGuideData = {
     body?: never;
     path: {
         id: string;
@@ -13138,14 +13206,14 @@ export type GetApiDebugHelpersChannelsByIdBuildGuideData = {
     url: '/api/debug/helpers/channels/{id}/build_guide';
 };
 
-export type GetApiDebugHelpersChannelsByIdBuildGuideResponses = {
+export type DebugBuildChannelGuideResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugHelpersBuildGuideData = {
+export type DebugBuildAllGuidesData = {
     body?: never;
     path?: never;
     query?: {
@@ -13156,7 +13224,7 @@ export type GetApiDebugHelpersBuildGuideData = {
     url: '/api/debug/helpers/build_guide';
 };
 
-export type GetApiDebugHelpersBuildGuideResponses = {
+export type DebugBuildAllGuidesResponses = {
     /**
      * Default Response
      */
@@ -13521,9 +13589,9 @@ export type GetApiDebugHelpersBuildGuideResponses = {
     }>;
 };
 
-export type GetApiDebugHelpersBuildGuideResponse = GetApiDebugHelpersBuildGuideResponses[keyof GetApiDebugHelpersBuildGuideResponses];
+export type DebugBuildAllGuidesResponse = DebugBuildAllGuidesResponses[keyof DebugBuildAllGuidesResponses];
 
-export type GetApiDebugHelpersRandomFillerData = {
+export type DebugGetRandomFillerData = {
     body?: never;
     path?: never;
     query: {
@@ -13536,28 +13604,28 @@ export type GetApiDebugHelpersRandomFillerData = {
     url: '/api/debug/helpers/random_filler';
 };
 
-export type GetApiDebugHelpersRandomFillerResponses = {
+export type DebugGetRandomFillerResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugDbBackupData = {
+export type DebugTriggerBackupData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/debug/db/backup';
 };
 
-export type GetApiDebugDbBackupResponses = {
+export type DebugTriggerBackupResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type PostApiDebugPlexByProgramIdUpdateExternalIdsData = {
+export type DebugUpdatePlexExternalIdsData = {
     body?: never;
     path: {
         programId: string;
@@ -13566,56 +13634,56 @@ export type PostApiDebugPlexByProgramIdUpdateExternalIdsData = {
     url: '/api/debug/plex/{programId}/update_external_ids';
 };
 
-export type PostApiDebugPlexByProgramIdUpdateExternalIdsResponses = {
+export type DebugUpdatePlexExternalIdsResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugChannelsReloadAllLineupsData = {
+export type DebugReloadAllLineupsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/debug/channels/reload_all_lineups';
 };
 
-export type GetApiDebugChannelsReloadAllLineupsResponses = {
+export type DebugReloadAllLineupsResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugSubprocessStatusData = {
+export type DebugGetSubprocessStatusData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/debug/subprocess/status';
 };
 
-export type GetApiDebugSubprocessStatusResponses = {
+export type DebugGetSubprocessStatusResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugSubprocessRestartData = {
+export type DebugRestartSubprocessData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/debug/subprocess/restart';
 };
 
-export type GetApiDebugSubprocessRestartResponses = {
+export type DebugRestartSubprocessResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugMediaSourcesByMediaSourceIdScanData = {
+export type DebugScanMediaSourceData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -13626,14 +13694,14 @@ export type GetApiDebugMediaSourcesByMediaSourceIdScanData = {
     url: '/api/debug/media_sources/{mediaSourceId}/scan';
 };
 
-export type GetApiDebugMediaSourcesByMediaSourceIdScanResponses = {
+export type DebugScanMediaSourceResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugMediaSourcesByMediaSourceIdLibrariesByLibraryIdScanData = {
+export type DebugScanMediaSourceLibraryData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -13645,14 +13713,14 @@ export type GetApiDebugMediaSourcesByMediaSourceIdLibrariesByLibraryIdScanData =
     url: '/api/debug/media_sources/{mediaSourceId}/libraries/{libraryId}/scan';
 };
 
-export type GetApiDebugMediaSourcesByMediaSourceIdLibrariesByLibraryIdScanResponses = {
+export type DebugScanMediaSourceLibraryResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiDebugMediaSourcesByMediaSourceIdScanCollectionsData = {
+export type DebugScanMediaSourceCollectionsData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -13663,30 +13731,30 @@ export type GetApiDebugMediaSourcesByMediaSourceIdScanCollectionsData = {
     url: '/api/debug/media_sources/{mediaSourceId}/scan-collections';
 };
 
-export type GetApiDebugMediaSourcesByMediaSourceIdScanCollectionsResponses = {
+export type DebugScanMediaSourceCollectionsResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiMediaSourcesData = {
+export type GetMediaSourcesData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/media-sources';
 };
 
-export type GetApiMediaSourcesErrors = {
+export type GetMediaSourcesErrors = {
     /**
      * Default Response
      */
     500: string;
 };
 
-export type GetApiMediaSourcesError = GetApiMediaSourcesErrors[keyof GetApiMediaSourcesErrors];
+export type GetMediaSourcesError = GetMediaSourcesErrors[keyof GetMediaSourcesErrors];
 
-export type GetApiMediaSourcesResponses = {
+export type GetMediaSourcesResponses = {
     /**
      * Default Response
      */
@@ -13782,9 +13850,9 @@ export type GetApiMediaSourcesResponses = {
     }>;
 };
 
-export type GetApiMediaSourcesResponse = GetApiMediaSourcesResponses[keyof GetApiMediaSourcesResponses];
+export type GetMediaSourcesResponse = GetMediaSourcesResponses[keyof GetMediaSourcesResponses];
 
-export type PostApiMediaSourcesData = {
+export type CreateMediaSourceData = {
     body?: {
         name: string;
         uri: string;
@@ -13836,7 +13904,7 @@ export type PostApiMediaSourcesData = {
     url: '/api/media-sources';
 };
 
-export type PostApiMediaSourcesErrors = {
+export type CreateMediaSourceErrors = {
     /**
      * Default Response
      */
@@ -13847,9 +13915,9 @@ export type PostApiMediaSourcesErrors = {
     500: string;
 };
 
-export type PostApiMediaSourcesError = PostApiMediaSourcesErrors[keyof PostApiMediaSourcesErrors];
+export type CreateMediaSourceError = CreateMediaSourceErrors[keyof CreateMediaSourceErrors];
 
-export type PostApiMediaSourcesResponses = {
+export type CreateMediaSourceResponses = {
     /**
      * Default Response
      */
@@ -13858,9 +13926,9 @@ export type PostApiMediaSourcesResponses = {
     };
 };
 
-export type PostApiMediaSourcesResponse = PostApiMediaSourcesResponses[keyof PostApiMediaSourcesResponses];
+export type CreateMediaSourceResponse = CreateMediaSourceResponses[keyof CreateMediaSourceResponses];
 
-export type GetApiMediaSourcesByMediaSourceIdData = {
+export type GetMediaSourceByIdData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -13869,7 +13937,7 @@ export type GetApiMediaSourcesByMediaSourceIdData = {
     url: '/api/media-sources/{mediaSourceId}';
 };
 
-export type GetApiMediaSourcesByMediaSourceIdErrors = {
+export type GetMediaSourceByIdErrors = {
     /**
      * Default Response
      */
@@ -13880,9 +13948,9 @@ export type GetApiMediaSourcesByMediaSourceIdErrors = {
     500: string;
 };
 
-export type GetApiMediaSourcesByMediaSourceIdError = GetApiMediaSourcesByMediaSourceIdErrors[keyof GetApiMediaSourcesByMediaSourceIdErrors];
+export type GetMediaSourceByIdError = GetMediaSourceByIdErrors[keyof GetMediaSourceByIdErrors];
 
-export type GetApiMediaSourcesByMediaSourceIdResponses = {
+export type GetMediaSourceByIdResponses = {
     /**
      * Default Response
      */
@@ -13978,18 +14046,21 @@ export type GetApiMediaSourcesByMediaSourceIdResponses = {
     };
 };
 
-export type GetApiMediaSourcesByMediaSourceIdResponse = GetApiMediaSourcesByMediaSourceIdResponses[keyof GetApiMediaSourcesByMediaSourceIdResponses];
+export type GetMediaSourceByIdResponse = GetMediaSourceByIdResponses[keyof GetMediaSourceByIdResponses];
 
-export type GetApiMediaSourcesByIdLibrariesData = {
+export type GetMediaSourceLibrariesData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: never;
     url: '/api/media-sources/{id}/libraries';
 };
 
-export type GetApiMediaSourcesByIdLibrariesErrors = {
+export type GetMediaSourceLibrariesErrors = {
     /**
      * Default Response
      */
@@ -14004,9 +14075,9 @@ export type GetApiMediaSourcesByIdLibrariesErrors = {
     500: string;
 };
 
-export type GetApiMediaSourcesByIdLibrariesError = GetApiMediaSourcesByIdLibrariesErrors[keyof GetApiMediaSourcesByIdLibrariesErrors];
+export type GetMediaSourceLibrariesError = GetMediaSourceLibrariesErrors[keyof GetMediaSourceLibrariesErrors];
 
-export type GetApiMediaSourcesByIdLibrariesResponses = {
+export type GetMediaSourceLibrariesResponses = {
     /**
      * Default Response
      */
@@ -14071,13 +14142,16 @@ export type GetApiMediaSourcesByIdLibrariesResponses = {
     }>;
 };
 
-export type GetApiMediaSourcesByIdLibrariesResponse = GetApiMediaSourcesByIdLibrariesResponses[keyof GetApiMediaSourcesByIdLibrariesResponses];
+export type GetMediaSourceLibrariesResponse = GetMediaSourceLibrariesResponses[keyof GetMediaSourceLibrariesResponses];
 
-export type PutApiMediaSourcesByIdLibrariesByLibraryIdData = {
+export type UpdateMediaSourceLibraryData = {
     body: {
         enabled: boolean;
     };
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
         libraryId: string;
     };
@@ -14085,7 +14159,7 @@ export type PutApiMediaSourcesByIdLibrariesByLibraryIdData = {
     url: '/api/media-sources/{id}/libraries/{libraryId}';
 };
 
-export type PutApiMediaSourcesByIdLibrariesByLibraryIdErrors = {
+export type UpdateMediaSourceLibraryErrors = {
     /**
      * Default Response
      */
@@ -14100,9 +14174,9 @@ export type PutApiMediaSourcesByIdLibrariesByLibraryIdErrors = {
     500: string;
 };
 
-export type PutApiMediaSourcesByIdLibrariesByLibraryIdError = PutApiMediaSourcesByIdLibrariesByLibraryIdErrors[keyof PutApiMediaSourcesByIdLibrariesByLibraryIdErrors];
+export type UpdateMediaSourceLibraryError = UpdateMediaSourceLibraryErrors[keyof UpdateMediaSourceLibraryErrors];
 
-export type PutApiMediaSourcesByIdLibrariesByLibraryIdResponses = {
+export type UpdateMediaSourceLibraryResponses = {
     /**
      * Default Response
      */
@@ -14167,9 +14241,9 @@ export type PutApiMediaSourcesByIdLibrariesByLibraryIdResponses = {
     };
 };
 
-export type PutApiMediaSourcesByIdLibrariesByLibraryIdResponse = PutApiMediaSourcesByIdLibrariesByLibraryIdResponses[keyof PutApiMediaSourcesByIdLibrariesByLibraryIdResponses];
+export type UpdateMediaSourceLibraryResponse = UpdateMediaSourceLibraryResponses[keyof UpdateMediaSourceLibraryResponses];
 
-export type GetApiMediaLibrariesByLibraryIdData = {
+export type GetMediaLibraryByIdData = {
     body?: never;
     path: {
         libraryId: string;
@@ -14178,14 +14252,14 @@ export type GetApiMediaLibrariesByLibraryIdData = {
     url: '/api/media-libraries/{libraryId}';
 };
 
-export type GetApiMediaLibrariesByLibraryIdErrors = {
+export type GetMediaLibraryByIdErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiMediaLibrariesByLibraryIdResponses = {
+export type GetMediaLibraryByIdResponses = {
     /**
      * Default Response
      */
@@ -14291,9 +14365,9 @@ export type GetApiMediaLibrariesByLibraryIdResponses = {
     };
 };
 
-export type GetApiMediaLibrariesByLibraryIdResponse = GetApiMediaLibrariesByLibraryIdResponses[keyof GetApiMediaLibrariesByLibraryIdResponses];
+export type GetMediaLibraryByIdResponse = GetMediaLibraryByIdResponses[keyof GetMediaLibraryByIdResponses];
 
-export type GetApiMediaLibrariesByLibraryIdProgramsData = {
+export type GetMediaLibraryProgramsData = {
     body?: never;
     path: {
         libraryId: string;
@@ -14302,14 +14376,14 @@ export type GetApiMediaLibrariesByLibraryIdProgramsData = {
     url: '/api/media-libraries/{libraryId}/programs';
 };
 
-export type GetApiMediaLibrariesByLibraryIdProgramsErrors = {
+export type GetMediaLibraryProgramsErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiMediaLibrariesByLibraryIdProgramsResponses = {
+export type GetMediaLibraryProgramsResponses = {
     /**
      * Default Response
      */
@@ -14470,9 +14544,9 @@ export type GetApiMediaLibrariesByLibraryIdProgramsResponses = {
     }>;
 };
 
-export type GetApiMediaLibrariesByLibraryIdProgramsResponse = GetApiMediaLibrariesByLibraryIdProgramsResponses[keyof GetApiMediaLibrariesByLibraryIdProgramsResponses];
+export type GetMediaLibraryProgramsResponse = GetMediaLibraryProgramsResponses[keyof GetMediaLibraryProgramsResponses];
 
-export type GetApiMediaSourcesByMediaSourceIdByLibraryIdStatusData = {
+export type GetMediaSourceScanStatusData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -14482,14 +14556,14 @@ export type GetApiMediaSourcesByMediaSourceIdByLibraryIdStatusData = {
     url: '/api/media-sources/{mediaSourceId}/{libraryId}/status';
 };
 
-export type GetApiMediaSourcesByMediaSourceIdByLibraryIdStatusErrors = {
+export type GetMediaSourceScanStatusErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiMediaSourcesByMediaSourceIdByLibraryIdStatusResponses = {
+export type GetMediaSourceScanStatusResponses = {
     /**
      * Default Response
      */
@@ -14504,18 +14578,21 @@ export type GetApiMediaSourcesByMediaSourceIdByLibraryIdStatusResponses = {
     };
 };
 
-export type GetApiMediaSourcesByMediaSourceIdByLibraryIdStatusResponse = GetApiMediaSourcesByMediaSourceIdByLibraryIdStatusResponses[keyof GetApiMediaSourcesByMediaSourceIdByLibraryIdStatusResponses];
+export type GetMediaSourceScanStatusResponse = GetMediaSourceScanStatusResponses[keyof GetMediaSourceScanStatusResponses];
 
-export type PostApiMediaSourcesByIdLibrariesRefreshData = {
+export type RefreshMediaSourceLibrariesData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: never;
     url: '/api/media-sources/{id}/libraries/refresh';
 };
 
-export type PostApiMediaSourcesByIdLibrariesRefreshErrors = {
+export type RefreshMediaSourceLibrariesErrors = {
     /**
      * Default Response
      */
@@ -14526,16 +14603,19 @@ export type PostApiMediaSourcesByIdLibrariesRefreshErrors = {
     501: unknown;
 };
 
-export type PostApiMediaSourcesByIdLibrariesRefreshResponses = {
+export type RefreshMediaSourceLibrariesResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type PostApiMediaSourcesByIdScanData = {
+export type ScanMediaSourceData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
         libraryId: string;
     };
@@ -14545,7 +14625,7 @@ export type PostApiMediaSourcesByIdScanData = {
     url: '/api/media-sources/{id}/scan';
 };
 
-export type PostApiMediaSourcesByIdScanErrors = {
+export type ScanMediaSourceErrors = {
     /**
      * Default Response
      */
@@ -14556,16 +14636,19 @@ export type PostApiMediaSourcesByIdScanErrors = {
     501: unknown;
 };
 
-export type PostApiMediaSourcesByIdScanResponses = {
+export type ScanMediaSourceResponses = {
     /**
      * Default Response
      */
     202: unknown;
 };
 
-export type PostApiMediaSourcesByIdLibrariesByLibraryIdScanData = {
+export type ScanMediaSourceLibraryData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
         libraryId: string;
     };
@@ -14575,7 +14658,7 @@ export type PostApiMediaSourcesByIdLibrariesByLibraryIdScanData = {
     url: '/api/media-sources/{id}/libraries/{libraryId}/scan';
 };
 
-export type PostApiMediaSourcesByIdLibrariesByLibraryIdScanErrors = {
+export type ScanMediaSourceLibraryErrors = {
     /**
      * Default Response
      */
@@ -14586,23 +14669,26 @@ export type PostApiMediaSourcesByIdLibrariesByLibraryIdScanErrors = {
     501: unknown;
 };
 
-export type PostApiMediaSourcesByIdLibrariesByLibraryIdScanResponses = {
+export type ScanMediaSourceLibraryResponses = {
     /**
      * Default Response
      */
     202: unknown;
 };
 
-export type GetApiMediaSourcesByIdStatusData = {
+export type GetMediaSourceStatusData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: never;
     url: '/api/media-sources/{id}/status';
 };
 
-export type GetApiMediaSourcesByIdStatusErrors = {
+export type GetMediaSourceStatusErrors = {
     /**
      * Default Response
      */
@@ -14613,7 +14699,7 @@ export type GetApiMediaSourcesByIdStatusErrors = {
     500: unknown;
 };
 
-export type GetApiMediaSourcesByIdStatusResponses = {
+export type GetMediaSourceStatusResponses = {
     /**
      * Default Response
      */
@@ -14622,9 +14708,9 @@ export type GetApiMediaSourcesByIdStatusResponses = {
     };
 };
 
-export type GetApiMediaSourcesByIdStatusResponse = GetApiMediaSourcesByIdStatusResponses[keyof GetApiMediaSourcesByIdStatusResponses];
+export type GetMediaSourceStatusResponse = GetMediaSourceStatusResponses[keyof GetMediaSourceStatusResponses];
 
-export type PostApiMediaSourcesForeignstatusData = {
+export type CheckForeignMediaSourceStatusData = {
     body: {
         name?: string;
         accessToken: string;
@@ -14640,7 +14726,7 @@ export type PostApiMediaSourcesForeignstatusData = {
     url: '/api/media-sources/foreignstatus';
 };
 
-export type PostApiMediaSourcesForeignstatusErrors = {
+export type CheckForeignMediaSourceStatusErrors = {
     /**
      * Default Response
      */
@@ -14651,7 +14737,7 @@ export type PostApiMediaSourcesForeignstatusErrors = {
     500: unknown;
 };
 
-export type PostApiMediaSourcesForeignstatusResponses = {
+export type CheckForeignMediaSourceStatusResponses = {
     /**
      * Default Response
      */
@@ -14663,32 +14749,35 @@ export type PostApiMediaSourcesForeignstatusResponses = {
     };
 };
 
-export type PostApiMediaSourcesForeignstatusResponse = PostApiMediaSourcesForeignstatusResponses[keyof PostApiMediaSourcesForeignstatusResponses];
+export type CheckForeignMediaSourceStatusResponse = CheckForeignMediaSourceStatusResponses[keyof CheckForeignMediaSourceStatusResponses];
 
-export type DeleteApiMediaSourcesByIdData = {
+export type DeleteMediaSourceData = {
     body?: never;
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: never;
     url: '/api/media-sources/{id}';
 };
 
-export type DeleteApiMediaSourcesByIdErrors = {
+export type DeleteMediaSourceErrors = {
     /**
      * Default Response
      */
     500: unknown;
 };
 
-export type DeleteApiMediaSourcesByIdResponses = {
+export type DeleteMediaSourceResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type PutApiMediaSourcesByIdData = {
+export type UpdateMediaSourceData = {
     body?: {
         id: string;
         name: string;
@@ -14740,43 +14829,46 @@ export type PutApiMediaSourcesByIdData = {
         paths: Array<string>;
     };
     path: {
+        /**
+         * Entity UUID
+         */
         id: string;
     };
     query?: never;
     url: '/api/media-sources/{id}';
 };
 
-export type PutApiMediaSourcesByIdErrors = {
+export type UpdateMediaSourceErrors = {
     /**
      * Default Response
      */
     500: unknown;
 };
 
-export type PutApiMediaSourcesByIdResponses = {
+export type UpdateMediaSourceResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiFfmpegSettingsData = {
+export type GetFfmpegSettingsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/ffmpeg-settings';
 };
 
-export type GetApiFfmpegSettingsErrors = {
+export type GetFfmpegSettingsErrors = {
     /**
      * Default Response
      */
     500: 'error';
 };
 
-export type GetApiFfmpegSettingsError = GetApiFfmpegSettingsErrors[keyof GetApiFfmpegSettingsErrors];
+export type GetFfmpegSettingsError = GetFfmpegSettingsErrors[keyof GetFfmpegSettingsErrors];
 
-export type GetApiFfmpegSettingsResponses = {
+export type GetFfmpegSettingsResponses = {
     /**
      * Default Response
      */
@@ -14802,9 +14894,9 @@ export type GetApiFfmpegSettingsResponses = {
     };
 };
 
-export type GetApiFfmpegSettingsResponse = GetApiFfmpegSettingsResponses[keyof GetApiFfmpegSettingsResponses];
+export type GetFfmpegSettingsResponse = GetFfmpegSettingsResponses[keyof GetFfmpegSettingsResponses];
 
-export type PostApiFfmpegSettingsData = {
+export type ResetFfmpegSettingsData = {
     body: {
         ffmpegPath: string;
     };
@@ -14813,14 +14905,14 @@ export type PostApiFfmpegSettingsData = {
     url: '/api/ffmpeg-settings';
 };
 
-export type PostApiFfmpegSettingsResponses = {
+export type ResetFfmpegSettingsResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type PutApiFfmpegSettingsData = {
+export type UpdateFfmpegSettingsData = {
     body?: {
         configVersion?: number;
         ffmpegExecutablePath?: string;
@@ -14846,7 +14938,7 @@ export type PutApiFfmpegSettingsData = {
     url: '/api/ffmpeg-settings';
 };
 
-export type PutApiFfmpegSettingsErrors = {
+export type UpdateFfmpegSettingsErrors = {
     /**
      * Default Response
      */
@@ -14857,9 +14949,9 @@ export type PutApiFfmpegSettingsErrors = {
     500: string;
 };
 
-export type PutApiFfmpegSettingsError = PutApiFfmpegSettingsErrors[keyof PutApiFfmpegSettingsErrors];
+export type UpdateFfmpegSettingsError = UpdateFfmpegSettingsErrors[keyof UpdateFfmpegSettingsErrors];
 
-export type PutApiFfmpegSettingsResponses = {
+export type UpdateFfmpegSettingsResponses = {
     /**
      * Default Response
      */
@@ -14885,16 +14977,16 @@ export type PutApiFfmpegSettingsResponses = {
     };
 };
 
-export type PutApiFfmpegSettingsResponse = PutApiFfmpegSettingsResponses[keyof PutApiFfmpegSettingsResponses];
+export type UpdateFfmpegSettingsResponse = UpdateFfmpegSettingsResponses[keyof UpdateFfmpegSettingsResponses];
 
-export type GetApiTranscodeConfigsData = {
+export type GetTranscodeConfigsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/transcode_configs';
 };
 
-export type GetApiTranscodeConfigsResponses = {
+export type GetTranscodeConfigsResponses = {
     /**
      * Default Response
      */
@@ -14951,9 +15043,9 @@ export type GetApiTranscodeConfigsResponses = {
     }>;
 };
 
-export type GetApiTranscodeConfigsResponse = GetApiTranscodeConfigsResponses[keyof GetApiTranscodeConfigsResponses];
+export type GetTranscodeConfigsResponse = GetTranscodeConfigsResponses[keyof GetTranscodeConfigsResponses];
 
-export type PostApiTranscodeConfigsData = {
+export type CreateTranscodeConfigData = {
     body: {
         name: string;
         threadCount: number;
@@ -15009,7 +15101,7 @@ export type PostApiTranscodeConfigsData = {
     url: '/api/transcode_configs';
 };
 
-export type PostApiTranscodeConfigsResponses = {
+export type CreateTranscodeConfigResponses = {
     /**
      * Default Response
      */
@@ -15066,9 +15158,9 @@ export type PostApiTranscodeConfigsResponses = {
     };
 };
 
-export type PostApiTranscodeConfigsResponse = PostApiTranscodeConfigsResponses[keyof PostApiTranscodeConfigsResponses];
+export type CreateTranscodeConfigResponse = CreateTranscodeConfigResponses[keyof CreateTranscodeConfigResponses];
 
-export type DeleteApiTranscodeConfigsByIdData = {
+export type DeleteTranscodeConfigData = {
     body?: never;
     path: {
         id: string;
@@ -15077,21 +15169,21 @@ export type DeleteApiTranscodeConfigsByIdData = {
     url: '/api/transcode_configs/{id}';
 };
 
-export type DeleteApiTranscodeConfigsByIdErrors = {
+export type DeleteTranscodeConfigErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type DeleteApiTranscodeConfigsByIdResponses = {
+export type DeleteTranscodeConfigResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiTranscodeConfigsByIdData = {
+export type GetTranscodeConfigByIdData = {
     body?: never;
     path: {
         id: string;
@@ -15100,14 +15192,14 @@ export type GetApiTranscodeConfigsByIdData = {
     url: '/api/transcode_configs/{id}';
 };
 
-export type GetApiTranscodeConfigsByIdErrors = {
+export type GetTranscodeConfigByIdErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiTranscodeConfigsByIdResponses = {
+export type GetTranscodeConfigByIdResponses = {
     /**
      * Default Response
      */
@@ -15164,9 +15256,9 @@ export type GetApiTranscodeConfigsByIdResponses = {
     };
 };
 
-export type GetApiTranscodeConfigsByIdResponse = GetApiTranscodeConfigsByIdResponses[keyof GetApiTranscodeConfigsByIdResponses];
+export type GetTranscodeConfigByIdResponse = GetTranscodeConfigByIdResponses[keyof GetTranscodeConfigByIdResponses];
 
-export type PutApiTranscodeConfigsByIdData = {
+export type UpdateTranscodeConfigData = {
     body: {
         id: string;
         name: string;
@@ -15225,7 +15317,7 @@ export type PutApiTranscodeConfigsByIdData = {
     url: '/api/transcode_configs/{id}';
 };
 
-export type PutApiTranscodeConfigsByIdResponses = {
+export type UpdateTranscodeConfigResponses = {
     /**
      * Default Response
      */
@@ -15282,9 +15374,9 @@ export type PutApiTranscodeConfigsByIdResponses = {
     };
 };
 
-export type PutApiTranscodeConfigsByIdResponse = PutApiTranscodeConfigsByIdResponses[keyof PutApiTranscodeConfigsByIdResponses];
+export type UpdateTranscodeConfigResponse = UpdateTranscodeConfigResponses[keyof UpdateTranscodeConfigResponses];
 
-export type PostApiTranscodeConfigsByIdCopyData = {
+export type CopyTranscodeConfigData = {
     body?: never;
     path: {
         id: string;
@@ -15293,7 +15385,7 @@ export type PostApiTranscodeConfigsByIdCopyData = {
     url: '/api/transcode_configs/{id}/copy';
 };
 
-export type PostApiTranscodeConfigsByIdCopyErrors = {
+export type CopyTranscodeConfigErrors = {
     /**
      * Default Response
      */
@@ -15304,7 +15396,7 @@ export type PostApiTranscodeConfigsByIdCopyErrors = {
     500: unknown;
 };
 
-export type PostApiTranscodeConfigsByIdCopyResponses = {
+export type CopyTranscodeConfigResponses = {
     /**
      * Default Response
      */
@@ -15361,25 +15453,25 @@ export type PostApiTranscodeConfigsByIdCopyResponses = {
     };
 };
 
-export type PostApiTranscodeConfigsByIdCopyResponse = PostApiTranscodeConfigsByIdCopyResponses[keyof PostApiTranscodeConfigsByIdCopyResponses];
+export type CopyTranscodeConfigResponse = CopyTranscodeConfigResponses[keyof CopyTranscodeConfigResponses];
 
-export type GetApiPlexSettingsData = {
+export type GetPlexStreamSettingsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/plex-settings';
 };
 
-export type GetApiPlexSettingsErrors = {
+export type GetPlexStreamSettingsErrors = {
     /**
      * Default Response
      */
     500: string;
 };
 
-export type GetApiPlexSettingsError = GetApiPlexSettingsErrors[keyof GetApiPlexSettingsErrors];
+export type GetPlexStreamSettingsError = GetPlexStreamSettingsErrors[keyof GetPlexStreamSettingsErrors];
 
-export type GetApiPlexSettingsResponses = {
+export type GetPlexStreamSettingsResponses = {
     /**
      * Default Response
      */
@@ -15391,25 +15483,25 @@ export type GetApiPlexSettingsResponses = {
     };
 };
 
-export type GetApiPlexSettingsResponse = GetApiPlexSettingsResponses[keyof GetApiPlexSettingsResponses];
+export type GetPlexStreamSettingsResponse = GetPlexStreamSettingsResponses[keyof GetPlexStreamSettingsResponses];
 
-export type PostApiPlexSettingsData = {
+export type ResetPlexStreamSettingsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/plex-settings';
 };
 
-export type PostApiPlexSettingsErrors = {
+export type ResetPlexStreamSettingsErrors = {
     /**
      * Default Response
      */
     500: string;
 };
 
-export type PostApiPlexSettingsError = PostApiPlexSettingsErrors[keyof PostApiPlexSettingsErrors];
+export type ResetPlexStreamSettingsError = ResetPlexStreamSettingsErrors[keyof ResetPlexStreamSettingsErrors];
 
-export type PostApiPlexSettingsResponses = {
+export type ResetPlexStreamSettingsResponses = {
     /**
      * Default Response
      */
@@ -15421,9 +15513,9 @@ export type PostApiPlexSettingsResponses = {
     };
 };
 
-export type PostApiPlexSettingsResponse = PostApiPlexSettingsResponses[keyof PostApiPlexSettingsResponses];
+export type ResetPlexStreamSettingsResponse = ResetPlexStreamSettingsResponses[keyof ResetPlexStreamSettingsResponses];
 
-export type PutApiPlexSettingsData = {
+export type UpdatePlexStreamSettingsData = {
     body?: {
         streamPath?: 'network' | 'direct';
         updatePlayStatus?: boolean;
@@ -15435,16 +15527,16 @@ export type PutApiPlexSettingsData = {
     url: '/api/plex-settings';
 };
 
-export type PutApiPlexSettingsErrors = {
+export type UpdatePlexStreamSettingsErrors = {
     /**
      * Default Response
      */
     500: string;
 };
 
-export type PutApiPlexSettingsError = PutApiPlexSettingsErrors[keyof PutApiPlexSettingsErrors];
+export type UpdatePlexStreamSettingsError = UpdatePlexStreamSettingsErrors[keyof UpdatePlexStreamSettingsErrors];
 
-export type PutApiPlexSettingsResponses = {
+export type UpdatePlexStreamSettingsResponses = {
     /**
      * Default Response
      */
@@ -15456,25 +15548,25 @@ export type PutApiPlexSettingsResponses = {
     };
 };
 
-export type PutApiPlexSettingsResponse = PutApiPlexSettingsResponses[keyof PutApiPlexSettingsResponses];
+export type UpdatePlexStreamSettingsResponse = UpdatePlexStreamSettingsResponses[keyof UpdatePlexStreamSettingsResponses];
 
-export type GetApiXmltvSettingsData = {
+export type GetXmltvSettingsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/xmltv-settings';
 };
 
-export type GetApiXmltvSettingsErrors = {
+export type GetXmltvSettingsErrors = {
     /**
      * Default Response
      */
     500: string;
 };
 
-export type GetApiXmltvSettingsError = GetApiXmltvSettingsErrors[keyof GetApiXmltvSettingsErrors];
+export type GetXmltvSettingsError = GetXmltvSettingsErrors[keyof GetXmltvSettingsErrors];
 
-export type GetApiXmltvSettingsResponses = {
+export type GetXmltvSettingsResponses = {
     /**
      * Default Response
      */
@@ -15487,25 +15579,25 @@ export type GetApiXmltvSettingsResponses = {
     };
 };
 
-export type GetApiXmltvSettingsResponse = GetApiXmltvSettingsResponses[keyof GetApiXmltvSettingsResponses];
+export type GetXmltvSettingsResponse = GetXmltvSettingsResponses[keyof GetXmltvSettingsResponses];
 
-export type PostApiXmltvSettingsData = {
+export type ResetXmltvSettingsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/xmltv-settings';
 };
 
-export type PostApiXmltvSettingsErrors = {
+export type ResetXmltvSettingsErrors = {
     /**
      * Default Response
      */
     500: string;
 };
 
-export type PostApiXmltvSettingsError = PostApiXmltvSettingsErrors[keyof PostApiXmltvSettingsErrors];
+export type ResetXmltvSettingsError = ResetXmltvSettingsErrors[keyof ResetXmltvSettingsErrors];
 
-export type PostApiXmltvSettingsResponses = {
+export type ResetXmltvSettingsResponses = {
     /**
      * Default Response
      */
@@ -15518,9 +15610,9 @@ export type PostApiXmltvSettingsResponses = {
     };
 };
 
-export type PostApiXmltvSettingsResponse = PostApiXmltvSettingsResponses[keyof PostApiXmltvSettingsResponses];
+export type ResetXmltvSettingsResponse = ResetXmltvSettingsResponses[keyof ResetXmltvSettingsResponses];
 
-export type PutApiXmltvSettingsData = {
+export type UpdateXmltvSettingsData = {
     body?: {
         programmingHours?: number;
         refreshHours?: number;
@@ -15533,7 +15625,7 @@ export type PutApiXmltvSettingsData = {
     url: '/api/xmltv-settings';
 };
 
-export type PutApiXmltvSettingsErrors = {
+export type UpdateXmltvSettingsErrors = {
     /**
      * Default Response
      */
@@ -15542,9 +15634,9 @@ export type PutApiXmltvSettingsErrors = {
     };
 };
 
-export type PutApiXmltvSettingsError = PutApiXmltvSettingsErrors[keyof PutApiXmltvSettingsErrors];
+export type UpdateXmltvSettingsError = UpdateXmltvSettingsErrors[keyof UpdateXmltvSettingsErrors];
 
-export type PutApiXmltvSettingsResponses = {
+export type UpdateXmltvSettingsResponses = {
     /**
      * Default Response
      */
@@ -15557,16 +15649,16 @@ export type PutApiXmltvSettingsResponses = {
     };
 };
 
-export type PutApiXmltvSettingsResponse = PutApiXmltvSettingsResponses[keyof PutApiXmltvSettingsResponses];
+export type UpdateXmltvSettingsResponse = UpdateXmltvSettingsResponses[keyof UpdateXmltvSettingsResponses];
 
-export type GetApiHdhrSettingsData = {
+export type GetHdhrSettingsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/hdhr-settings';
 };
 
-export type GetApiHdhrSettingsErrors = {
+export type GetHdhrSettingsErrors = {
     /**
      * Default Response
      */
@@ -15575,9 +15667,9 @@ export type GetApiHdhrSettingsErrors = {
     };
 };
 
-export type GetApiHdhrSettingsError = GetApiHdhrSettingsErrors[keyof GetApiHdhrSettingsErrors];
+export type GetHdhrSettingsError = GetHdhrSettingsErrors[keyof GetHdhrSettingsErrors];
 
-export type GetApiHdhrSettingsResponses = {
+export type GetHdhrSettingsResponses = {
     /**
      * Default Response
      */
@@ -15587,16 +15679,16 @@ export type GetApiHdhrSettingsResponses = {
     };
 };
 
-export type GetApiHdhrSettingsResponse = GetApiHdhrSettingsResponses[keyof GetApiHdhrSettingsResponses];
+export type GetHdhrSettingsResponse = GetHdhrSettingsResponses[keyof GetHdhrSettingsResponses];
 
-export type PostApiHdhrSettingsData = {
+export type ResetHdhrSettingsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/hdhr-settings';
 };
 
-export type PostApiHdhrSettingsErrors = {
+export type ResetHdhrSettingsErrors = {
     /**
      * Default Response
      */
@@ -15605,9 +15697,9 @@ export type PostApiHdhrSettingsErrors = {
     };
 };
 
-export type PostApiHdhrSettingsError = PostApiHdhrSettingsErrors[keyof PostApiHdhrSettingsErrors];
+export type ResetHdhrSettingsError = ResetHdhrSettingsErrors[keyof ResetHdhrSettingsErrors];
 
-export type PostApiHdhrSettingsResponses = {
+export type ResetHdhrSettingsResponses = {
     /**
      * Default Response
      */
@@ -15617,9 +15709,9 @@ export type PostApiHdhrSettingsResponses = {
     };
 };
 
-export type PostApiHdhrSettingsResponse = PostApiHdhrSettingsResponses[keyof PostApiHdhrSettingsResponses];
+export type ResetHdhrSettingsResponse = ResetHdhrSettingsResponses[keyof ResetHdhrSettingsResponses];
 
-export type PutApiHdhrSettingsData = {
+export type UpdateHdhrSettingsData = {
     body?: {
         autoDiscoveryEnabled?: boolean;
         tunerCount?: number;
@@ -15629,7 +15721,7 @@ export type PutApiHdhrSettingsData = {
     url: '/api/hdhr-settings';
 };
 
-export type PutApiHdhrSettingsErrors = {
+export type UpdateHdhrSettingsErrors = {
     /**
      * Default Response
      */
@@ -15638,9 +15730,9 @@ export type PutApiHdhrSettingsErrors = {
     };
 };
 
-export type PutApiHdhrSettingsError = PutApiHdhrSettingsErrors[keyof PutApiHdhrSettingsErrors];
+export type UpdateHdhrSettingsError = UpdateHdhrSettingsErrors[keyof UpdateHdhrSettingsErrors];
 
-export type PutApiHdhrSettingsResponses = {
+export type UpdateHdhrSettingsResponses = {
     /**
      * Default Response
      */
@@ -15650,16 +15742,16 @@ export type PutApiHdhrSettingsResponses = {
     };
 };
 
-export type PutApiHdhrSettingsResponse = PutApiHdhrSettingsResponses[keyof PutApiHdhrSettingsResponses];
+export type UpdateHdhrSettingsResponse = UpdateHdhrSettingsResponses[keyof UpdateHdhrSettingsResponses];
 
-export type GetApiSystemHealthData = {
+export type GetSystemHealthData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/system/health';
 };
 
-export type GetApiSystemHealthResponses = {
+export type GetSystemHealthResponses = {
     /**
      * Default Response
      */
@@ -15673,16 +15765,16 @@ export type GetApiSystemHealthResponses = {
     };
 };
 
-export type GetApiSystemHealthResponse = GetApiSystemHealthResponses[keyof GetApiSystemHealthResponses];
+export type GetSystemHealthResponse = GetSystemHealthResponses[keyof GetSystemHealthResponses];
 
-export type GetApiSystemSettingsData = {
+export type GetSystemSettingsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/system/settings';
 };
 
-export type GetApiSystemSettingsResponses = {
+export type GetSystemSettingsResponses = {
     /**
      * Default Response
      */
@@ -15747,9 +15839,9 @@ export type GetApiSystemSettingsResponses = {
     };
 };
 
-export type GetApiSystemSettingsResponse = GetApiSystemSettingsResponses[keyof GetApiSystemSettingsResponses];
+export type GetSystemSettingsResponse = GetSystemSettingsResponses[keyof GetSystemSettingsResponses];
 
-export type PutApiSystemSettingsData = {
+export type UpdateSystemSettingsData = {
     body?: {
         logging?: {
             logLevel?: 'silent' | 'fatal' | 'error' | 'warn' | 'info' | 'http' | 'debug' | 'http_out' | 'trace';
@@ -15810,7 +15902,7 @@ export type PutApiSystemSettingsData = {
     url: '/api/system/settings';
 };
 
-export type PutApiSystemSettingsResponses = {
+export type UpdateSystemSettingsResponses = {
     /**
      * Default Response
      */
@@ -15875,16 +15967,16 @@ export type PutApiSystemSettingsResponses = {
     };
 };
 
-export type PutApiSystemSettingsResponse = PutApiSystemSettingsResponses[keyof PutApiSystemSettingsResponses];
+export type UpdateSystemSettingsResponse = UpdateSystemSettingsResponses[keyof UpdateSystemSettingsResponses];
 
-export type GetApiSystemStateData = {
+export type GetSystemStateData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/system/state';
 };
 
-export type GetApiSystemStateResponses = {
+export type GetSystemStateResponses = {
     /**
      * Default Response
      */
@@ -15895,16 +15987,16 @@ export type GetApiSystemStateResponses = {
     };
 };
 
-export type GetApiSystemStateResponse = GetApiSystemStateResponses[keyof GetApiSystemStateResponses];
+export type GetSystemStateResponse = GetSystemStateResponses[keyof GetSystemStateResponses];
 
-export type GetApiSystemMigrationStateData = {
+export type GetMigrationStateData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/system/migration-state';
 };
 
-export type GetApiSystemMigrationStateResponses = {
+export type GetMigrationStateResponses = {
     /**
      * Default Response
      */
@@ -15918,9 +16010,9 @@ export type GetApiSystemMigrationStateResponses = {
     };
 };
 
-export type GetApiSystemMigrationStateResponse = GetApiSystemMigrationStateResponses[keyof GetApiSystemMigrationStateResponses];
+export type GetMigrationStateResponse = GetMigrationStateResponses[keyof GetMigrationStateResponses];
 
-export type PostApiSystemFixersByFixerIdRunData = {
+export type RunFixerData = {
     body?: never;
     path: {
         fixerId: string;
@@ -15929,14 +16021,14 @@ export type PostApiSystemFixersByFixerIdRunData = {
     url: '/api/system/fixers/{fixerId}/run';
 };
 
-export type PostApiSystemFixersByFixerIdRunResponses = {
+export type RunFixerResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type PutApiSystemSettingsBackupData = {
+export type UpdateBackupSettingsData = {
     body: {
         configurations: Array<{
             enabled?: boolean;
@@ -15964,7 +16056,7 @@ export type PutApiSystemSettingsBackupData = {
     url: '/api/system/settings/backup';
 };
 
-export type PutApiSystemSettingsBackupResponses = {
+export type UpdateBackupSettingsResponses = {
     /**
      * Default Response
      */
@@ -15992,41 +16084,41 @@ export type PutApiSystemSettingsBackupResponses = {
     };
 };
 
-export type PutApiSystemSettingsBackupResponse = PutApiSystemSettingsBackupResponses[keyof PutApiSystemSettingsBackupResponses];
+export type UpdateBackupSettingsResponse = UpdateBackupSettingsResponses[keyof UpdateBackupSettingsResponses];
 
-export type GetApiSystemDebugNvidiaData = {
+export type GetNvidiaDebugInfoData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/system/debug/nvidia';
 };
 
-export type GetApiSystemDebugNvidiaResponses = {
+export type GetNvidiaDebugInfoResponses = {
     /**
      * Default Response
      */
     200: string;
 };
 
-export type GetApiSystemDebugNvidiaResponse = GetApiSystemDebugNvidiaResponses[keyof GetApiSystemDebugNvidiaResponses];
+export type GetNvidiaDebugInfoResponse = GetNvidiaDebugInfoResponses[keyof GetNvidiaDebugInfoResponses];
 
-export type GetApiSystemDebugVaapiData = {
+export type GetVaapiDebugInfoData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/system/debug/vaapi';
 };
 
-export type GetApiSystemDebugVaapiResponses = {
+export type GetVaapiDebugInfoResponses = {
     /**
      * Default Response
      */
     200: string;
 };
 
-export type GetApiSystemDebugVaapiResponse = GetApiSystemDebugVaapiResponses[keyof GetApiSystemDebugVaapiResponses];
+export type GetVaapiDebugInfoResponse = GetVaapiDebugInfoResponses[keyof GetVaapiDebugInfoResponses];
 
-export type GetApiSystemDebugLogsStreamData = {
+export type StreamLogsData = {
     body?: never;
     path?: never;
     query?: {
@@ -16035,14 +16127,14 @@ export type GetApiSystemDebugLogsStreamData = {
     url: '/api/system/debug/logs/stream';
 };
 
-export type GetApiSystemDebugLogsStreamResponses = {
+export type StreamLogsResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiSystemDebugLogsData = {
+export type GetLogsData = {
     body?: never;
     path?: never;
     query?: {
@@ -16053,21 +16145,21 @@ export type GetApiSystemDebugLogsData = {
     url: '/api/system/debug/logs';
 };
 
-export type GetApiSystemDebugLogsResponses = {
+export type GetLogsResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiSystemDebugEnvData = {
+export type GetSystemEnvVarsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/system/debug/env';
 };
 
-export type GetApiSystemDebugEnvResponses = {
+export type GetSystemEnvVarsResponses = {
     /**
      * Default Response
      */
@@ -16076,51 +16168,51 @@ export type GetApiSystemDebugEnvResponses = {
     };
 };
 
-export type GetApiSystemDebugEnvResponse = GetApiSystemDebugEnvResponses[keyof GetApiSystemDebugEnvResponses];
+export type GetSystemEnvVarsResponse = GetSystemEnvVarsResponses[keyof GetSystemEnvVarsResponses];
 
-export type GetApiSystemDebugLoggersData = {
+export type GetLoggersData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/system/debug/loggers';
 };
 
-export type GetApiSystemDebugLoggersResponses = {
+export type GetLoggersResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiGuideStatusData = {
+export type GetGuideStatusData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/guide/status';
 };
 
-export type GetApiGuideStatusResponses = {
+export type GetGuideStatusResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiGuideDebugData = {
+export type GetGuideDebugData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/guide/debug';
 };
 
-export type GetApiGuideDebugResponses = {
+export type GetGuideDebugResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiGuideChannelsData = {
+export type GetAllChannelGuidesData = {
     body?: never;
     path?: never;
     query: {
@@ -16130,16 +16222,16 @@ export type GetApiGuideChannelsData = {
     url: '/api/guide/channels';
 };
 
-export type GetApiGuideChannelsErrors = {
+export type GetAllChannelGuidesErrors = {
     /**
      * Default Response
      */
     400: string;
 };
 
-export type GetApiGuideChannelsError = GetApiGuideChannelsErrors[keyof GetApiGuideChannelsErrors];
+export type GetAllChannelGuidesError = GetAllChannelGuidesErrors[keyof GetAllChannelGuidesErrors];
 
-export type GetApiGuideChannelsResponses = {
+export type GetAllChannelGuidesResponses = {
     /**
      * Default Response
      */
@@ -16506,9 +16598,9 @@ export type GetApiGuideChannelsResponses = {
     };
 };
 
-export type GetApiGuideChannelsResponse = GetApiGuideChannelsResponses[keyof GetApiGuideChannelsResponses];
+export type GetAllChannelGuidesResponse = GetAllChannelGuidesResponses[keyof GetAllChannelGuidesResponses];
 
-export type GetApiGuideChannelsByIdData = {
+export type GetChannelGuideData = {
     body?: never;
     path: {
         id: string;
@@ -16520,14 +16612,391 @@ export type GetApiGuideChannelsByIdData = {
     url: '/api/guide/channels/{id}';
 };
 
-export type GetApiGuideChannelsByIdResponses = {
+export type GetChannelGuideErrors = {
     /**
      * Default Response
      */
-    200: unknown;
+    400: string;
+    /**
+     * Default Response
+     */
+    404: string;
+    /**
+     * Default Response
+     */
+    500: string;
 };
 
-export type GetApiPlexByMediaSourceIdSearchData = {
+export type GetChannelGuideError = GetChannelGuideErrors[keyof GetChannelGuideErrors];
+
+export type GetChannelGuideResponses = {
+    /**
+     * Default Response
+     */
+    200: {
+        icon?: {
+            path: string;
+            width: number;
+            duration: number;
+            position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+        };
+        name: string;
+        number: number;
+        id: string;
+        programs: Array<{
+            type: 'content';
+            persisted: boolean;
+            duration: number;
+            icon?: string;
+            id: string;
+            subtype: 'movie' | 'episode' | 'track' | 'music_video' | 'other_video';
+            summary?: string;
+            date?: string;
+            year?: number;
+            rating?: string;
+            serverFileKey?: string;
+            serverFilePath?: string;
+            title: string;
+            showId?: string;
+            seasonId?: string;
+            seasonNumber?: number;
+            episodeNumber?: number;
+            albumId?: string;
+            artistId?: string;
+            index?: number;
+            parent?: {
+                id?: string;
+                title?: string;
+                index?: number;
+                guids?: Array<string>;
+                year?: number;
+                externalKey?: string;
+                externalIds: Array<{
+                    type: 'single';
+                    source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                    id: string;
+                } | {
+                    type: 'multi';
+                    source: 'plex' | 'jellyfin' | 'emby';
+                    sourceId: string;
+                    id: string;
+                }>;
+                summary?: string;
+                type: 'season';
+            } | {
+                id?: string;
+                title?: string;
+                index?: number;
+                guids?: Array<string>;
+                year?: number;
+                externalKey?: string;
+                externalIds: Array<{
+                    type: 'single';
+                    source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                    id: string;
+                } | {
+                    type: 'multi';
+                    source: 'plex' | 'jellyfin' | 'emby';
+                    sourceId: string;
+                    id: string;
+                }>;
+                summary?: string;
+                type: 'album';
+            };
+            grandparent?: {
+                id?: string;
+                title?: string;
+                index?: number;
+                guids?: Array<string>;
+                year?: number;
+                externalKey?: string;
+                externalIds: Array<{
+                    type: 'single';
+                    source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                    id: string;
+                } | {
+                    type: 'multi';
+                    source: 'plex' | 'jellyfin' | 'emby';
+                    sourceId: string;
+                    id: string;
+                }>;
+                summary?: string;
+                type: 'show';
+                seasons?: Array<{
+                    id?: string;
+                    title?: string;
+                    index?: number;
+                    guids?: Array<string>;
+                    year?: number;
+                    externalKey?: string;
+                    externalIds: Array<{
+                        type: 'single';
+                        source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                        id: string;
+                    } | {
+                        type: 'multi';
+                        source: 'plex' | 'jellyfin' | 'emby';
+                        sourceId: string;
+                        id: string;
+                    }>;
+                    summary?: string;
+                }>;
+            } | {
+                id?: string;
+                title?: string;
+                index?: number;
+                guids?: Array<string>;
+                year?: number;
+                externalKey?: string;
+                externalIds: Array<{
+                    type: 'single';
+                    source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                    id: string;
+                } | {
+                    type: 'multi';
+                    source: 'plex' | 'jellyfin' | 'emby';
+                    sourceId: string;
+                    id: string;
+                }>;
+                summary?: string;
+                type: 'artist';
+                albums?: Array<{
+                    id?: string;
+                    title?: string;
+                    index?: number;
+                    guids?: Array<string>;
+                    year?: number;
+                    externalKey?: string;
+                    externalIds: Array<{
+                        type: 'single';
+                        source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                        id: string;
+                    } | {
+                        type: 'multi';
+                        source: 'plex' | 'jellyfin' | 'emby';
+                        sourceId: string;
+                        id: string;
+                    }>;
+                    summary?: string;
+                }>;
+            };
+            externalSourceType: 'plex' | 'jellyfin' | 'emby' | 'local';
+            externalSourceName: string;
+            externalSourceId: string;
+            libraryId?: string;
+            externalKey: string;
+            uniqueId: string;
+            externalIds: Array<{
+                type: 'single';
+                source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                id: string;
+            } | {
+                type: 'multi';
+                source: 'plex' | 'jellyfin' | 'emby';
+                sourceId: string;
+                id: string;
+            }>;
+            canonicalId?: string;
+            start: number;
+            stop: number;
+            isPaused: boolean;
+            timeRemaining?: number;
+        } | {
+            type: 'custom';
+            persisted: boolean;
+            duration: number;
+            icon?: string;
+            id: string;
+            customShowId: string;
+            index: number;
+            program?: {
+                type: 'content';
+                persisted: boolean;
+                duration: number;
+                icon?: string;
+                id?: string;
+                subtype: 'movie' | 'episode' | 'track' | 'music_video' | 'other_video';
+                summary?: string;
+                date?: string;
+                year?: number;
+                rating?: string;
+                serverFileKey?: string;
+                serverFilePath?: string;
+                title: string;
+                showId?: string;
+                seasonId?: string;
+                seasonNumber?: number;
+                episodeNumber?: number;
+                albumId?: string;
+                artistId?: string;
+                index?: number;
+                parent?: {
+                    id?: string;
+                    title?: string;
+                    index?: number;
+                    guids?: Array<string>;
+                    year?: number;
+                    externalKey?: string;
+                    externalIds: Array<{
+                        type: 'single';
+                        source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                        id: string;
+                    } | {
+                        type: 'multi';
+                        source: 'plex' | 'jellyfin' | 'emby';
+                        sourceId: string;
+                        id: string;
+                    }>;
+                    summary?: string;
+                    type: 'season';
+                } | {
+                    id?: string;
+                    title?: string;
+                    index?: number;
+                    guids?: Array<string>;
+                    year?: number;
+                    externalKey?: string;
+                    externalIds: Array<{
+                        type: 'single';
+                        source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                        id: string;
+                    } | {
+                        type: 'multi';
+                        source: 'plex' | 'jellyfin' | 'emby';
+                        sourceId: string;
+                        id: string;
+                    }>;
+                    summary?: string;
+                    type: 'album';
+                };
+                grandparent?: {
+                    id?: string;
+                    title?: string;
+                    index?: number;
+                    guids?: Array<string>;
+                    year?: number;
+                    externalKey?: string;
+                    externalIds: Array<{
+                        type: 'single';
+                        source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                        id: string;
+                    } | {
+                        type: 'multi';
+                        source: 'plex' | 'jellyfin' | 'emby';
+                        sourceId: string;
+                        id: string;
+                    }>;
+                    summary?: string;
+                    type: 'show';
+                    seasons?: Array<{
+                        id?: string;
+                        title?: string;
+                        index?: number;
+                        guids?: Array<string>;
+                        year?: number;
+                        externalKey?: string;
+                        externalIds: Array<{
+                            type: 'single';
+                            source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                            id: string;
+                        } | {
+                            type: 'multi';
+                            source: 'plex' | 'jellyfin' | 'emby';
+                            sourceId: string;
+                            id: string;
+                        }>;
+                        summary?: string;
+                    }>;
+                } | {
+                    id?: string;
+                    title?: string;
+                    index?: number;
+                    guids?: Array<string>;
+                    year?: number;
+                    externalKey?: string;
+                    externalIds: Array<{
+                        type: 'single';
+                        source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                        id: string;
+                    } | {
+                        type: 'multi';
+                        source: 'plex' | 'jellyfin' | 'emby';
+                        sourceId: string;
+                        id: string;
+                    }>;
+                    summary?: string;
+                    type: 'artist';
+                    albums?: Array<{
+                        id?: string;
+                        title?: string;
+                        index?: number;
+                        guids?: Array<string>;
+                        year?: number;
+                        externalKey?: string;
+                        externalIds: Array<{
+                            type: 'single';
+                            source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                            id: string;
+                        } | {
+                            type: 'multi';
+                            source: 'plex' | 'jellyfin' | 'emby';
+                            sourceId: string;
+                            id: string;
+                        }>;
+                        summary?: string;
+                    }>;
+                };
+                externalSourceType: 'plex' | 'jellyfin' | 'emby' | 'local';
+                externalSourceName: string;
+                externalSourceId: string;
+                libraryId?: string;
+                externalKey: string;
+                uniqueId: string;
+                externalIds: Array<{
+                    type: 'single';
+                    source: 'plex-guid' | 'imdb' | 'tmdb' | 'tvdb';
+                    id: string;
+                } | {
+                    type: 'multi';
+                    source: 'plex' | 'jellyfin' | 'emby';
+                    sourceId: string;
+                    id: string;
+                }>;
+                canonicalId?: string;
+            };
+            start: number;
+            stop: number;
+            isPaused: boolean;
+            timeRemaining?: number;
+        } | {
+            type: 'redirect';
+            persisted: boolean;
+            duration: number;
+            icon?: string;
+            channel: string;
+            channelNumber: number;
+            channelName: string;
+            start: number;
+            stop: number;
+            isPaused: boolean;
+            timeRemaining?: number;
+        } | {
+            type: 'flex';
+            persisted: boolean;
+            duration: number;
+            icon?: string;
+            start: number;
+            stop: number;
+            isPaused: boolean;
+            timeRemaining?: number;
+            title: string;
+        }>;
+    };
+};
+
+export type GetChannelGuideResponse = GetChannelGuideResponses[keyof GetChannelGuideResponses];
+
+export type SearchPlexLibraryData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -16542,16 +17011,16 @@ export type GetApiPlexByMediaSourceIdSearchData = {
     url: '/api/plex/{mediaSourceId}/search';
 };
 
-export type GetApiPlexByMediaSourceIdSearchErrors = {
+export type SearchPlexLibraryErrors = {
     /**
      * Default Response
      */
     400: string;
 };
 
-export type GetApiPlexByMediaSourceIdSearchError = GetApiPlexByMediaSourceIdSearchErrors[keyof GetApiPlexByMediaSourceIdSearchErrors];
+export type SearchPlexLibraryError = SearchPlexLibraryErrors[keyof SearchPlexLibraryErrors];
 
-export type GetApiPlexByMediaSourceIdSearchResponses = {
+export type SearchPlexLibraryResponses = {
     /**
      * Default Response
      */
@@ -16984,9 +17453,9 @@ export type GetApiPlexByMediaSourceIdSearchResponses = {
     };
 };
 
-export type GetApiPlexByMediaSourceIdSearchResponse = GetApiPlexByMediaSourceIdSearchResponses[keyof GetApiPlexByMediaSourceIdSearchResponses];
+export type SearchPlexLibraryResponse = SearchPlexLibraryResponses[keyof SearchPlexLibraryResponses];
 
-export type GetApiPlexByMediaSourceIdLibrariesData = {
+export type GetPlexLibrariesData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -16995,7 +17464,7 @@ export type GetApiPlexByMediaSourceIdLibrariesData = {
     url: '/api/plex/{mediaSourceId}/libraries';
 };
 
-export type GetApiPlexByMediaSourceIdLibrariesResponses = {
+export type GetPlexLibrariesResponses = {
     /**
      * Default Response
      */
@@ -17020,9 +17489,9 @@ export type GetApiPlexByMediaSourceIdLibrariesResponses = {
     }>;
 };
 
-export type GetApiPlexByMediaSourceIdLibrariesResponse = GetApiPlexByMediaSourceIdLibrariesResponses[keyof GetApiPlexByMediaSourceIdLibrariesResponses];
+export type GetPlexLibrariesResponse = GetPlexLibrariesResponses[keyof GetPlexLibrariesResponses];
 
-export type GetApiPlexByMediaSourceIdLibrariesByLibraryIdCollectionsData = {
+export type GetPlexLibraryCollectionsData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -17035,7 +17504,7 @@ export type GetApiPlexByMediaSourceIdLibrariesByLibraryIdCollectionsData = {
     url: '/api/plex/{mediaSourceId}/libraries/{libraryId}/collections';
 };
 
-export type GetApiPlexByMediaSourceIdLibrariesByLibraryIdCollectionsResponses = {
+export type GetPlexLibraryCollectionsResponses = {
     /**
      * Default Response
      */
@@ -17057,9 +17526,9 @@ export type GetApiPlexByMediaSourceIdLibrariesByLibraryIdCollectionsResponses = 
     };
 };
 
-export type GetApiPlexByMediaSourceIdLibrariesByLibraryIdCollectionsResponse = GetApiPlexByMediaSourceIdLibrariesByLibraryIdCollectionsResponses[keyof GetApiPlexByMediaSourceIdLibrariesByLibraryIdCollectionsResponses];
+export type GetPlexLibraryCollectionsResponse = GetPlexLibraryCollectionsResponses[keyof GetPlexLibraryCollectionsResponses];
 
-export type GetApiPlexByMediaSourceIdLibrariesByLibraryIdPlaylistsData = {
+export type GetPlexLibraryPlaylistsData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -17072,7 +17541,7 @@ export type GetApiPlexByMediaSourceIdLibrariesByLibraryIdPlaylistsData = {
     url: '/api/plex/{mediaSourceId}/libraries/{libraryId}/playlists';
 };
 
-export type GetApiPlexByMediaSourceIdLibrariesByLibraryIdPlaylistsResponses = {
+export type GetPlexLibraryPlaylistsResponses = {
     /**
      * Default Response
      */
@@ -17094,9 +17563,9 @@ export type GetApiPlexByMediaSourceIdLibrariesByLibraryIdPlaylistsResponses = {
     };
 };
 
-export type GetApiPlexByMediaSourceIdLibrariesByLibraryIdPlaylistsResponse = GetApiPlexByMediaSourceIdLibrariesByLibraryIdPlaylistsResponses[keyof GetApiPlexByMediaSourceIdLibrariesByLibraryIdPlaylistsResponses];
+export type GetPlexLibraryPlaylistsResponse = GetPlexLibraryPlaylistsResponses[keyof GetPlexLibraryPlaylistsResponses];
 
-export type GetApiPlexByMediaSourceIdPlaylistsData = {
+export type GetPlexPlaylistsData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -17108,7 +17577,7 @@ export type GetApiPlexByMediaSourceIdPlaylistsData = {
     url: '/api/plex/{mediaSourceId}/playlists';
 };
 
-export type GetApiPlexByMediaSourceIdPlaylistsResponses = {
+export type GetPlexPlaylistsResponses = {
     /**
      * Default Response
      */
@@ -17130,9 +17599,9 @@ export type GetApiPlexByMediaSourceIdPlaylistsResponses = {
     };
 };
 
-export type GetApiPlexByMediaSourceIdPlaylistsResponse = GetApiPlexByMediaSourceIdPlaylistsResponses[keyof GetApiPlexByMediaSourceIdPlaylistsResponses];
+export type GetPlexPlaylistsResponse = GetPlexPlaylistsResponses[keyof GetPlexPlaylistsResponses];
 
-export type GetApiPlexByMediaSourceIdFiltersData = {
+export type GetPlexLibraryFiltersData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -17143,7 +17612,7 @@ export type GetApiPlexByMediaSourceIdFiltersData = {
     url: '/api/plex/{mediaSourceId}/filters';
 };
 
-export type GetApiPlexByMediaSourceIdFiltersResponses = {
+export type GetPlexLibraryFiltersResponses = {
     /**
      * Default Response
      */
@@ -17189,9 +17658,9 @@ export type GetApiPlexByMediaSourceIdFiltersResponses = {
     };
 };
 
-export type GetApiPlexByMediaSourceIdFiltersResponse = GetApiPlexByMediaSourceIdFiltersResponses[keyof GetApiPlexByMediaSourceIdFiltersResponses];
+export type GetPlexLibraryFiltersResponse = GetPlexLibraryFiltersResponses[keyof GetPlexLibraryFiltersResponses];
 
-export type GetApiPlexByMediaSourceIdTagsData = {
+export type GetPlexItemTagsData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -17203,7 +17672,7 @@ export type GetApiPlexByMediaSourceIdTagsData = {
     url: '/api/plex/{mediaSourceId}/tags';
 };
 
-export type GetApiPlexByMediaSourceIdTagsResponses = {
+export type GetPlexItemTagsResponses = {
     /**
      * Default Response
      */
@@ -17218,9 +17687,9 @@ export type GetApiPlexByMediaSourceIdTagsResponses = {
     };
 };
 
-export type GetApiPlexByMediaSourceIdTagsResponse = GetApiPlexByMediaSourceIdTagsResponses[keyof GetApiPlexByMediaSourceIdTagsResponses];
+export type GetPlexItemTagsResponse = GetPlexItemTagsResponses[keyof GetPlexItemTagsResponses];
 
-export type GetApiPlexByMediaSourceIdItemsByItemIdChildrenData = {
+export type GetPlexItemChildrenData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -17232,7 +17701,7 @@ export type GetApiPlexByMediaSourceIdItemsByItemIdChildrenData = {
     url: '/api/plex/{mediaSourceId}/items/{itemId}/children';
 };
 
-export type GetApiPlexByMediaSourceIdItemsByItemIdChildrenResponses = {
+export type GetPlexItemChildrenResponses = {
     /**
      * Default Response
      */
@@ -17690,7 +18159,7 @@ export type GetApiPlexByMediaSourceIdItemsByItemIdChildrenResponses = {
     })>;
 };
 
-export type GetApiPlexByMediaSourceIdItemsByItemIdChildrenResponse = GetApiPlexByMediaSourceIdItemsByItemIdChildrenResponses[keyof GetApiPlexByMediaSourceIdItemsByItemIdChildrenResponses];
+export type GetPlexItemChildrenResponse = GetPlexItemChildrenResponses[keyof GetPlexItemChildrenResponses];
 
 export type JellyfinLoginData = {
     body: {
@@ -18673,14 +19142,14 @@ export type GetJellyfinLibraryItemsResponses = {
 
 export type GetJellyfinLibraryItemsResponse = GetJellyfinLibraryItemsResponses[keyof GetJellyfinLibraryItemsResponses];
 
-export type GetApiSessionsData = {
+export type GetAllSessionsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/sessions';
 };
 
-export type GetApiSessionsResponses = {
+export type GetAllSessionsResponses = {
     /**
      * Default Response
      */
@@ -18698,9 +19167,9 @@ export type GetApiSessionsResponses = {
     };
 };
 
-export type GetApiSessionsResponse = GetApiSessionsResponses[keyof GetApiSessionsResponses];
+export type GetAllSessionsResponse = GetAllSessionsResponses[keyof GetAllSessionsResponses];
 
-export type DeleteApiChannelsByIdSessionsData = {
+export type StopChannelSessionsData = {
     body?: never;
     path: {
         id: number | string;
@@ -18709,16 +19178,16 @@ export type DeleteApiChannelsByIdSessionsData = {
     url: '/api/channels/{id}/sessions';
 };
 
-export type DeleteApiChannelsByIdSessionsErrors = {
+export type StopChannelSessionsErrors = {
     /**
      * Default Response
      */
     404: string;
 };
 
-export type DeleteApiChannelsByIdSessionsError = DeleteApiChannelsByIdSessionsErrors[keyof DeleteApiChannelsByIdSessionsErrors];
+export type StopChannelSessionsError = StopChannelSessionsErrors[keyof StopChannelSessionsErrors];
 
-export type DeleteApiChannelsByIdSessionsResponses = {
+export type StopChannelSessionsResponses = {
     /**
      * Default Response
      */
@@ -18738,9 +19207,9 @@ export type DeleteApiChannelsByIdSessionsResponses = {
     201: unknown;
 };
 
-export type DeleteApiChannelsByIdSessionsResponse = DeleteApiChannelsByIdSessionsResponses[keyof DeleteApiChannelsByIdSessionsResponses];
+export type StopChannelSessionsResponse = StopChannelSessionsResponses[keyof StopChannelSessionsResponses];
 
-export type GetApiChannelsByIdSessionsData = {
+export type GetChannelSessionsData = {
     body?: never;
     path: {
         id: number | string;
@@ -18749,16 +19218,16 @@ export type GetApiChannelsByIdSessionsData = {
     url: '/api/channels/{id}/sessions';
 };
 
-export type GetApiChannelsByIdSessionsErrors = {
+export type GetChannelSessionsErrors = {
     /**
      * Default Response
      */
     404: string;
 };
 
-export type GetApiChannelsByIdSessionsError = GetApiChannelsByIdSessionsErrors[keyof GetApiChannelsByIdSessionsErrors];
+export type GetChannelSessionsError = GetChannelSessionsErrors[keyof GetChannelSessionsErrors];
 
-export type GetApiChannelsByIdSessionsResponses = {
+export type GetChannelSessionsResponses = {
     /**
      * Default Response
      */
@@ -18774,9 +19243,9 @@ export type GetApiChannelsByIdSessionsResponses = {
     }>;
 };
 
-export type GetApiChannelsByIdSessionsResponse = GetApiChannelsByIdSessionsResponses[keyof GetApiChannelsByIdSessionsResponses];
+export type GetChannelSessionsResponse = GetChannelSessionsResponses[keyof GetChannelSessionsResponses];
 
-export type PostApiEmbyLoginData = {
+export type EmbyLoginData = {
     body: {
         url: string;
         username: string;
@@ -18787,7 +19256,7 @@ export type PostApiEmbyLoginData = {
     url: '/api/emby/login';
 };
 
-export type PostApiEmbyLoginResponses = {
+export type EmbyLoginResponses = {
     /**
      * Default Response
      */
@@ -18797,9 +19266,9 @@ export type PostApiEmbyLoginResponses = {
     };
 };
 
-export type PostApiEmbyLoginResponse = PostApiEmbyLoginResponses[keyof PostApiEmbyLoginResponses];
+export type EmbyLoginResponse = EmbyLoginResponses[keyof EmbyLoginResponses];
 
-export type GetApiEmbyByMediaSourceIdUserLibrariesData = {
+export type GetEmbyLibrariesData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -18808,7 +19277,7 @@ export type GetApiEmbyByMediaSourceIdUserLibrariesData = {
     url: '/api/emby/{mediaSourceId}/user_libraries';
 };
 
-export type GetApiEmbyByMediaSourceIdUserLibrariesResponses = {
+export type GetEmbyLibrariesResponses = {
     /**
      * Default Response
      */
@@ -18833,9 +19302,9 @@ export type GetApiEmbyByMediaSourceIdUserLibrariesResponses = {
     }>;
 };
 
-export type GetApiEmbyByMediaSourceIdUserLibrariesResponse = GetApiEmbyByMediaSourceIdUserLibrariesResponses[keyof GetApiEmbyByMediaSourceIdUserLibrariesResponses];
+export type GetEmbyLibrariesResponse = GetEmbyLibrariesResponses[keyof GetEmbyLibrariesResponses];
 
-export type GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsData = {
+export type GetEmbyLibraryItemsData = {
     body?: never;
     path: {
         mediaSourceId: string;
@@ -18858,16 +19327,16 @@ export type GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsData = {
     url: '/api/emby/{mediaSourceId}/libraries/{libraryId}/items';
 };
 
-export type GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsErrors = {
+export type GetEmbyLibraryItemsErrors = {
     /**
      * Default Response
      */
     404: string;
 };
 
-export type GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsError = GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsErrors[keyof GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsErrors];
+export type GetEmbyLibraryItemsError = GetEmbyLibraryItemsErrors[keyof GetEmbyLibraryItemsErrors];
 
-export type GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsResponses = {
+export type GetEmbyLibraryItemsResponses = {
     /**
      * Default Response
      */
@@ -19330,16 +19799,16 @@ export type GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsResponses = {
     };
 };
 
-export type GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsResponse = GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsResponses[keyof GetApiEmbyByMediaSourceIdLibrariesByLibraryIdItemsResponses];
+export type GetEmbyLibraryItemsResponse = GetEmbyLibraryItemsResponses[keyof GetEmbyLibraryItemsResponses];
 
-export type GetApiSettingsMediaSourceData = {
+export type GetGlobalMediaSourceSettingsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/settings/media-source';
 };
 
-export type GetApiSettingsMediaSourceResponses = {
+export type GetGlobalMediaSourceSettingsResponses = {
     /**
      * Default Response
      */
@@ -19348,9 +19817,9 @@ export type GetApiSettingsMediaSourceResponses = {
     };
 };
 
-export type GetApiSettingsMediaSourceResponse = GetApiSettingsMediaSourceResponses[keyof GetApiSettingsMediaSourceResponses];
+export type GetGlobalMediaSourceSettingsResponse = GetGlobalMediaSourceSettingsResponses[keyof GetGlobalMediaSourceSettingsResponses];
 
-export type PutApiSettingsMediaSourceData = {
+export type UpdateGlobalMediaSourceSettingsData = {
     body?: {
         rescanIntervalHours?: number;
     };
@@ -19359,7 +19828,7 @@ export type PutApiSettingsMediaSourceData = {
     url: '/api/settings/media-source';
 };
 
-export type PutApiSettingsMediaSourceResponses = {
+export type UpdateGlobalMediaSourceSettingsResponses = {
     /**
      * Default Response
      */
@@ -19368,23 +19837,23 @@ export type PutApiSettingsMediaSourceResponses = {
     };
 };
 
-export type PutApiSettingsMediaSourceResponse = PutApiSettingsMediaSourceResponses[keyof PutApiSettingsMediaSourceResponses];
+export type UpdateGlobalMediaSourceSettingsResponse = UpdateGlobalMediaSourceSettingsResponses[keyof UpdateGlobalMediaSourceSettingsResponses];
 
-export type DeleteApiTrashData = {
+export type EmptyTrashData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/trash';
 };
 
-export type DeleteApiTrashResponses = {
+export type EmptyTrashResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiTrashData = {
+export type GetTrashData = {
     body?: never;
     path?: never;
     query?: {
@@ -19393,7 +19862,7 @@ export type GetApiTrashData = {
     url: '/api/trash';
 };
 
-export type GetApiTrashResponses = {
+export type GetTrashResponses = {
     /**
      * Default Response
      */
@@ -19861,16 +20330,16 @@ export type GetApiTrashResponses = {
     };
 };
 
-export type GetApiTrashResponse = GetApiTrashResponses[keyof GetApiTrashResponses];
+export type GetTrashResponse = GetTrashResponses[keyof GetTrashResponses];
 
-export type GetApiSmartCollectionsData = {
+export type GetSmartCollectionsData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/smart_collections';
 };
 
-export type GetApiSmartCollectionsResponses = {
+export type GetSmartCollectionsResponses = {
     /**
      * Default Response
      */
@@ -19883,9 +20352,9 @@ export type GetApiSmartCollectionsResponses = {
     }>;
 };
 
-export type GetApiSmartCollectionsResponse = GetApiSmartCollectionsResponses[keyof GetApiSmartCollectionsResponses];
+export type GetSmartCollectionsResponse = GetSmartCollectionsResponses[keyof GetSmartCollectionsResponses];
 
-export type PostApiSmartCollectionsData = {
+export type CreateSmartCollectionData = {
     body: {
         name: string;
         filter?: SearchFilterInput;
@@ -19897,16 +20366,16 @@ export type PostApiSmartCollectionsData = {
     url: '/api/smart_collections';
 };
 
-export type PostApiSmartCollectionsErrors = {
+export type CreateSmartCollectionErrors = {
     /**
      * Default Response
      */
     500: string;
 };
 
-export type PostApiSmartCollectionsError = PostApiSmartCollectionsErrors[keyof PostApiSmartCollectionsErrors];
+export type CreateSmartCollectionError = CreateSmartCollectionErrors[keyof CreateSmartCollectionErrors];
 
-export type PostApiSmartCollectionsResponses = {
+export type CreateSmartCollectionResponses = {
     /**
      * Default Response
      */
@@ -19919,9 +20388,9 @@ export type PostApiSmartCollectionsResponses = {
     };
 };
 
-export type PostApiSmartCollectionsResponse = PostApiSmartCollectionsResponses[keyof PostApiSmartCollectionsResponses];
+export type CreateSmartCollectionResponse = CreateSmartCollectionResponses[keyof CreateSmartCollectionResponses];
 
-export type DeleteApiSmartCollectionsByIdData = {
+export type DeleteSmartCollectionData = {
     body?: never;
     path: {
         id: string;
@@ -19930,21 +20399,21 @@ export type DeleteApiSmartCollectionsByIdData = {
     url: '/api/smart_collections/{id}';
 };
 
-export type DeleteApiSmartCollectionsByIdErrors = {
+export type DeleteSmartCollectionErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type DeleteApiSmartCollectionsByIdResponses = {
+export type DeleteSmartCollectionResponses = {
     /**
      * Default Response
      */
     204: unknown;
 };
 
-export type GetApiSmartCollectionsByIdData = {
+export type GetSmartCollectionData = {
     body?: never;
     path: {
         id: string;
@@ -19953,14 +20422,14 @@ export type GetApiSmartCollectionsByIdData = {
     url: '/api/smart_collections/{id}';
 };
 
-export type GetApiSmartCollectionsByIdErrors = {
+export type GetSmartCollectionErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiSmartCollectionsByIdResponses = {
+export type GetSmartCollectionResponses = {
     /**
      * Default Response
      */
@@ -19973,9 +20442,9 @@ export type GetApiSmartCollectionsByIdResponses = {
     };
 };
 
-export type GetApiSmartCollectionsByIdResponse = GetApiSmartCollectionsByIdResponses[keyof GetApiSmartCollectionsByIdResponses];
+export type GetSmartCollectionResponse = GetSmartCollectionResponses[keyof GetSmartCollectionResponses];
 
-export type PutApiSmartCollectionsByIdData = {
+export type UpdateSmartCollectionData = {
     body?: {
         name?: string;
         filter?: SearchFilterInput;
@@ -19989,14 +20458,14 @@ export type PutApiSmartCollectionsByIdData = {
     url: '/api/smart_collections/{id}';
 };
 
-export type PutApiSmartCollectionsByIdErrors = {
+export type UpdateSmartCollectionErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type PutApiSmartCollectionsByIdResponses = {
+export type UpdateSmartCollectionResponses = {
     /**
      * Default Response
      */
@@ -20009,9 +20478,9 @@ export type PutApiSmartCollectionsByIdResponses = {
     };
 };
 
-export type PutApiSmartCollectionsByIdResponse = PutApiSmartCollectionsByIdResponses[keyof PutApiSmartCollectionsByIdResponses];
+export type UpdateSmartCollectionResponse = UpdateSmartCollectionResponses[keyof UpdateSmartCollectionResponses];
 
-export type GetApiCreditsByIdData = {
+export type GetCreditData = {
     body?: never;
     path: {
         id: string;
@@ -20022,7 +20491,7 @@ export type GetApiCreditsByIdData = {
     url: '/api/credits/{id}';
 };
 
-export type GetApiCreditsByIdErrors = {
+export type GetCreditErrors = {
     /**
      * Default Response
      */
@@ -20033,7 +20502,7 @@ export type GetApiCreditsByIdErrors = {
     404: unknown;
 };
 
-export type GetApiCreditsByIdResponses = {
+export type GetCreditResponses = {
     /**
      * Default Response
      */
@@ -20069,9 +20538,9 @@ export type GetApiCreditsByIdResponses = {
     };
 };
 
-export type GetApiCreditsByIdResponse = GetApiCreditsByIdResponses[keyof GetApiCreditsByIdResponses];
+export type GetCreditResponse = GetCreditResponses[keyof GetCreditResponses];
 
-export type GetApiCreditsByIdArtworkByArtworkTypeData = {
+export type GetCreditArtworkData = {
     body?: never;
     path: {
         id: string;
@@ -20083,14 +20552,14 @@ export type GetApiCreditsByIdArtworkByArtworkTypeData = {
     url: '/api/credits/{id}/artwork/{artworkType}';
 };
 
-export type GetApiCreditsByIdArtworkByArtworkTypeErrors = {
+export type GetCreditArtworkErrors = {
     /**
      * Default Response
      */
     404: unknown;
 };
 
-export type GetApiCreditsByIdArtworkByArtworkTypeResponses = {
+export type GetCreditArtworkResponses = {
     /**
      * Default Response
      */
@@ -20117,21 +20586,21 @@ export type BatchGetProgramGroupingsByExternalIdsResponses = {
 
 export type BatchGetProgramGroupingsByExternalIdsResponse = BatchGetProgramGroupingsByExternalIdsResponses[keyof BatchGetProgramGroupingsByExternalIdsResponses];
 
-export type GetApiVersionData = {
+export type GetVersionData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/version';
 };
 
-export type GetApiVersionErrors = {
+export type GetVersionErrors = {
     /**
      * Default Response
      */
     500: unknown;
 };
 
-export type GetApiVersionResponses = {
+export type GetVersionResponses = {
     /**
      * Default Response
      */
@@ -20142,16 +20611,16 @@ export type GetApiVersionResponses = {
     };
 };
 
-export type GetApiVersionResponse = GetApiVersionResponses[keyof GetApiVersionResponses];
+export type GetVersionResponse = GetVersionResponses[keyof GetVersionResponses];
 
-export type GetApiFfmpegInfoData = {
+export type GetFfmpegInfoData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/ffmpeg-info';
 };
 
-export type GetApiFfmpegInfoResponses = {
+export type GetFfmpegInfoResponses = {
     /**
      * Default Response
      */
@@ -20168,23 +20637,23 @@ export type GetApiFfmpegInfoResponses = {
     };
 };
 
-export type GetApiFfmpegInfoResponse = GetApiFfmpegInfoResponses[keyof GetApiFfmpegInfoResponses];
+export type GetFfmpegInfoResponse = GetFfmpegInfoResponses[keyof GetFfmpegInfoResponses];
 
-export type PostApiUploadImageData = {
+export type UploadImageData = {
     body?: unknown;
     path?: never;
     query?: never;
     url: '/api/upload/image';
 };
 
-export type PostApiUploadImageErrors = {
+export type UploadImageErrors = {
     /**
      * Default Response
      */
     400: unknown;
 };
 
-export type PostApiUploadImageResponses = {
+export type UploadImageResponses = {
     /**
      * Default Response
      */
@@ -20194,79 +20663,79 @@ export type PostApiUploadImageResponses = {
     };
 };
 
-export type PostApiUploadImageResponse = PostApiUploadImageResponses[keyof PostApiUploadImageResponses];
+export type UploadImageResponse = UploadImageResponses[keyof UploadImageResponses];
 
-export type GetApiXmltvLastRefreshData = {
+export type GetXmltvLastRefreshData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/xmltv-last-refresh';
 };
 
-export type GetApiXmltvLastRefreshResponses = {
+export type GetXmltvLastRefreshResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetApiXmltvXmlData = {
+export type GetXmltvFeedData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/xmltv.xml';
 };
 
-export type GetApiXmltvXmlResponses = {
+export type GetXmltvFeedResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type HeadApiXmltvXmlData = {
+export type GetXmltvFeed2Data = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/xmltv.xml';
 };
 
-export type HeadApiXmltvXmlResponses = {
+export type GetXmltvFeed2Responses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type PostApiXmltvRefreshData = {
+export type RefreshXmltvData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/xmltv/refresh';
 };
 
-export type PostApiXmltvRefreshResponses = {
+export type RefreshXmltvResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type DeleteApiChannelsM3uData = {
+export type ClearM3uCacheData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/channels.m3u';
 };
 
-export type DeleteApiChannelsM3uResponses = {
+export type ClearM3uCacheResponses = {
     /**
      * Default Response
      */
     204: unknown;
 };
 
-export type GetApiChannelsM3uData = {
+export type GetM3uFeedData = {
     body?: never;
     path?: never;
     query?: {
@@ -20276,14 +20745,14 @@ export type GetApiChannelsM3uData = {
     url: '/api/channels.m3u';
 };
 
-export type GetApiChannelsM3uResponses = {
+export type GetM3uFeedResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type HeadApiChannelsM3uData = {
+export type GetM3uFeed2Data = {
     body?: never;
     path?: never;
     query?: {
@@ -20293,7 +20762,7 @@ export type HeadApiChannelsM3uData = {
     url: '/api/channels.m3u';
 };
 
-export type HeadApiChannelsM3uResponses = {
+export type GetM3uFeed2Responses = {
     /**
      * Default Response
      */
@@ -20319,7 +20788,7 @@ export type GetFfmpegPlaylistResponses = {
     200: unknown;
 };
 
-export type GetStreamChannelsByIdData = {
+export type StreamChannelData = {
     body?: never;
     path: {
         id: number | string;
@@ -20332,14 +20801,14 @@ export type GetStreamChannelsByIdData = {
     url: '/stream/channels/{id}';
 };
 
-export type GetStreamChannelsByIdResponses = {
+export type StreamChannelResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetStreamChannelsByIdTsData = {
+export type StreamChannelMpegTsData = {
     body?: never;
     path: {
         id: number | string;
@@ -20352,14 +20821,14 @@ export type GetStreamChannelsByIdTsData = {
     url: '/stream/channels/{id}.ts';
 };
 
-export type GetStreamChannelsByIdTsResponses = {
+export type StreamChannelMpegTsResponses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type GetStreamChannelsByIdM3U8Data = {
+export type StreamChannelM3U8Data = {
     body?: never;
     path: {
         id: string | number;
@@ -20370,14 +20839,14 @@ export type GetStreamChannelsByIdM3U8Data = {
     url: '/stream/channels/{id}.m3u8';
 };
 
-export type GetStreamChannelsByIdM3U8Responses = {
+export type StreamChannelM3U8Responses = {
     /**
      * Default Response
      */
     200: unknown;
 };
 
-export type HeadStreamChannelsByIdM3U8Data = {
+export type StreamChannelM3U82Data = {
     body?: never;
     path: {
         id: string | number;
@@ -20388,7 +20857,7 @@ export type HeadStreamChannelsByIdM3U8Data = {
     url: '/stream/channels/{id}.m3u8';
 };
 
-export type HeadStreamChannelsByIdM3U8Responses = {
+export type StreamChannelM3U82Responses = {
     /**
      * Default Response
      */

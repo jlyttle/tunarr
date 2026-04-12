@@ -5,9 +5,9 @@ import { TranscodeConfigSchema } from '@tunarr/types/schemas';
 import { useSnackbar } from 'notistack';
 import type z from 'zod';
 import {
-  getApiTranscodeConfigsQueryKey,
-  postApiTranscodeConfigsMutation,
-  putApiTranscodeConfigsByIdMutation,
+  getTranscodeConfigsQueryKey,
+  createTranscodeConfigMutation,
+  updateTranscodeConfigMutation,
 } from '../../../generated/@tanstack/react-query.gen.ts';
 
 type Opts = {
@@ -38,14 +38,14 @@ export const useTranscodeConfigFormOptions = ({
   const queryClient = useQueryClient();
 
   const updateConfigMutation = useMutation({
-    ...putApiTranscodeConfigsByIdMutation(),
+    ...updateTranscodeConfigMutation(),
     onSuccess: (ret) => {
       snackbar.enqueueSnackbar('Successfully saved config!', {
         variant: 'success',
       });
       onSave(ret);
       return queryClient.invalidateQueries({
-        queryKey: getApiTranscodeConfigsQueryKey(),
+        queryKey: getTranscodeConfigsQueryKey(),
         exact: false,
       });
     },
@@ -61,14 +61,14 @@ export const useTranscodeConfigFormOptions = ({
   });
 
   const newConfigMutation = useMutation({
-    ...postApiTranscodeConfigsMutation(),
+    ...createTranscodeConfigMutation(),
     onSuccess: (ret) => {
       snackbar.enqueueSnackbar('Successfully saved config!', {
         variant: 'success',
       });
       onSave(ret);
       return queryClient.invalidateQueries({
-        queryKey: getApiTranscodeConfigsQueryKey(),
+        queryKey: getTranscodeConfigsQueryKey(),
         exact: false,
       });
     },

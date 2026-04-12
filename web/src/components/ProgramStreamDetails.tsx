@@ -1,7 +1,7 @@
 import { CopyAll } from '@mui/icons-material';
 import { Button, Stack, TextField } from '@mui/material';
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { getApiProgramsByIdStreamDetailsOptions } from '../generated/@tanstack/react-query.gen.ts';
+import { getProgramStreamDetailsOptions } from '../generated/@tanstack/react-query.gen.ts';
 import { useCopyToClipboard } from '../hooks/useCopyToClipboard.ts';
 
 type Props = {
@@ -10,7 +10,7 @@ type Props = {
 
 export const ProgramStreamDetails = ({ programId }: Props) => {
   const { data: result } = useSuspenseQuery({
-    ...getApiProgramsByIdStreamDetailsOptions({ path: { id: programId } }),
+    ...getProgramStreamDetailsOptions({ path: { id: programId } }),
     staleTime: 60_000,
   });
   const copy = useCopyToClipboard();

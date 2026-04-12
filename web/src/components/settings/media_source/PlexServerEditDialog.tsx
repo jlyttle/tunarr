@@ -35,10 +35,10 @@ import { useEffect, useState } from 'react';
 import { Controller, FormProvider, useForm } from 'react-hook-form';
 import type { MarkOptional, StrictOmit } from 'ts-essentials';
 import { useDebounceValue } from 'usehooks-ts';
-import { getApiMediaSourcesQueryKey } from '../../../generated/@tanstack/react-query.gen.ts';
+import { getMediaSourcesQueryKey } from '../../../generated/@tanstack/react-query.gen.ts';
 import {
-  postApiMediaSources,
-  putApiMediaSourcesById,
+  createMediaSource,
+  updateMediaSource,
 } from '../../../generated/sdk.gen.ts';
 import { NetworkIcon } from '../../util/NetworkIcon.tsx';
 import { EditPathReplacementsForm } from './EditPathReplacementsForm.tsx';
@@ -101,20 +101,20 @@ export function PlexServerEditDialog({ open, onClose, server }: Props) {
   const updatePlexServerMutation = useMutation({
     mutationFn: async (newOrUpdatedServer: PlexServerSettingsForm) => {
       if (isNonEmptyString(newOrUpdatedServer.id)) {
-        await putApiMediaSourcesById({
+        await updateMediaSource({
           body: { ...newOrUpdatedServer, id: newOrUpdatedServer.id },
           path: { id: newOrUpdatedServer.id },
         });
         return { id: newOrUpdatedServer.id };
       } else {
-        return postApiMediaSources({
+        return createMediaSource({
           body: newOrUpdatedServer,
         });
       }
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: getApiMediaSourcesQueryKey(),
+        queryKey: getMediaSourcesQueryKey(),
         exact: true,
       });
       handleClose();

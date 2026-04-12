@@ -10,7 +10,7 @@ import type {
   PlexTerminalMedia,
 } from '@tunarr/types/plex';
 import { match, P } from 'ts-pattern';
-import { getApiPlexByMediaSourceIdItemsByItemIdChildren } from '../../generated/sdk.gen.ts';
+import { getPlexItemChildren } from '../../generated/sdk.gen.ts';
 
 export type PlexPathMappings = [
   ['/library/sections', PlexLibrarySections],
@@ -58,7 +58,7 @@ export const enumeratePlexItem = async (
       item.artist = parent;
     }
 
-    return getApiPlexByMediaSourceIdItemsByItemIdChildren({
+    return getPlexItemChildren({
       path: {
         mediaSourceId: mediaSource.id,
         itemId: item.externalId,

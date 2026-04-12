@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { deleteApiMediaSourcesByIdMutation } from '../../../generated/@tanstack/react-query.gen.ts';
+import { deleteMediaSourceMutation as deleteMediaSourceMutationOptions } from '../../../generated/@tanstack/react-query.gen.ts';
 
 export function MediaSourceDeleteDialog({
   open,
@@ -16,7 +16,7 @@ export function MediaSourceDeleteDialog({
 }: PlexServerDeleteDialogProps) {
   const queryClient = useQueryClient();
   const deleteMediaSourceMutation = useMutation({
-    ...deleteApiMediaSourcesByIdMutation(),
+    ...deleteMediaSourceMutationOptions(),
     onSuccess: () => {
       return queryClient.invalidateQueries({
         queryKey: ['settings', 'media-sources'],

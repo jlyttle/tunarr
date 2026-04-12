@@ -21,6 +21,8 @@ export const fillerListsApi: RouterPluginAsyncCallback = async (fastify) => {
     '/filler-lists',
     {
       schema: {
+        operationId: 'getFillerLists',
+        summary: 'List all filler lists',
         tags: ['Filler Lists'],
         response: {
           200: z.array(FillerListSchema),
@@ -44,6 +46,8 @@ export const fillerListsApi: RouterPluginAsyncCallback = async (fastify) => {
     '/filler-lists/:id',
     {
       schema: {
+        operationId: 'getFillerList',
+        summary: 'Get a filler list by ID',
         tags: ['Filler Lists'],
         params: z.object({ id: fillerShowIdSchema }),
         response: {
@@ -70,6 +74,8 @@ export const fillerListsApi: RouterPluginAsyncCallback = async (fastify) => {
     '/filler-lists/:id',
     {
       schema: {
+        operationId: 'deleteFillerList',
+        summary: 'Delete a filler list',
         tags: ['Filler Lists'],
         params: z.object({ id: fillerShowIdSchema }),
         response: {
@@ -92,6 +98,8 @@ export const fillerListsApi: RouterPluginAsyncCallback = async (fastify) => {
     '/filler-lists',
     {
       schema: {
+        operationId: 'createFillerList',
+        summary: 'Create a filler list',
         tags: ['Filler Lists'],
         body: CreateFillerListRequestSchema,
         response: {
@@ -109,6 +117,8 @@ export const fillerListsApi: RouterPluginAsyncCallback = async (fastify) => {
     '/filler-lists/:id',
     {
       schema: {
+        operationId: 'updateFillerList',
+        summary: 'Update a filler list',
         tags: ['Filler Lists'],
         params: z.object({
           id: fillerShowIdSchema,
@@ -142,6 +152,8 @@ export const fillerListsApi: RouterPluginAsyncCallback = async (fastify) => {
     '/filler-lists/:id/programs',
     {
       schema: {
+        operationId: 'getFillerListPrograms',
+        summary: 'List programs in a filler list',
         tags: ['Filler Lists'],
         params: IdPathParamSchema.extend({ id: fillerShowIdSchema }),
         response: {

@@ -21,7 +21,7 @@ import type {
 } from '@tunarr/types/plex';
 import { compact, flatMap, isNil, sumBy } from 'lodash-es';
 import { useCallback, useMemo } from 'react';
-import { getApiPlexByMediaSourceIdSearch } from '../../generated/sdk.gen.ts';
+import { searchPlexLibrary } from '../../generated/sdk.gen.ts';
 import { addKnownMediaForServer } from '../../store/programmingSelector/actions.ts';
 import { useQueryObserver } from '../useQueryObserver.ts';
 
@@ -34,7 +34,7 @@ const usePlexSearchQueryFn = () => {
       parent?: Maybe<{ parentId: string; type: PlexMedia['type'] }>,
       pageParams?: { start: number; size: number },
     ) => {
-      const { data } = await getApiPlexByMediaSourceIdSearch({
+      const { data } = await searchPlexLibrary({
         path: {
           mediaSourceId: plexServer.id,
         },
@@ -181,7 +181,7 @@ const usePlexItemsInfiniteQueryOptions = (
       enabled: enabled && !isNil(plexServer) && !isNil(currentLibrary),
       initialPageParam: 0,
       queryFn: async ({ pageParam = 0 }) => {
-        const { data } = await getApiPlexByMediaSourceIdSearch({
+        const { data } = await searchPlexLibrary({
           path: {
             mediaSourceId: plexServer!.id,
           },

@@ -36,8 +36,8 @@ import type { StrictOmit } from 'ts-essentials';
 import { type MarkOptional } from 'ts-essentials';
 import { useDebounceCallback, useDebounceValue } from 'usehooks-ts';
 import {
-  postApiMediaSources,
-  putApiMediaSourcesById,
+  createMediaSource,
+  updateMediaSource,
 } from '../../../generated/sdk.gen.ts';
 import { invalidateTaggedQueries } from '../../../helpers/queryUtil.ts';
 import { embyLogin } from '../../../hooks/emby/useEmbyLogin.ts';
@@ -111,13 +111,13 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
   const updateSourceMutation = useMutation({
     mutationFn: async (newOrUpdatedServer: EmbyServerSettingsForm) => {
       if (isNonEmptyString(newOrUpdatedServer.id)) {
-        await putApiMediaSourcesById({
+        await updateMediaSource({
           body: { ...newOrUpdatedServer, id: newOrUpdatedServer.id },
           path: { id: newOrUpdatedServer.id },
         });
         return { id: newOrUpdatedServer.id };
       } else {
-        return postApiMediaSources({
+        return createMediaSource({
           body: newOrUpdatedServer,
         });
       }
