@@ -209,6 +209,7 @@ export class NvidiaPipelineBuilder extends SoftwarePipelineBuilder {
       currentState,
     );
     currentState = this.setPad(currentState);
+    currentState = this.setCrop(currentState);
     this.setStillImageLoop();
 
     if (
@@ -402,7 +403,6 @@ export class NvidiaPipelineBuilder extends SoftwarePipelineBuilder {
         currentState,
         ffmpegState,
         desiredState.scaledSize,
-        desiredState.paddedSize,
       );
     } else {
       const hasOverlay =
@@ -424,7 +424,6 @@ export class NvidiaPipelineBuilder extends SoftwarePipelineBuilder {
           pixelFormat: outPixelFormat,
         }),
         desiredState.scaledSize,
-        desiredState.paddedSize,
       );
     }
 
@@ -443,6 +442,13 @@ export class NvidiaPipelineBuilder extends SoftwarePipelineBuilder {
     }
 
     let nextState = currentState;
+    if (
+      this.desiredState.croppedSize ||
+      currentState.paddedSize.equals(this.desiredState.paddedSize)
+    ) {
+      return currentState;
+    }
+
     if (!currentState.paddedSize.equals(this.desiredState.paddedSize)) {
       // TODO: move this into current/desired state, but see if it works here for now
       // const pixelFormat: Nullable<PixelFormat> =

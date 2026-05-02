@@ -9,7 +9,6 @@ export class ScaleVaapiFilter extends FilterOption {
   constructor(
     private currentState: FrameState,
     private scaledSize: FrameSize,
-    private paddedSize: FrameSize,
   ) {
     super();
     this.filter = this.genFilter();
@@ -29,14 +28,8 @@ export class ScaleVaapiFilter extends FilterOption {
         scale = `scale_vaapi=format=${pixelFormat}:extra_hw_frames=64`;
       }
     } else {
-      let aspectRatio = '';
-      if (!this.scaledSize.equals(this.paddedSize)) {
-        // Set cropped size
-        aspectRatio = ':force_original_aspect_ratio=decrease';
-      }
-
       let squareScale = '';
-      const targetSize = `${this.paddedSize.width}:${this.paddedSize.height}`;
+      const targetSize = `${this.scaledSize.width}:${this.scaledSize.height}`;
       let format = '';
       if (this.currentState.pixelFormat) {
         const pixelFormat =
@@ -50,10 +43,10 @@ export class ScaleVaapiFilter extends FilterOption {
       if (this.currentState.isAnamorphic) {
         squareScale = `scale_vaapi=iw*sar:ih${format}:extra_hw_frames=64,setsar=1,`;
       } else {
-        aspectRatio += ',setsar=1';
+        format += ',setsar=1';
       }
 
-      scale = `${squareScale}scale_vaapi=${targetSize}:extra_hw_frames=64:force_divisible_by=2${format}${aspectRatio}`;
+      scale = `${squareScale}scale_vaapi=${targetSize}:extra_hw_frames=64:force_divisible_by=2${format}`;
     }
 
     if (this.currentState.frameDataLocation === FrameDataLocation.Hardware) {

@@ -168,6 +168,7 @@ export class QsvPipelineBuilder extends SoftwarePipelineBuilder {
     currentState = this.setScale(currentState);
     currentState = this.setTonemap(currentState);
     currentState = this.setPad(currentState);
+    currentState = this.setCrop(currentState);
     this.setStillImageLoop();
 
     if (currentState.frameDataLocation === FrameDataLocation.Hardware) {
@@ -285,7 +286,6 @@ export class QsvPipelineBuilder extends SoftwarePipelineBuilder {
         currentState,
         ffmpegState,
         desiredState.scaledSize,
-        desiredState.paddedSize,
       );
     } else {
       scaleFilter = new ScaleQsvFilter(nextState, desiredState.scaledSize);
@@ -305,6 +305,13 @@ export class QsvPipelineBuilder extends SoftwarePipelineBuilder {
     }
 
     const { desiredState } = this.context;
+
+    if (
+      desiredState.croppedSize ||
+      currentState.paddedSize.equals(desiredState.paddedSize)
+    ) {
+      return currentState;
+    }
 
     if (!currentState.paddedSize.equals(desiredState.paddedSize)) {
       const pad = PadFilter.create(currentState, desiredState);

@@ -30,7 +30,6 @@ export class ScaleCudaFilter extends FilterOption {
   constructor(
     private currentState: FrameState,
     private scaledSize: FrameSize,
-    private paddedSize: FrameSize,
     private passthrough: boolean = false,
   ) {
     super();
@@ -45,7 +44,6 @@ export class ScaleCudaFilter extends FilterOption {
     return new ScaleCudaFilter(
       currentState.update({ pixelFormat: targetPixelFormat }),
       currentState.scaledSize,
-      currentState.paddedSize,
       passthrough,
     );
   }
@@ -81,13 +79,8 @@ export class ScaleCudaFilter extends FilterOption {
         scale = `${this.filterName}=format=${targetPixelFormat.name}${passthrough}`;
       }
     } else {
-      let aspectRatio = '';
-      if (!this.scaledSize.equals(this.paddedSize)) {
-        aspectRatio = ':force_original_aspect_ratio=decrease';
-      }
-
       let squareScale = '';
-      const targetSize = `${this.paddedSize.width}:${this.paddedSize.height}`;
+      const targetSize = `${this.scaledSize.width}:${this.scaledSize.height}`;
       let format = '';
       const targetPixelFormat = this.supportedPixelFormat;
       if (targetPixelFormat) {
@@ -98,10 +91,10 @@ export class ScaleCudaFilter extends FilterOption {
       if (this.currentState.isAnamorphic) {
         squareScale = `${this.filterName}=iw*sar:ih,setsar=1,`;
       } else {
-        aspectRatio += `,setsar=1`;
+        format += ',setsar=1';
       }
 
-      scale = `${squareScale}${this.filterName}=${targetSize}${format}${aspectRatio}`;
+      scale = `${squareScale}${this.filterName}=${targetSize}${format}`;
     }
 
     if (isEmpty(scale)) {

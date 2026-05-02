@@ -17,10 +17,13 @@ import {
   ColorTransferFormats,
   VideoFormats,
 } from '../../constants.ts';
+import { CropFilter } from '../../filter/CropFilter.ts';
 import { HardwareDownloadFilter } from '../../filter/HardwareDownloadFilter.ts';
+import { PadFilter } from '../../filter/PadFilter.ts';
 import { PixelFormatFilter } from '../../filter/PixelFormatFilter.ts';
 import { HardwareUploadQsvFilter } from '../../filter/qsv/HardwareUploadQsvFilter.ts';
 import { QsvFormatFilter } from '../../filter/qsv/QsvFormatFilter.ts';
+import { ScaleQsvFilter } from '../../filter/qsv/ScaleQsvFilter.ts';
 import { TonemapQsvFilter } from '../../filter/qsv/TonemapQsvFilter.ts';
 import { TonemapFilter } from '../../filter/TonemapFilter.ts';
 import { OverlayWatermarkFilter } from '../../filter/watermark/OverlayWatermarkFilter.ts';
@@ -170,6 +173,7 @@ function buildPipeline(opts: {
   watermark?: WatermarkInputSource | null;
   capabilities?: VaapiHardwareCapabilities;
   pipelineOptions?: Partial<PipelineOptions>;
+  desiredState?: FrameState;
 }) {
   const video = opts.videoInput ?? makeH264VideoInput();
   const builder = new QsvPipelineBuilder(
@@ -185,17 +189,41 @@ function buildPipeline(opts: {
     FfmpegState.create({
       version: { versionString: '7.1.1', isUnknown: false },
     }),
-    new FrameState({
-      isAnamorphic: false,
-      scaledSize: video.streams[0]!.squarePixelFrameSize(FrameSize.FHD),
-      paddedSize: FrameSize.FHD,
-      pixelFormat: new PixelFormatYuv420P(),
-    }),
+    opts.desiredState ??
+      new FrameState({
+        isAnamorphic: false,
+        scaledSize: video.streams[0]!.squarePixelFrameSize(FrameSize.FHD),
+        paddedSize: FrameSize.FHD,
+        pixelFormat: new PixelFormatYuv420P(),
+      }),
     { ...DefaultPipelineOptions, ...(opts.pipelineOptions ?? {}) },
   );
 }
 
 describe('QsvPipelineBuilder', () => {
+  test('crop mode skips pad and falls back to software crop after hardware scale', () => {
+    const pipeline = buildPipeline({
+      desiredState: new FrameState({
+        isAnamorphic: false,
+        resizeMode: 'crop',
+        scaledSize: FrameSize.withDimensions(854, 480),
+        paddedSize: FrameSize.withDimensions(640, 480),
+        croppedSize: FrameSize.withDimensions(640, 480),
+        pixelFormat: new PixelFormatYuv420P(),
+      }),
+    });
+
+    const filters = pipeline.filterChain.videoFilterSteps;
+    const scale = filters.find((filter) => filter instanceof ScaleQsvFilter);
+    const crop = filters.find((filter) => filter instanceof CropFilter);
+
+    expect(scale).toBeInstanceOf(ScaleQsvFilter);
+    expect(crop).toBeInstanceOf(CropFilter);
+    expect(crop?.filter).toContain('hwdownload');
+    expect(crop?.filter).toContain('crop=640:480');
+    expect(filters.some((filter) => filter instanceof PadFilter)).toBe(false);
+  });
+
   test('should work', () => {
     const capabilities = new VaapiHardwareCapabilities([]);
     const video = VideoInputSource.withStream(

@@ -11,6 +11,7 @@ import type {
   AudioStreamDetails,
   StreamRenditions,
   SubtitleRenditionInfo,
+  VideoStreamDetails,
 } from '@/stream/types.js';
 import { FileStreamSource, HttpStreamSource } from '@/stream/types.js';
 import type { Maybe, Nullable } from '@/types/util.js';
@@ -26,7 +27,10 @@ import type { DeepReadonly, NonEmptyArray } from 'ts-essentials';
 import { match, P } from 'ts-pattern';
 import type { IChannelDB } from '../db/interfaces/IChannelDB.ts';
 import { isImageBasedSubtitle } from '../stream/util.ts';
-import { FfmpegPlaybackParamsCalculator } from './FfmpegPlaybackParamsCalculator.ts';
+import {
+  calculateAspectTransform,
+  FfmpegPlaybackParamsCalculator,
+} from './FfmpegPlaybackParamsCalculator.ts';
 import { FfmpegProcess } from './FfmpegProcess.ts';
 import { FfmpegTranscodeSession } from './FfmpegTrancodeSession.ts';
 import { SubtitleStreamPicker } from './SubtitleStreamPicker.ts';
@@ -263,6 +267,7 @@ export class FfmpegStreamFactory extends IFFMPEG {
       }),
       new FrameState({
         realtime: playbackParams.realtime,
+        resizeMode: 'preserve',
         scaledSize: FrameSize.fromResolution(this.transcodeConfig.resolution),
         paddedSize: FrameSize.fromResolution(this.transcodeConfig.resolution),
         isAnamorphic: false,
@@ -326,8 +331,7 @@ export class FfmpegStreamFactory extends IFFMPEG {
     // re-encoding. Incompatible audio codecs get per-stream overrides.
     // Subtitles are still processed as WebVTT sidecar when available.
     const isPassthrough =
-      isRemux ||
-      outputFormat.type === OutputFormatTypes.HlsDirectV2;
+      isRemux || outputFormat.type === OutputFormatTypes.HlsDirectV2;
     const playbackParams = isPassthrough
       ? null
       : new FfmpegPlaybackParamsCalculator(
@@ -465,7 +469,8 @@ export class FfmpegStreamFactory extends IFFMPEG {
       }
 
       if (watermark?.enabled) {
-        const watermarkUrl = watermark.url ?? makeLocalUrl('/images/tunarr.png');
+        const watermarkUrl =
+          watermark.url ?? makeLocalUrl('/images/tunarr.png');
         watermarkSource = new WatermarkInputSource(
           new HttpStreamSource(watermarkUrl),
           StillImageStream.create({
@@ -486,8 +491,9 @@ export class FfmpegStreamFactory extends IFFMPEG {
       isDefined(streamDetails.subtitleDetails) &&
       this.channel.subtitlesEnabled
     ) {
-      const sidecarEnabled =
-        this.featureFlagService.get('webvttSidecarEnabled');
+      const sidecarEnabled = this.featureFlagService.get(
+        'webvttSidecarEnabled',
+      );
 
       const subtitlePreferences =
         await this.channelDB.getChannelSubtitlePreferences(this.channel.uuid);
@@ -507,10 +513,8 @@ export class FfmpegStreamFactory extends IFFMPEG {
         // In copy-all mode, force Convert (sidecar) since burn-in is
         // not possible without re-encoding. For image-based subtitles
         // that can't be converted to WebVTT, skip them entirely.
-        const canUseSidecar =
-          !isImageBasedSubtitle(pickedSubtitleStream.codec);
-        const useSidecar =
-          isPassthrough || (sidecarEnabled && canUseSidecar);
+        const canUseSidecar = !isImageBasedSubtitle(pickedSubtitleStream.codec);
+        const useSidecar = isPassthrough || (sidecarEnabled && canUseSidecar);
         const method = useSidecar
           ? SubtitleMethods.Convert
           : SubtitleMethods.Burn;
@@ -573,12 +577,14 @@ export class FfmpegStreamFactory extends IFFMPEG {
 
     const scaledSize =
       sourceFrameSize ??
+      playbackParams?.scaledSize ??
       videoStream.squarePixelFrameSize(
         FrameSize.fromResolution(this.transcodeConfig.resolution),
       );
 
     const paddedSize =
       sourceFrameSize ??
+      playbackParams?.paddedSize ??
       FrameSize.fromResolution(this.transcodeConfig.resolution);
 
     // Build per-stream audio codec overrides for copy-all mode.
@@ -648,8 +654,12 @@ export class FfmpegStreamFactory extends IFFMPEG {
       }),
       new FrameState({
         isAnamorphic: false,
+        resizeMode: isPassthrough
+          ? 'preserve'
+          : (playbackParams?.resizeMode ?? 'preserve'),
         scaledSize,
         paddedSize,
+        croppedSize: isPassthrough ? undefined : playbackParams?.croppedSize,
         videoBitrate: isPassthrough ? undefined : playbackParams!.videoBitrate,
         videoBufferSize: isPassthrough
           ? undefined
@@ -663,7 +673,9 @@ export class FfmpegStreamFactory extends IFFMPEG {
           ? 90000
           : playbackParams!.videoTrackTimeScale,
         realtime,
-        videoFormat: isPassthrough ? VideoFormats.Copy : playbackParams!.videoFormat,
+        videoFormat: isPassthrough
+          ? VideoFormats.Copy
+          : playbackParams!.videoFormat,
         videoProfile: null,
         deinterlace: isPassthrough ? false : playbackParams!.deinterlace,
         infiniteLoop: lineupItem.infiniteLoop,
@@ -721,6 +733,11 @@ export class FfmpegStreamFactory extends IFFMPEG {
     const playbackParams = calculator.calculateForErrorStream(
       outputFormat,
       realtime,
+    );
+
+    const aspectTransform = calculateAspectTransform(
+      this.transcodeConfig,
+      videoStreamToDetails(errorInput.streams[0]),
     );
 
     const frameSize = FrameSize.fromResolution(this.transcodeConfig.resolution);
@@ -811,10 +828,10 @@ export class FfmpegStreamFactory extends IFFMPEG {
       }),
       new FrameState({
         isAnamorphic: false,
-        scaledSize:
-          scaledSize ??
-          FrameSize.fromResolution(this.transcodeConfig.resolution),
-        paddedSize: FrameSize.fromResolution(this.transcodeConfig.resolution),
+        resizeMode: aspectTransform.resizeMode,
+        scaledSize: scaledSize ?? aspectTransform.scaledSize,
+        paddedSize: aspectTransform.paddedSize,
+        croppedSize: aspectTransform.croppedSize,
         videoBitrate: playbackParams.videoBitrate,
         videoBufferSize: playbackParams.videoBufferSize,
         pixelFormat: new PixelFormatYuv420P(),
@@ -873,6 +890,10 @@ export class FfmpegStreamFactory extends IFFMPEG {
       outputFormat,
       true,
     );
+    const aspectTransform = calculateAspectTransform(
+      this.transcodeConfig,
+      videoStreamToDetails(offlineInput.streams[0]),
+    );
 
     const audioState = AudioState.create({
       audioEncoder: playbackParams.audioFormat,
@@ -921,8 +942,10 @@ export class FfmpegStreamFactory extends IFFMPEG {
       }),
       new FrameState({
         isAnamorphic: false,
-        scaledSize: FrameSize.fromResolution(this.transcodeConfig.resolution),
-        paddedSize: FrameSize.fromResolution(this.transcodeConfig.resolution),
+        resizeMode: aspectTransform.resizeMode,
+        scaledSize: aspectTransform.scaledSize,
+        paddedSize: aspectTransform.paddedSize,
+        croppedSize: aspectTransform.croppedSize,
         videoBitrate: playbackParams.videoBitrate,
         videoBufferSize: playbackParams.videoBufferSize,
         pixelFormat: new PixelFormatYuv420P(),
@@ -987,4 +1010,27 @@ export class FfmpegStreamFactory extends IFFMPEG {
       audioDetails[0];
     return fallbackStream;
   }
+}
+
+function videoStreamToDetails(videoStream: VideoStream): VideoStreamDetails {
+  return {
+    codec: videoStream.codec,
+    profile: videoStream.profile ?? null,
+    width: videoStream.frameSize.width,
+    height: videoStream.frameSize.height,
+    framerate: videoStream.getNumericFrameRateOrDefault(),
+    scanType: 'progressive',
+    pixelFormat: videoStream.pixelFormat?.name ?? null,
+    bitDepth: videoStream.pixelFormat?.bitDepth ?? 8,
+    streamIndex: videoStream.index,
+    sampleAspectRatio: videoStream.sampleAspectRatio,
+    displayAspectRatio: videoStream.displayAspectRatio,
+    anamorphic: videoStream.isAnamorphic,
+    bitrate: null,
+    isAttachedPic: false,
+    colorRange: null,
+    colorSpace: null,
+    colorTransfer: null,
+    colorPrimaries: null,
+  };
 }

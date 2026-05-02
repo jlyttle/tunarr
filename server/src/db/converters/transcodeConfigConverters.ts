@@ -8,6 +8,7 @@ export function transcodeConfigOrmToDto(
     ...config,
     id: config.uuid,
     disableChannelOverlay: config.disableChannelOverlay ?? false,
+    aspectRatioMode: config.aspectRatioMode ?? 'preserve',
     normalizeFrameRate: config.normalizeFrameRate ?? false,
     deinterlaceVideo: config.deinterlaceVideo ?? false,
     isDefault: config.isDefault ?? false,

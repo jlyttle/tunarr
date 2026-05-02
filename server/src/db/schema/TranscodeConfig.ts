@@ -85,6 +85,9 @@ export const TranscodeAudioOutputFormat = {
   Mp3: 'mp3' as const,
 } as const;
 
+export const AspectRatioModes = ['preserve', 'crop', 'stretch'] as const;
+export type AspectRatioMode = TupleToUnion<typeof AspectRatioModes>;
+
 export const ErrorScreenTypes = [
   'static',
   'pic',
@@ -105,6 +108,7 @@ export const TranscodeConfigColumns: (keyof TranscodeConfigTable)[] = [
   'audioFormat',
   'audioSampleRate',
   'audioVolumePercent',
+  'aspectRatioMode',
   'deinterlaceVideo',
   'disableChannelOverlay',
   'errorScreen',
@@ -150,6 +154,9 @@ export const TranscodeConfig = sqliteTable(
     videoBitDepth: integer().$type<8 | 10>().default(8), // TODO: See if we want to represent this differently
     videoBitRate: integer().notNull(),
     videoBufferSize: integer().notNull(),
+    aspectRatioMode: text({ enum: AspectRatioModes })
+      .notNull()
+      .default('preserve'),
 
     audioChannels: integer().notNull(),
     audioFormat: text({ enum: TranscodeAudioOutputFormats }).notNull(),
@@ -236,6 +243,7 @@ export const defaultTranscodeConfig = (
     videoBitRate: 2000,
     videoBufferSize: 4000,
     videoFormat: 'h264',
+    aspectRatioMode: 'preserve',
     disableChannelOverlay: false,
     normalizeFrameRate: false,
     videoBitDepth: 8,

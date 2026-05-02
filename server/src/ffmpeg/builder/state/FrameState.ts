@@ -2,6 +2,7 @@ import {
   PixelFormatUnknown,
   type PixelFormat,
 } from '@/ffmpeg/builder/format/PixelFormat.js';
+import type { TranscodeAspectRatioMode } from '@tunarr/types';
 import type { FrameSize } from '@/ffmpeg/builder/types.js';
 import { FrameDataLocation } from '@/ffmpeg/builder/types.js';
 import type { DataProps, Nullable } from '@/types/util.js';
@@ -17,6 +18,7 @@ export const DefaultFrameState: Omit<
   FrameStateFields,
   'scaledSize' | 'paddedSize' | 'isAnamorphic'
 > = {
+  resizeMode: 'preserve',
   realtime: false,
   videoFormat: 'h264',
   videoPreset: null,
@@ -43,6 +45,7 @@ export class FrameState {
   scaledSize!: FrameSize;
   paddedSize!: FrameSize;
   croppedSize?: FrameSize;
+  resizeMode!: TranscodeAspectRatioMode;
   isAnamorphic!: boolean;
   realtime!: boolean;
   videoFormat!: VideoFormat;

@@ -198,6 +198,7 @@ export class VaapiPipelineBuilder extends SoftwarePipelineBuilder {
     currentState = this.setTonemap(currentState);
     currentState = this.setScale(currentState);
     currentState = this.setPad(currentState);
+    currentState = this.setCrop(currentState);
     this.setStillImageLoop();
     // TODO: Set crop
 
@@ -450,7 +451,6 @@ export class VaapiPipelineBuilder extends SoftwarePipelineBuilder {
         currentState,
         ffmpegState,
         desiredState.scaledSize,
-        desiredState.paddedSize,
         // desiredState.croppedSize
       );
     } else {
@@ -465,7 +465,6 @@ export class VaapiPipelineBuilder extends SoftwarePipelineBuilder {
               : null,
         }),
         desiredState.scaledSize,
-        desiredState.paddedSize,
       );
     }
 

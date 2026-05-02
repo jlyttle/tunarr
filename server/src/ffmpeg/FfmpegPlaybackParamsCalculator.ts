@@ -1,12 +1,11 @@
 import type { TranscodeConfigOrm } from '@/db/schema/TranscodeConfig.js';
 import {
+  type AspectRatioMode,
   HardwareAccelerationMode,
   TranscodeAudioOutputFormat,
 } from '@/db/schema/TranscodeConfig.js';
 import type { ChannelStreamMode } from '@/db/schema/base.js';
 import type { StreamDetails, VideoStreamDetails } from '@/stream/types.js';
-import { gcd } from '@/util/index.js';
-import type { Resolution } from '@tunarr/types';
 import { ChannelStreamModes } from '@tunarr/types';
 import type { OutputFormat, VideoFormat } from './builder/constants.ts';
 import type { PixelFormat } from './builder/format/PixelFormat.ts';
@@ -47,34 +46,14 @@ export class FfmpegPlaybackParamsCalculator {
 
     if (streamDetails.videoDetails) {
       const [videoStream] = streamDetails.videoDetails;
-      if (
-        needsToScale(this.transcodeConfig, videoStream) &&
-        videoStream.sampleAspectRatio !== '0:0'
-      ) {
-        const scaledSize = calculateScaledSize(
-          this.transcodeConfig,
-          videoStream,
-        );
-        if (
-          scaledSize.widthPx !== videoStream.width ||
-          scaledSize.heightPx !== videoStream.height
-        ) {
-          params.scaledSize = FrameSize.fromResolution(scaledSize).ensureEven();
-        }
-      }
-
-      const sizeAfterScaling =
-        params.scaledSize ??
-        FrameSize.create({
-          width: videoStream.width,
-          height: videoStream.height,
-        });
-      if (
-        sizeAfterScaling.width !== this.transcodeConfig.resolution.widthPx ||
-        sizeAfterScaling.height !== this.transcodeConfig.resolution.heightPx
-      ) {
-        params.needsPad = true;
-      }
+      const aspectTransform = calculateAspectTransform(
+        this.transcodeConfig,
+        videoStream,
+      );
+      params.resizeMode = aspectTransform.resizeMode;
+      params.scaledSize = aspectTransform.scaledSize;
+      params.paddedSize = aspectTransform.paddedSize;
+      params.croppedSize = aspectTransform.croppedSize;
 
       // We only have an option for maxFPS right now...
       // if (
@@ -142,8 +121,10 @@ export class FfmpegPlaybackParamsCalculator {
 export type FfmpegPlaybackParams = {
   hwAccel: HardwareAccelerationMode;
   frameRate?: number;
+  resizeMode?: AspectRatioMode;
   scaledSize?: FrameSize;
-  needsPad?: boolean;
+  paddedSize?: FrameSize;
+  croppedSize?: FrameSize;
   videoTrackTimeScale?: number;
   realtime?: boolean;
 
@@ -163,78 +144,131 @@ export type FfmpegPlaybackParams = {
   audioDuration?: number;
 };
 
-function needsToScale(
-  transcodeConfig: TranscodeConfigOrm,
-  videoStreamDetails: VideoStreamDetails,
-) {
-  return (
-    isAnamorphic(videoStreamDetails) ||
-    actualSizeDiffersFromDesired(
-      videoStreamDetails,
-      transcodeConfig.resolution,
-    ) ||
-    videoStreamDetails.width % 2 == 1 ||
-    videoStreamDetails.height % 2 == 1
-  );
-}
+const AspectRatioTolerance = 0.01;
 
-function actualSizeDiffersFromDesired(
+export type AspectTransform = {
+  resizeMode: AspectRatioMode;
+  scaledSize: FrameSize;
+  paddedSize: FrameSize;
+  croppedSize?: FrameSize;
+};
+
+export function calculateAspectTransform(
+  config: Pick<TranscodeConfigOrm, 'aspectRatioMode' | 'resolution'>,
   videoStream: VideoStreamDetails,
-  targetResolution: Resolution,
-) {
-  return (
-    videoStream.width !== targetResolution.widthPx ||
-    videoStream.height !== targetResolution.heightPx
-  );
+): AspectTransform {
+  const targetSize = FrameSize.fromResolution(config.resolution).ensureEven();
+  const targetAspectRatio = targetSize.width / targetSize.height;
+  const sourceAspectRatio = calculateDisplayAspectRatio(videoStream);
+  const aspectRatioMode = config.aspectRatioMode ?? 'preserve';
+  const aspectRatioMatches =
+    Math.abs(sourceAspectRatio - targetAspectRatio) <= AspectRatioTolerance;
+
+  if (aspectRatioMode === 'stretch') {
+    return {
+      resizeMode: aspectRatioMode,
+      scaledSize: targetSize,
+      paddedSize: targetSize,
+    };
+  }
+
+  if (aspectRatioMatches) {
+    return {
+      resizeMode: aspectRatioMode,
+      scaledSize: targetSize,
+      paddedSize: targetSize,
+    };
+  }
+
+  if (aspectRatioMode === 'crop') {
+    return {
+      resizeMode: aspectRatioMode,
+      scaledSize: calculateFillSize(sourceAspectRatio, targetSize),
+      paddedSize: targetSize,
+      croppedSize: targetSize,
+    };
+  }
+
+  return {
+    resizeMode: 'preserve',
+    scaledSize: calculateFitSize(sourceAspectRatio, targetSize),
+    paddedSize: targetSize,
+  };
 }
 
-function isAnamorphic(videoStreamDetails: VideoStreamDetails) {
-  // Unclear if we can rely on this
-  // if (isDefined(videoStreamDetails.anamorphic)) {
-  //   return videoStreamDetails.anamorphic;
-  // }
-  if (videoStreamDetails.sampleAspectRatio === '1:1') {
-    return false;
+function calculateFillSize(sourceAspectRatio: number, targetSize: FrameSize) {
+  const targetAspectRatio = targetSize.width / targetSize.height;
+
+  if (sourceAspectRatio >= targetAspectRatio) {
+    return FrameSize.create({
+      width: ceilEven(targetSize.height * sourceAspectRatio),
+      height: targetSize.height,
+    });
   }
 
-  if (videoStreamDetails.sampleAspectRatio !== '0:1') {
-    return true;
-  }
-
-  if (videoStreamDetails.displayAspectRatio === '0:1') {
-    return false;
-  }
-
-  return (
-    videoStreamDetails.displayAspectRatio !==
-    `${videoStreamDetails.width}:${videoStreamDetails.height}`
-  );
+  return FrameSize.create({
+    width: targetSize.width,
+    height: ceilEven(targetSize.width / sourceAspectRatio),
+  });
 }
 
-function calculateScaledSize(
-  config: TranscodeConfigOrm,
-  videoStream: VideoStreamDetails,
-) {
-  const { widthPx: targetW, heightPx: targetH } = config.resolution;
-  const [width, height] = (videoStream.sampleAspectRatio ?? '1:1')
-    .split(':')
-    .map((i) => parseInt(i));
-  const sarSize: Resolution = { widthPx: width!, heightPx: height! };
-  let pixelP = videoStream.width * sarSize.widthPx,
-    pixelQ = videoStream.height * sarSize.heightPx;
-  const g = gcd(pixelQ, pixelP);
-  pixelP /= g;
-  pixelQ /= g;
+function calculateFitSize(sourceAspectRatio: number, targetSize: FrameSize) {
+  const targetAspectRatio = targetSize.width / targetSize.height;
 
-  const h1 = {
-    widthPx: targetW,
-    heightPx: targetW * (pixelQ / pixelP),
-  } satisfies Resolution;
-  const h2 = {
-    widthPx: targetH * (pixelP / pixelQ),
-    heightPx: targetH,
-  } satisfies Resolution;
+  if (sourceAspectRatio >= targetAspectRatio) {
+    return FrameSize.create({
+      width: targetSize.width,
+      height: floorEven(targetSize.width / sourceAspectRatio),
+    });
+  }
 
-  // TODO implement crop scaling
-  return h1.heightPx <= targetH ? h1 : h2;
+  return FrameSize.create({
+    width: floorEven(targetSize.height * sourceAspectRatio),
+    height: targetSize.height,
+  });
+}
+
+function calculateDisplayAspectRatio(videoStream: VideoStreamDetails) {
+  const numericSar = parseAspectRatio(videoStream.sampleAspectRatio);
+  if (numericSar && numericSar.den !== 0) {
+    return (
+      (videoStream.width * numericSar.num) /
+      (videoStream.height * numericSar.den)
+    );
+  }
+
+  const numericDar = parseAspectRatio(videoStream.displayAspectRatio);
+  if (numericDar && numericDar.den !== 0) {
+    return numericDar.num / numericDar.den;
+  }
+
+  return videoStream.width / videoStream.height;
+}
+
+function parseAspectRatio(value?: string) {
+  if (!value) {
+    return null;
+  }
+
+  const [numS, denS] = value.split(':');
+  if (!numS || !denS) {
+    return null;
+  }
+
+  const num = parseFloat(numS);
+  const den = parseFloat(denS);
+  if (isNaN(num) || isNaN(den) || den === 0) {
+    return null;
+  }
+
+  return { num, den };
+}
+
+function floorEven(value: number) {
+  return Math.max(2, Math.floor(value) - (Math.floor(value) % 2));
+}
+
+function ceilEven(value: number) {
+  const ceil = Math.ceil(value);
+  return ceil % 2 === 0 ? ceil : ceil + 1;
 }

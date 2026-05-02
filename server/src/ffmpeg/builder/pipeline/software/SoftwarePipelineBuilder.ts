@@ -52,6 +52,7 @@ export class SoftwarePipelineBuilder extends BasePipelineBuilder {
       currentState = this.setTonemap(currentState);
       currentState = this.setScale(currentState);
       currentState = this.setPad(currentState);
+      currentState = this.setCrop(currentState);
       currentState = this.addSubtitles(currentState);
       currentState = this.setWatermark(currentState);
     }
@@ -100,7 +101,6 @@ export class SoftwarePipelineBuilder extends BasePipelineBuilder {
         currentState,
         this.context.ffmpegState,
         desiredState.scaledSize,
-        desiredState.paddedSize,
       );
       if (filter.affectsFrameState) {
         nextState = filter.nextState(currentState);
@@ -111,6 +111,13 @@ export class SoftwarePipelineBuilder extends BasePipelineBuilder {
   }
 
   protected setPad(currentState: FrameState): FrameState {
+    if (
+      this.desiredState.croppedSize ||
+      currentState.paddedSize.equals(this.desiredState.paddedSize)
+    ) {
+      return currentState;
+    }
+
     if (!currentState.paddedSize.equals(this.desiredState.paddedSize)) {
       const padFilter = PadFilter.create(currentState, this.desiredState);
       this.videoInputSource.filterSteps.push(padFilter);

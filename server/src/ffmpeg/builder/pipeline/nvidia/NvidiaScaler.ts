@@ -45,7 +45,6 @@ export class NvidiaScaler {
         currentState,
         ffmpegState,
         desiredState.scaledSize,
-        desiredState.paddedSize,
       );
     } else {
       const hasOverlay = hasWatermark || context.hasSubtitleOverlay();
@@ -73,7 +72,6 @@ export class NvidiaScaler {
           pixelFormat: outPixelFormat,
         }),
         desiredState.scaledSize,
-        desiredState.paddedSize,
       );
     }
 

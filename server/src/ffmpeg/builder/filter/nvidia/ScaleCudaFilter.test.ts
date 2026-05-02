@@ -21,7 +21,6 @@ describe('ScaleCudaFilter', () => {
     const filter = new ScaleCudaFilter(
       currentState,
       currentState.scaledSize,
-      currentState.paddedSize,
     );
 
     expect(filter.filter).to.eq('scale_cuda=format=yuv420p');
@@ -43,7 +42,6 @@ describe('ScaleCudaFilter', () => {
     const filter = new ScaleCudaFilter(
       currentState,
       currentState.scaledSize,
-      currentState.paddedSize,
     );
 
     expect(filter.filter).to.eq('scale_cuda=format=p010le');

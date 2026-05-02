@@ -5745,6 +5745,7 @@ export type GetApiChannelsByIdTranscodeConfigResponses = {
         videoBitDepth: (8 | 10) | null;
         videoBitRate: number;
         videoBufferSize: number;
+        aspectRatioMode: 'preserve' | 'crop' | 'stretch';
         audioChannels: number;
         audioFormat: 'aac' | 'ac3' | 'copy' | 'mp3';
         audioBitRate: number;
@@ -9996,6 +9997,7 @@ export type GetApiTranscodeConfigsResponses = {
         videoBitDepth: (8 | 10) | null;
         videoBitRate: number;
         videoBufferSize: number;
+        aspectRatioMode: 'preserve' | 'crop' | 'stretch';
         audioChannels: number;
         audioFormat: 'aac' | 'ac3' | 'copy' | 'mp3';
         audioBitRate: number;
@@ -10051,6 +10053,7 @@ export type PostApiTranscodeConfigsData = {
         videoBitDepth: (8 | 10) | null;
         videoBitRate: number;
         videoBufferSize: number;
+        aspectRatioMode?: 'preserve' | 'crop' | 'stretch';
         audioChannels: number;
         audioFormat: 'aac' | 'ac3' | 'copy' | 'mp3';
         audioBitRate: number;
@@ -10111,6 +10114,7 @@ export type PostApiTranscodeConfigsResponses = {
         videoBitDepth: (8 | 10) | null;
         videoBitRate: number;
         videoBufferSize: number;
+        aspectRatioMode: 'preserve' | 'crop' | 'stretch';
         audioChannels: number;
         audioFormat: 'aac' | 'ac3' | 'copy' | 'mp3';
         audioBitRate: number;
@@ -10209,6 +10213,7 @@ export type GetApiTranscodeConfigsByIdResponses = {
         videoBitDepth: (8 | 10) | null;
         videoBitRate: number;
         videoBufferSize: number;
+        aspectRatioMode: 'preserve' | 'crop' | 'stretch';
         audioChannels: number;
         audioFormat: 'aac' | 'ac3' | 'copy' | 'mp3';
         audioBitRate: number;
@@ -10265,6 +10270,7 @@ export type PutApiTranscodeConfigsByIdData = {
         videoBitDepth: (8 | 10) | null;
         videoBitRate: number;
         videoBufferSize: number;
+        aspectRatioMode?: 'preserve' | 'crop' | 'stretch';
         audioChannels: number;
         audioFormat: 'aac' | 'ac3' | 'copy' | 'mp3';
         audioBitRate: number;
@@ -10327,6 +10333,7 @@ export type PutApiTranscodeConfigsByIdResponses = {
         videoBitDepth: (8 | 10) | null;
         videoBitRate: number;
         videoBufferSize: number;
+        aspectRatioMode: 'preserve' | 'crop' | 'stretch';
         audioChannels: number;
         audioFormat: 'aac' | 'ac3' | 'copy' | 'mp3';
         audioBitRate: number;
@@ -10406,6 +10413,7 @@ export type PostApiTranscodeConfigsByIdCopyResponses = {
         videoBitDepth: (8 | 10) | null;
         videoBitRate: number;
         videoBufferSize: number;
+        aspectRatioMode: 'preserve' | 'crop' | 'stretch';
         audioChannels: number;
         audioFormat: 'aac' | 'ac3' | 'copy' | 'mp3';
         audioBitRate: number;
