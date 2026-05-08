@@ -20,6 +20,7 @@ const defaultNewTranscodeConfig: TranscodeConfig = {
   videoBitRate: 3500,
   videoBufferSize: 3500 * 2,
   videoFormat: 'h264',
+  aspectRatioMode: 'preserve',
   isDefault: false,
   audioVolumePercent: 100,
   disableChannelOverlay: false,

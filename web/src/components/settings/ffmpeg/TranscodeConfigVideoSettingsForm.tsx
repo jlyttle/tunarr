@@ -4,6 +4,7 @@ import { useStore } from '@tanstack/react-form';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import type {
   Resolution,
+  TranscodeAspectRatioMode,
   SupportedTranscodeVideoOutputFormat,
 } from '@tunarr/types';
 import type { SupportedHardwareAccels } from '@tunarr/types/schemas';
@@ -58,6 +59,25 @@ const VideoHardwareAccelerationOptions: DropdownOption<SupportedHardwareAccels>[
       value: 'videotoolbox',
     },
   ] as const;
+
+const AspectRatioModeOptions: DropdownOption<TranscodeAspectRatioMode>[] = [
+  {
+    value: 'preserve',
+    description: 'Preserve aspect ratio',
+    helperText: 'Scale to fit and add letterboxing or pillarboxing if needed.',
+  },
+  {
+    value: 'crop',
+    description: 'Crop to fill',
+    helperText: 'Scale to fill the frame, then center-crop any overflow.',
+  },
+  {
+    value: 'stretch',
+    description: 'Stretch to fit',
+    helperText:
+      'Scale directly to the target frame without preserving aspect ratio.',
+  },
+] as const;
 
 const resolutionConverter: Converter<Resolution, string> = {
   to: (res) => resolutionToString(res),
@@ -186,6 +206,15 @@ export const TranscodeConfigVideoSettingsForm = ({
             options={TranscodeResolutionOptions}
             converter={resolutionConverter}
             selectProps={{ label: 'Resolution' }}
+          />
+        )}
+      />
+      <form.AppField
+        name="aspectRatioMode"
+        children={(field) => (
+          <field.BasicSelectInput
+            options={AspectRatioModeOptions}
+            selectProps={{ label: 'Aspect Ratio Mode' }}
           />
         )}
       />

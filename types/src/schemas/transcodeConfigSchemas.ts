@@ -33,8 +33,18 @@ export const SupportedTranscodeAudioOutputFormats = [
   'mp3',
 ] as const;
 
+export const SupportedTranscodeAspectRatioModes = [
+  'preserve',
+  'crop',
+  'stretch',
+] as const;
+
 export type SupportedTranscodeAudioOutputFormats = TupleToUnion<
   typeof SupportedTranscodeAudioOutputFormats
+>;
+
+export type SupportedTranscodeAspectRatioModes = TupleToUnion<
+  typeof SupportedTranscodeAspectRatioModes
 >;
 
 export const TranscodeConfigSchema = z.object({
@@ -56,6 +66,9 @@ export const TranscodeConfigSchema = z.object({
   videoBitDepth: z.union([z.literal(8), z.literal(10)]).nullable(),
   videoBitRate: z.coerce.number(),
   videoBufferSize: z.coerce.number(),
+  aspectRatioMode: z
+    .enum(SupportedTranscodeAspectRatioModes)
+    .default('preserve'),
   audioChannels: z.coerce.number(),
   audioFormat: z.enum(SupportedTranscodeAudioOutputFormats),
   audioBitRate: z.coerce.number(),

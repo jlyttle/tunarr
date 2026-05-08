@@ -513,13 +513,15 @@ export class FfmpegStreamFactory extends IFFMPEG {
       .setSubtitleInputSource(subtitleSource)
       .build();
 
-    const scaledSize = videoStream.squarePixelFrameSize(
-      FrameSize.fromResolution(this.transcodeConfig.resolution),
-    );
+    const scaledSize =
+      playbackParams.scaledSize ??
+      videoStream.squarePixelFrameSize(
+        FrameSize.fromResolution(this.transcodeConfig.resolution),
+      );
 
-    const paddedSize = FrameSize.fromResolution(
-      this.transcodeConfig.resolution,
-    );
+    const paddedSize =
+      playbackParams.paddedSize ??
+      FrameSize.fromResolution(this.transcodeConfig.resolution);
 
     const pipelineOptions: PipelineOptions = {
       ...DefaultPipelineOptions,
@@ -551,8 +553,10 @@ export class FfmpegStreamFactory extends IFFMPEG {
       }),
       new FrameState({
         isAnamorphic: false,
+        resizeMode: playbackParams.resizeMode ?? 'preserve',
         scaledSize,
-        paddedSize, // TODO
+        paddedSize,
+        croppedSize: playbackParams.croppedSize,
         videoBitrate: playbackParams.videoBitrate,
         videoBufferSize: playbackParams.videoBufferSize,
         pixelFormat: playbackParams.pixelFormat ?? new PixelFormatYuv420P(), //match(), TODO: Make this customizable...

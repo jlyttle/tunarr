@@ -9,9 +9,9 @@ export class ScaleNppFilter extends ScaleCudaFilter {
   constructor(
     currentState: FrameState,
     scaledSize: FrameSize,
-    paddedSize: FrameSize,
+    passthrough: boolean = false,
   ) {
-    super(currentState, scaledSize, paddedSize);
+    super(currentState, scaledSize, passthrough);
     this.filter = this.generateFilter();
   }
 }

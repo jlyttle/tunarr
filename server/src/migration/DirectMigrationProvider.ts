@@ -204,6 +204,9 @@ export class DirectMigrationProvider implements MigrationProvider {
           migration1773603770: makeKyselyMigrationFromSqlFile(
             './sql/0042_supreme_medusa.sql',
           ),
+          migration1773700000: makeKyselyMigrationFromSqlFile(
+            './sql/0043_aspect_ratio_mode.sql',
+          ),
         },
         wrapWithTransaction,
       ),

@@ -234,9 +234,7 @@ describe('NvidiaScaler', () => {
     expect(hwuploadStep).toBeInstanceOf(HardwareUploadCudaFilter);
     expect(hwuploadStep.filter).toEqual('format=yuv420p,hwupload_cuda');
     expect(scaleStep).toBeInstanceOf(ScaleCudaFilter);
-    expect(scaleStep?.filter).toEqual(
-      'scale_cuda=800:600:force_original_aspect_ratio=decrease,setsar=1',
-    );
+    expect(scaleStep?.filter).toEqual('scale_cuda=800:450,setsar=1');
     expect(nextState).toStrictEqual(
       currentState.update({
         frameDataLocation: FrameDataLocation.Hardware,

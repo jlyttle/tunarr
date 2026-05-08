@@ -21,7 +21,6 @@ describe('ScaleVaapiFilter', () => {
     const filter = new ScaleVaapiFilter(
       currentState,
       FrameSize.FHD,
-      FrameSize.FHD,
     );
 
     expect(filter.filter).toEqual('scale_vaapi=format=nv12:extra_hw_frames=64');
@@ -41,7 +40,6 @@ describe('ScaleVaapiFilter', () => {
 
     const filter = new ScaleVaapiFilter(
       currentState,
-      FrameSize.FHD,
       FrameSize.FHD,
     );
 
@@ -67,7 +65,6 @@ describe('ScaleVaapiFilter', () => {
 
     const filter = new ScaleVaapiFilter(
       currentState,
-      FrameSize.FHD,
       FrameSize.FHD,
     );
 

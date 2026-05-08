@@ -24,6 +24,7 @@ import { Encoder } from '@/ffmpeg/builder/encoder/Encoder.js';
 import { AudioPadFilter } from '@/ffmpeg/builder/filter/AudioPadFilter.js';
 import { AudioResampleFilter } from '@/ffmpeg/builder/filter/AudioResampleFilter.js';
 import { ComplexFilter } from '@/ffmpeg/builder/filter/ComplexFilter.js';
+import { CropFilter } from '@/ffmpeg/builder/filter/CropFilter.js';
 import { FilterChain } from '@/ffmpeg/builder/filter/FilterChain.js';
 import { LoopFilter } from '@/ffmpeg/builder/filter/LoopFilter.js';
 import { RealtimeFilter } from '@/ffmpeg/builder/filter/RealtimeFilter.js';
@@ -949,5 +950,21 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
     const nextState = filter.nextState(currentState);
     this.videoInputSource.frameDataLocation = nextState.frameDataLocation;
     return nextState;
+  }
+
+  protected setCrop(currentState: FrameState): FrameState {
+    if (
+      !isVideoPipelineContext(this.context) ||
+      !this.desiredState.croppedSize ||
+      currentState.paddedSize.equals(this.desiredState.croppedSize)
+    ) {
+      return currentState;
+    }
+
+    const cropFilter = new CropFilter(
+      currentState,
+      this.desiredState.croppedSize,
+    );
+    return this.addFilterToVideoChain(currentState, cropFilter);
   }
 }
