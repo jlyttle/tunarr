@@ -26,8 +26,10 @@ import path, { basename, dirname, extname } from 'node:path';
 import type { DeepRequired } from 'ts-essentials';
 import type { BaseHlsSessionOptions } from './BaseHlsSession.js';
 import { BaseHlsSession } from './BaseHlsSession.js';
+import { createHlsMasterPlaylist } from './HlsMasterPlaylist.ts';
 import type { HlsPlaylistFilterOptions } from './HlsPlaylistMutator.js';
 import { HlsPlaylistMutator } from './HlsPlaylistMutator.js';
+import { HlsSubtitleRenditionManager } from './HlsSubtitleRenditionManager.ts';
 
 export type HlsSessionProvider = (
   channel: ChannelOrmWithTranscodeConfig,
@@ -54,6 +56,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
   #lastDelete: Dayjs = dayjs().subtract(1, 'year');
   #isFirstTranscode = true;
   #lastDiscontinuitySequence: number | undefined;
+  #subtitleRenditionManager: Maybe<HlsSubtitleRenditionManager>;
 
   constructor(
     channel: ChannelOrmWithTranscodeConfig,
@@ -71,6 +74,18 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
 
   public get sessionType(): HlsSessionOptions['streamMode'] {
     return this.sessionOptions.streamMode;
+  }
+
+  public get hasSubtitleRenditions(): boolean {
+    return this.#subtitleRenditionManager?.hasRenditions ?? false;
+  }
+
+  public createMasterPlaylist(videoPlaylistUri: string) {
+    const rendition = this.#subtitleRenditionManager?.rendition;
+    return createHlsMasterPlaylist({
+      videoPlaylistUri,
+      subtitleRenditions: rendition ? [rendition] : [],
+    });
   }
 
   async getPlaylist() {
@@ -130,6 +145,10 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     }
 
     await this.initDirectories();
+    this.#subtitleRenditionManager = new HlsSubtitleRenditionManager(
+      this.workingDirectory,
+      this.getHlsOptions().streamBaseUrl,
+    );
 
     this.state = 'started';
     this.#playlistStart = this.transcodedUntil = dayjs();
@@ -220,6 +239,9 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
 
       let transcodeSessionResult = await programStream.setup({
         ptsOffset,
+        onHlsSubtitle: (subtitle) =>
+          this.#subtitleRenditionManager?.register(subtitle) ??
+          Promise.resolve(),
       });
 
       if (transcodeSessionResult.isFailure()) {

@@ -81,6 +81,8 @@ function getDefaultFormValues(channel: Channel): DeepRequired<SaveableChannel> {
       enabled: channel.onDemand.enabled,
     },
     subtitlesEnabled: channel.subtitlesEnabled,
+    subtitleDeliveryMethod: channel.subtitleDeliveryMethod,
+    subtitleUnsupportedFallback: channel.subtitleUnsupportedFallback,
     subtitlePreferences: channel.subtitlePreferences ?? [],
   };
 }
@@ -108,6 +110,8 @@ const EditChannelTabsProps: EditChannelTabProps[] = [
       'watermark',
       'streamMode',
       'subtitlesEnabled',
+      'subtitleDeliveryMethod',
+      'subtitleUnsupportedFallback',
       'subtitlePreferences',
     ],
   },

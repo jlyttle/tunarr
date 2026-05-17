@@ -39,6 +39,8 @@ export const DefaultChannel: MarkOptional<
   programCount: 0,
   streamMode: 'hls',
   subtitlesEnabled: false,
+  subtitleDeliveryMethod: 'burn',
+  subtitleUnsupportedFallback: 'burn',
 } as const;
 
 export const TranscodeResolutionOptions = [

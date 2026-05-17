@@ -207,6 +207,9 @@ export class DirectMigrationProvider implements MigrationProvider {
           migration1773700000: makeKyselyMigrationFromSqlFile(
             './sql/0043_aspect_ratio_mode.sql',
           ),
+          migration1773900000: makeKyselyMigrationFromSqlFile(
+            './sql/0044_hls_subtitle_delivery.sql',
+          ),
         },
         wrapWithTransaction,
       ),

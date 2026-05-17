@@ -149,6 +149,8 @@ function createSaveableChannel(
     streamMode: 'hls' as const,
     transcodeConfigId,
     subtitlesEnabled: false,
+    subtitleDeliveryMethod: 'burn' as const,
+    subtitleUnsupportedFallback: 'burn' as const,
     ...overrides,
   };
 }

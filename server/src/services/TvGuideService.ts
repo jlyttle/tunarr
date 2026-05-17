@@ -1309,6 +1309,8 @@ export class TVGuideService {
           .executeTakeFirstOrThrow()
       ).uuid,
       subtitlesEnabled: false,
+      subtitleDeliveryMethod: 'burn',
+      subtitleUnsupportedFallback: 'burn',
     };
 
     // Placeholder channel with random ID.

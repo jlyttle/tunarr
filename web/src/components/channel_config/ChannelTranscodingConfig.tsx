@@ -17,7 +17,12 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import { isNonEmptyString } from '@tunarr/shared/util';
-import type { ChannelStreamMode, Watermark } from '@tunarr/types';
+import type {
+  ChannelStreamMode,
+  SubtitleDeliveryMethod,
+  SubtitleUnsupportedFallback,
+  Watermark,
+} from '@tunarr/types';
 import { find, map, range, round } from 'lodash-es';
 import { useMemo, useState } from 'react';
 import { Controller } from 'react-hook-form';
@@ -80,15 +85,19 @@ export default function ChannelTranscodingConfig() {
     watermark,
     transcodeConfigId,
     subtitlesEnabled,
+    subtitleDeliveryMethod,
     fadePeriod,
     streamMode,
   ] = watch([
     'watermark',
     'transcodeConfigId',
     'subtitlesEnabled',
+    'subtitleDeliveryMethod',
     'watermark.fadeConfig.0.periodMins',
     'streamMode',
   ]);
+  const hlsSelectableSubtitlesSupported =
+    streamMode === 'hls' || streamMode === 'hls_direct_v2';
 
   const transcodeConfig = useMemo(
     () => find(transcodeConfigs.data, (conf) => conf.id === transcodeConfigId)!,
@@ -215,6 +224,55 @@ export default function ChannelTranscodingConfig() {
             />
             <Collapse in={subtitlesEnabled}>
               <Divider sx={{ my: 2 }} />
+              <Stack direction={{ sm: 'column', md: 'row' }} spacing={2}>
+                <FormControl margin="normal">
+                  <InputLabel>Subtitle Delivery</InputLabel>
+                  <Controller
+                    control={control}
+                    name="subtitleDeliveryMethod"
+                    render={({ field }) => (
+                      <Select<SubtitleDeliveryMethod>
+                        label="Subtitle Delivery"
+                        {...field}
+                      >
+                        <MenuItem value="burn">Burn into video</MenuItem>
+                        <MenuItem
+                          value="hls"
+                          disabled={!hlsSelectableSubtitlesSupported}
+                        >
+                          HLS selectable
+                        </MenuItem>
+                      </Select>
+                    )}
+                  />
+                  <FormHelperText>
+                    HLS selectable subtitles allow compatible clients to choose
+                    subtitle styling.
+                  </FormHelperText>
+                </FormControl>
+                {subtitleDeliveryMethod === 'hls' && (
+                  <FormControl margin="normal">
+                    <InputLabel>Unsupported Subtitle Fallback</InputLabel>
+                    <Controller
+                      control={control}
+                      name="subtitleUnsupportedFallback"
+                      render={({ field }) => (
+                        <Select<SubtitleUnsupportedFallback>
+                          label="Unsupported Subtitle Fallback"
+                          {...field}
+                        >
+                          <MenuItem value="burn">Burn into video</MenuItem>
+                          <MenuItem value="none">Skip subtitles</MenuItem>
+                        </Select>
+                      )}
+                    />
+                    <FormHelperText>
+                      Used for image-based subtitles or text subtitles that are
+                      not available as WebVTT.
+                    </FormHelperText>
+                  </FormControl>
+                )}
+              </Stack>
               <Typography>
                 Configure subtitle preferences. Preferences are evaluated in
                 order of priority. The first matching subtitle stream on a

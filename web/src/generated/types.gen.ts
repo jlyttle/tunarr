@@ -2094,6 +2094,8 @@ export type GetChannelsResponses = {
             }>;
         }>;
         subtitlesEnabled: boolean;
+        subtitleDeliveryMethod: 'burn' | 'hls';
+        subtitleUnsupportedFallback: 'burn' | 'none';
         subtitlePreferences?: Array<{
             langugeCode: string;
             priority: number;
@@ -2160,6 +2162,8 @@ export type CreateChannelV2Data = {
             streamMode: 'hls' | 'hls_slower' | 'mpegts' | 'hls_direct' | 'hls_direct_v2';
             transcodeConfigId: string;
             subtitlesEnabled: boolean;
+            subtitleDeliveryMethod?: 'burn' | 'hls';
+            subtitleUnsupportedFallback?: 'burn' | 'none';
             subtitlePreferences?: Array<{
                 langugeCode: string;
                 priority: number;
@@ -2181,7 +2185,9 @@ export type CreateChannelV2Errors = {
     /**
      * Default Response
      */
-    400: string;
+    400: {
+        error: string;
+    };
     /**
      * Default Response
      */
@@ -2295,6 +2301,8 @@ export type CreateChannelV2Responses = {
             }>;
         }>;
         subtitlesEnabled: boolean;
+        subtitleDeliveryMethod: 'burn' | 'hls';
+        subtitleUnsupportedFallback: 'burn' | 'none';
         subtitlePreferences?: Array<{
             langugeCode: string;
             priority: number;
@@ -2453,6 +2461,8 @@ export type GetChannelsByNumberV2Responses = {
             }>;
         }>;
         subtitlesEnabled: boolean;
+        subtitleDeliveryMethod: 'burn' | 'hls';
+        subtitleUnsupportedFallback: 'burn' | 'none';
         subtitlePreferences?: Array<{
             langugeCode: string;
             priority: number;
@@ -2517,6 +2527,8 @@ export type PutApiChannelsByIdData = {
         streamMode: 'hls' | 'hls_slower' | 'mpegts' | 'hls_direct' | 'hls_direct_v2';
         transcodeConfigId: string;
         subtitlesEnabled: boolean;
+        subtitleDeliveryMethod?: 'burn' | 'hls';
+        subtitleUnsupportedFallback?: 'burn' | 'none';
         subtitlePreferences?: Array<{
             langugeCode: string;
             priority: number;
@@ -2536,12 +2548,22 @@ export type PutApiChannelsByIdErrors = {
     /**
      * Default Response
      */
-    404: unknown;
+    400: {
+        error: string;
+    };
+    /**
+     * Default Response
+     */
+    404: {
+        error: string;
+    };
     /**
      * Default Response
      */
     500: unknown;
 };
+
+export type PutApiChannelsByIdError = PutApiChannelsByIdErrors[keyof PutApiChannelsByIdErrors];
 
 export type PutApiChannelsByIdResponses = {
     /**
@@ -2646,6 +2668,8 @@ export type PutApiChannelsByIdResponses = {
             }>;
         }>;
         subtitlesEnabled: boolean;
+        subtitleDeliveryMethod: 'burn' | 'hls';
+        subtitleUnsupportedFallback: 'burn' | 'none';
         subtitlePreferences?: Array<{
             langugeCode: string;
             priority: number;
@@ -7172,6 +7196,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                         }>;
                     }>;
                     subtitlesEnabled: boolean;
+                    subtitleDeliveryMethod: 'burn' | 'hls';
+                    subtitleUnsupportedFallback: 'burn' | 'none';
                     subtitlePreferences?: Array<{
                         langugeCode: string;
                         priority: number;
@@ -7419,6 +7445,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                         }>;
                     }>;
                     subtitlesEnabled: boolean;
+                    subtitleDeliveryMethod: 'burn' | 'hls';
+                    subtitleUnsupportedFallback: 'burn' | 'none';
                     subtitlePreferences?: Array<{
                         langugeCode: string;
                         priority: number;
@@ -19673,6 +19701,7 @@ export type GetStreamChannelsByIdM3U8Data = {
     };
     query?: {
         mode?: 'hls' | 'hls_slower' | 'mpegts' | 'hls_direct' | 'hls_direct_v2';
+        media?: '1';
     };
     url: '/stream/channels/{id}.m3u8';
 };
@@ -19691,6 +19720,7 @@ export type HeadStreamChannelsByIdM3U8Data = {
     };
     query?: {
         mode?: 'hls' | 'hls_slower' | 'mpegts' | 'hls_direct' | 'hls_direct_v2';
+        media?: '1';
     };
     url: '/stream/channels/{id}.m3u8';
 };

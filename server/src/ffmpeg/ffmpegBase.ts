@@ -4,6 +4,7 @@ import type { ChannelConcatStreamMode } from '@tunarr/types/schemas';
 import type { Duration } from 'dayjs/plugin/duration.js';
 import type { DeepReadonly, StrictExclude } from 'ts-essentials';
 import type { ContentBackedStreamLineupItem } from '../db/derived_types/StreamLineup.ts';
+import type { HlsSubtitleRegistration } from '../stream/hls/HlsSubtitleRenditionManager.ts';
 import type { StreamDetails, StreamSource } from '../stream/types.ts';
 import type { OutputFormat } from './builder/constants.ts';
 import type { FfmpegTranscodeSession } from './FfmpegTrancodeSession.ts';
@@ -91,4 +92,5 @@ export type StreamOptions = {
   outputFormat: OutputFormat;
   ptsOffset?: number;
   streamMode: ChannelStreamMode;
+  onHlsSubtitle?: (subtitle: HlsSubtitleRegistration) => Promise<void>;
 };

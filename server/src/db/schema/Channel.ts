@@ -47,6 +47,16 @@ export const Channel = sqliteTable(
     transcodeConfigId: text().notNull(),
     watermark: text({ mode: 'json' }).$type<ChannelWatermark>(),
     subtitlesEnabled: integer({ mode: 'boolean' }).default(false),
+    subtitleDeliveryMethod: text({
+      enum: ['burn', 'hls'],
+    })
+      .default('burn')
+      .notNull(),
+    subtitleUnsupportedFallback: text({
+      enum: ['burn', 'none'],
+    })
+      .default('burn')
+      .notNull(),
   },
   (table) => [
     uniqueIndex('channel_number_unique').on(table.number),

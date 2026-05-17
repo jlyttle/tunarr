@@ -2,7 +2,11 @@ import z from 'zod/v4';
 import type { TupleToUnion } from '../util.js';
 import { ResolutionSchema } from './miscSchemas.js';
 import { ProgramSchema } from './programmingSchema.js';
-import { SubtitlePreference } from './subtitleSchema.js';
+import {
+  SubtitleDeliveryMethodSchema,
+  SubtitlePreference,
+  SubtitleUnsupportedFallbackSchema,
+} from './subtitleSchema.js';
 import { ChannelIconSchema, ContentProgramTypeSchema } from './utilSchemas.js';
 
 export const WatermarkSchema = z.object({
@@ -147,6 +151,8 @@ export const ChannelSchema = z.object({
   transcodeConfigId: z.uuid(),
   sessions: z.array(ChannelSessionSchema).optional(),
   subtitlesEnabled: z.boolean(),
+  subtitleDeliveryMethod: SubtitleDeliveryMethodSchema.default('burn'),
+  subtitleUnsupportedFallback: SubtitleUnsupportedFallbackSchema.default('burn'),
   subtitlePreferences: z.array(SubtitlePreference).nonempty().optional(),
 });
 

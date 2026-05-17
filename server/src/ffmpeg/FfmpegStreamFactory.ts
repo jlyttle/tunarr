@@ -18,6 +18,7 @@ import { isUndefined } from 'lodash-es';
 import type { DeepReadonly, NonEmptyArray } from 'ts-essentials';
 import { match, P } from 'ts-pattern';
 import type { IChannelDB } from '../db/interfaces/IChannelDB.ts';
+import { resolveSubtitleDelivery } from '../stream/subtitles/SubtitleDeliveryPolicy.ts';
 import { FfmpegPlaybackParamsCalculator } from './FfmpegPlaybackParamsCalculator.ts';
 import { FfmpegProcess } from './FfmpegProcess.ts';
 import { FfmpegTranscodeSession } from './FfmpegTrancodeSession.ts';
@@ -298,6 +299,7 @@ export class FfmpegStreamFactory extends IFFMPEG {
       realtime,
       watermark,
       streamMode,
+      onHlsSubtitle,
     },
     lineupItem,
   }: StreamSessionCreateArgs): Promise<Maybe<FfmpegTranscodeSession>> {
@@ -455,6 +457,11 @@ export class FfmpegStreamFactory extends IFFMPEG {
 
       if (pickedSubtitleStream) {
         this.logger.trace('Using subtitle stream: %O', pickedSubtitleStream);
+        const subtitleDelivery = resolveSubtitleDelivery({
+          channel: this.channel,
+          streamMode,
+          subtitleStream: pickedSubtitleStream,
+        });
 
         const source = match(pickedSubtitleStream.path)
           .with(
@@ -464,25 +471,42 @@ export class FfmpegStreamFactory extends IFFMPEG {
           .with(P.string, (path) => new FileStreamSource(path))
           .otherwise(() => streamSource);
 
-        const stream = match(pickedSubtitleStream.type)
-          .with(
-            'embedded',
-            () =>
-              new EmbeddedSubtitleStream(
-                pickedSubtitleStream.codec,
-                pickedSubtitleStream.index ?? 0,
-                SubtitleMethods.Burn,
-              ),
-          )
-          .with(
-            'external',
-            () =>
-              new ExternalSubtitleStream(
-                pickedSubtitleStream.codec,
-                SubtitleMethods.Burn,
-              ),
-          )
-          .otherwise(() => null);
+        if (subtitleDelivery === 'hls' && pickedSubtitleStream.path) {
+          await onHlsSubtitle?.({
+            sourcePath: pickedSubtitleStream.path,
+            codec: pickedSubtitleStream.codec,
+            language:
+              pickedSubtitleStream.languageCodeISO6392 ??
+              pickedSubtitleStream.language,
+            name: pickedSubtitleStream.title,
+            startTimeMs: startTime.asMilliseconds(),
+            durationMs: duration.asMilliseconds(),
+            ffmpegPath: this.ffmpegSettings.ffmpegExecutablePath,
+          });
+        }
+
+        const stream =
+          subtitleDelivery === 'burn'
+            ? match(pickedSubtitleStream.type)
+                .with(
+                  'embedded',
+                  () =>
+                    new EmbeddedSubtitleStream(
+                      pickedSubtitleStream.codec,
+                      pickedSubtitleStream.index ?? 0,
+                      SubtitleMethods.Burn,
+                    ),
+                )
+                .with(
+                  'external',
+                  () =>
+                    new ExternalSubtitleStream(
+                      pickedSubtitleStream.codec,
+                      SubtitleMethods.Burn,
+                    ),
+                )
+                .otherwise(() => null)
+            : null;
 
         if (stream) {
           subtitleSource = new SubtitlesInputSource(

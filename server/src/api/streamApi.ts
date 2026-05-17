@@ -304,6 +304,7 @@ export const streamApi: RouterPluginAsyncCallback = async (fastify) => {
       }),
       querystring: z.object({
         mode: ChannelStreamModeSchema.optional(),
+        media: z.literal('1').optional(),
       }),
     },
     handler: async (req, res) => {
@@ -364,6 +365,22 @@ export const streamApi: RouterPluginAsyncCallback = async (fastify) => {
                   );
                   logger.error(fmtError);
                   throw new Error(fmtError);
+                }
+
+                if (
+                  req.query.media !== '1' &&
+                  session.hasSubtitleRenditions
+                ) {
+                  const mediaParams = new URLSearchParams();
+                  mediaParams.set('mode', mode);
+                  mediaParams.set('media', '1');
+                  return res
+                    .type('application/vnd.apple.mpegurl')
+                    .send(
+                      session.createMasterPlaylist(
+                        `/stream/channels/${channelId}.m3u8?${mediaParams.toString()}`,
+                      ),
+                    );
                 }
 
                 return res

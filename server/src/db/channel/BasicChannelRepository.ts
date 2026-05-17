@@ -81,6 +81,8 @@ function updateRequestToChannel(updateReq: SaveableChannel): ChannelUpdate {
     transcodeConfigId: updateReq.transcodeConfigId,
     streamMode: updateReq.streamMode,
     subtitlesEnabled: booleanToNumber(updateReq.subtitlesEnabled),
+    subtitleDeliveryMethod: updateReq.subtitleDeliveryMethod,
+    subtitleUnsupportedFallback: updateReq.subtitleUnsupportedFallback,
   } satisfies ChannelUpdate;
 }
 
@@ -107,6 +109,8 @@ function createRequestToChannel(saveReq: SaveableChannel): NewChannel {
     streamMode: saveReq.streamMode,
     transcodeConfigId: saveReq.transcodeConfigId,
     subtitlesEnabled: booleanToNumber(saveReq.subtitlesEnabled),
+    subtitleDeliveryMethod: saveReq.subtitleDeliveryMethod,
+    subtitleUnsupportedFallback: saveReq.subtitleUnsupportedFallback,
   } satisfies NewChannel;
 }
 
