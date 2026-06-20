@@ -1,49 +1,58 @@
 import { KEYS } from '@/types/inject.js';
-import { isNonEmptyString } from '@/util/index.js';
-import { createExternalId } from '@tunarr/shared';
-import {
-  ContentProgram,
-  isContentProgram,
-  isCustomProgram,
-  tag,
-} from '@tunarr/types';
+import { parseFloatOrNull } from '@/util/index.js';
+import { seq } from '@tunarr/shared/util';
+import { CondensedContentProgram } from '@tunarr/types';
 import {
   CreateCustomShowRequest,
   UpdateCustomShowRequest,
 } from '@tunarr/types/api';
 import dayjs from 'dayjs';
+import { count, eq, sum } from 'drizzle-orm';
 import { inject, injectable } from 'inversify';
 import { Kysely } from 'kysely';
-import { chunk, isNil, orderBy, partition, uniqBy } from 'lodash-es';
+import { chunk, isNil } from 'lodash-es';
+import { MarkRequired } from 'ts-essentials';
 import { v4 } from 'uuid';
-import { IProgramDB } from './interfaces/IProgramDB.ts';
-import { withCustomShowPrograms } from './programQueryHelpers.ts';
-import { MediaSourceId, MediaSourceType } from './schema/base.ts';
-import type { NewCustomShow } from './schema/CustomShow.ts';
-import type { NewCustomShowContent } from './schema/CustomShowContent.ts';
+import { InjectLogger } from '../util/inject.ts';
+import { Logger } from '../util/logging/LoggerFactory.ts';
+import { BasicProgramRepository } from './program/BasicProgramRepository.ts';
+import { CustomShow, type NewCustomShow } from './schema/CustomShow.ts';
+import {
+  CustomShowContent,
+  type NewCustomShowContent,
+} from './schema/CustomShowContent.ts';
 import { DB } from './schema/db.ts';
 import { ProgramWithRelationsOrm } from './schema/derivedTypes.ts';
 import { DrizzleDBAccess } from './schema/index.ts';
+import { Program } from './schema/Program.ts';
 
 @injectable()
 export class CustomShowDB {
+  @InjectLogger() declare private readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.ProgramDB) private programDB: IProgramDB,
     @inject(KEYS.Database) private db: Kysely<DB>,
     @inject(KEYS.DrizzleDB) private drizzle: DrizzleDBAccess,
+    @inject(KEYS.BasicProgramRepository)
+    private basicProgramRepo: BasicProgramRepository,
   ) {}
 
   async getShow(id: string) {
-    return this.db
-      .selectFrom('customShow')
-      .selectAll()
-      .where('customShow.uuid', '=', id)
-      .select((eb) =>
-        withCustomShowPrograms(eb, {
-          fields: ['program.uuid', 'program.duration'],
-        }),
-      )
-      .executeTakeFirst();
+    return await this.drizzle.query.customShow.findFirst({
+      where: (fields, { eq }) => eq(fields.uuid, id),
+      with: {
+        content: {
+          with: {
+            program: {
+              columns: {
+                uuid: true,
+                duration: true,
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
   async getShows(ids: string[]) {
@@ -66,17 +75,35 @@ export class CustomShowDB {
       });
   }
 
-  async getShowPrograms(id: string): Promise<ProgramWithRelationsOrm[]> {
+  async getShowPrograms(
+    id: string,
+  ): Promise<MarkRequired<ProgramWithRelationsOrm, 'externalIds'>[]> {
     const result = await this.drizzle.query.customShowContent.findMany({
       where: (fields, { eq }) => eq(fields.customShowUuid, id),
       orderBy: (fields, { asc }) => asc(fields.index),
       with: {
         program: {
           with: {
-            show: true,
-            season: true,
-            album: true,
-            artist: true,
+            show: {
+              with: {
+                externalIds: true,
+              },
+            },
+            season: {
+              with: {
+                externalIds: true,
+              },
+            },
+            album: {
+              with: {
+                externalIds: true,
+              },
+            },
+            artist: {
+              with: {
+                externalIds: true,
+              },
+            },
             artwork: true,
             externalIds: true,
             tags: {
@@ -91,25 +118,6 @@ export class CustomShowDB {
     return result.map((r) => r.program);
   }
 
-  async getShowProgramsOrm(id: string): Promise<ProgramWithRelationsOrm[]> {
-    const results = await this.drizzle.query.customShowContent.findMany({
-      where: (fields, { eq }) => eq(fields.customShowUuid, id),
-      with: {
-        program: {
-          with: {
-            album: true,
-            artist: true,
-            externalIds: true,
-            season: true,
-            show: true,
-          },
-        },
-      },
-      orderBy: (fields, { asc }) => asc(fields.index),
-    });
-    return results.map((result) => result.program);
-  }
-
   async saveShow(id: string, updateRequest: UpdateCustomShowRequest) {
     const show = await this.getShow(id);
 
@@ -121,12 +129,32 @@ export class CustomShowDB {
       await this.upsertCustomShowContent(show.uuid, updateRequest.programs);
     }
 
+    const updates: Partial<NewCustomShow> = {};
     if (updateRequest.name) {
+      updates.name = updateRequest.name;
+    }
+
+    if (!updateRequest.enableSync) {
+      updates.syncExternalPlaylistId = null;
+      updates.syncMediaSourceId = null;
+      updates.syncMediaSourceType = null;
+    } else {
+      updates.syncMediaSourceId = updateRequest.syncMediaSourceId ?? null;
+      updates.syncMediaSourceType = updateRequest.syncMediaSourceType ?? null;
+      updates.syncExternalPlaylistId =
+        updateRequest.syncExternalPlaylistId ?? null;
+    }
+
+    if (Object.keys(updates).length > 0) {
       await this.db
         .updateTable('customShow')
         .where('uuid', '=', show.uuid)
         .limit(1)
-        .set({ name: updateRequest.name })
+        .set({
+          ...updates,
+          // Do not allow clients to set this.
+          lastSyncedAt: undefined,
+        })
         .execute();
     }
 
@@ -140,11 +168,16 @@ export class CustomShowDB {
       createdAt: now,
       updatedAt: now,
       name: createRequest.name,
+      syncMediaSourceId: createRequest.syncMediaSourceId ?? null,
+      syncMediaSourceType: createRequest.syncMediaSourceType ?? null,
+      syncExternalPlaylistId: createRequest.syncExternalPlaylistId ?? null,
     } satisfies NewCustomShow;
 
     await this.db.insertInto('customShow').values(show).execute();
 
-    await this.upsertCustomShowContent(show.uuid, createRequest.programs);
+    if (createRequest.programs.length > 0) {
+      await this.upsertCustomShowContent(show.uuid, createRequest.programs);
+    }
 
     return show.uuid;
   }
@@ -155,17 +188,12 @@ export class CustomShowDB {
       return false;
     }
 
-    await this.db.transaction().execute(async (tx) => {
+    this.drizzle.transaction((tx) => {
       // TODO: Do this deletion in the DB with foreign keys.
-      await tx
-        .deleteFrom('channelCustomShows')
-        .where('customShowUuid', '=', show.uuid)
-        .execute();
-      await tx
-        .deleteFrom('customShowContent')
-        .where('customShowContent.customShowUuid', '=', show.uuid)
-        .execute();
-      await tx.deleteFrom('customShow').where('uuid', '=', show.uuid).execute();
+      tx.delete(CustomShowContent)
+        .where(eq(CustomShowContent.customShowUuid, show.uuid))
+        .run();
+      tx.delete(CustomShow).where(eq(CustomShow.uuid, show.uuid)).run();
     });
 
     return true;
@@ -184,128 +212,101 @@ export class CustomShowDB {
   }
 
   async getAllShowsInfo() {
-    const showsAndContentCount = await this.db
-      .selectFrom('customShow')
-      .selectAll('customShow')
-      .innerJoin(
-        'customShowContent',
-        'customShow.uuid',
-        'customShowContent.customShowUuid',
+    const showsAndContentCount = await this.drizzle
+      .select({
+        customShow: CustomShow,
+        contentCount: count(CustomShowContent.contentUuid),
+        totalDuration: sum(
+          this.drizzle
+            .select({ duration: Program.duration })
+            .from(Program)
+            .where(eq(Program.uuid, CustomShowContent.contentUuid)),
+        ),
+      })
+      .from(CustomShow)
+      .leftJoin(
+        CustomShowContent,
+        eq(CustomShow.uuid, CustomShowContent.customShowUuid),
       )
-      .groupBy('customShow.uuid')
-      .select((eb) => [
-        eb.fn.count<number>('customShowContent.contentUuid').as('contentCount'),
-        eb.fn
-          .sum<number>(
-            eb
-              .selectFrom('program')
-              .whereRef('program.uuid', '=', 'customShowContent.contentUuid')
-              .select('duration'),
-          )
-          .as('totalDuration'),
-      ])
-      .execute();
-    return showsAndContentCount.map((f) => ({
-      id: f.uuid,
-      name: f.name,
-      count: f.contentCount,
-      totalDuration: f.totalDuration,
-    }));
+      .groupBy(CustomShow.uuid);
+
+    return showsAndContentCount.map(
+      ({ customShow, totalDuration, contentCount }) => ({
+        id: customShow.uuid,
+        name: customShow.name,
+        count: contentCount,
+        totalDuration: totalDuration
+          ? (parseFloatOrNull(totalDuration) ?? 0)
+          : 0,
+        syncMediaSourceId: customShow.syncMediaSourceId,
+        syncMediaSourceType: customShow.syncMediaSourceType,
+        syncExternalPlaylistId: customShow.syncExternalPlaylistId,
+        lastSyncedAt: customShow.lastSyncedAt,
+      }),
+    );
   }
 
-  private async upsertCustomShowContent(
+  async getSyncedShows() {
+    return this.db
+      .selectFrom('customShow')
+      .selectAll()
+      .where('syncMediaSourceId', 'is not', null)
+      .where('syncExternalPlaylistId', 'is not', null)
+      .execute();
+  }
+
+  async updateLastSyncedAt(id: string) {
+    await this.db
+      .updateTable('customShow')
+      .where('uuid', '=', id)
+      .set({ lastSyncedAt: +dayjs() })
+      .execute();
+  }
+
+  async upsertCustomShowContent(
     customShowId: string,
-    programs: ContentProgram[],
-  ) {
+    programs: CondensedContentProgram[],
+  ): Promise<void> {
     if (programs.length === 0) {
       return;
     }
-    const newProgramIndexesById = new Map<string, number[]>();
-    for (let i = 0; i < programs.length; i++) {
-      const program = programs[i]!;
-      if (
-        (program.persisted ||
-          isCustomProgram(program) ||
-          program.externalSourceType === 'local') &&
-        isNonEmptyString(program.id)
-      ) {
-        const existing = newProgramIndexesById.get(program.id) ?? [];
-        existing.push(i);
-        newProgramIndexesById.set(program.id, existing);
-      } else if (
-        isContentProgram(program) &&
-        program.externalSourceType !== 'local'
-      ) {
-        const key = createExternalId(
-          program.externalSourceType,
-          tag(program.externalSourceId),
-          program.externalKey,
-        );
-        const existing = newProgramIndexesById.get(key) ?? [];
-        existing.push(i);
-        newProgramIndexesById.set(key, existing);
-      }
+
+    const incomingProgramIds = new Set(programs.map((program) => program.id));
+    const existingProgramIds =
+      await this.basicProgramRepo.filterNonExistentProgramIds([
+        ...incomingProgramIds.values(),
+      ]);
+
+    const missingProgramIds = incomingProgramIds.difference(existingProgramIds);
+
+    // log about not found programs
+    if (missingProgramIds.size > 0) {
+      this.logger.warn(
+        'Attempting to save %d program IDs to a custom show that do not exist in the DB. They will be dropped. IDs: %j',
+        missingProgramIds.size,
+        [...missingProgramIds.values()],
+      );
     }
 
-    const [persisted, needsPersist] = partition(
-      programs,
-      (p) => p.persisted && isNonEmptyString(p.id),
-    );
-    const upsertedPrograms = await this.programDB.upsertContentPrograms(
-      uniqBy(needsPersist, (p) => p.uniqueId),
-    );
-    const allPrograms: {
-      uuid: string;
-      sourceType: MediaSourceType;
-      mediaSourceId: MediaSourceId;
-      externalKey: string;
-    }[] = uniqBy(persisted, (p) => p.id!)
-      .map((p) => ({
-        uuid: p.id!,
-        sourceType: p.externalSourceType,
-        mediaSourceId: tag<MediaSourceId>(p.externalSourceId),
-        externalKey: p.externalKey,
-      }))
-      .concat(upsertedPrograms);
+    const allNewCustomContent = seq.collect(programs, (program, index) => {
+      if (!existingProgramIds.has(program.id)) {
+        return;
+      }
 
-    const allNewCustomContent = orderBy(
-      allPrograms.flatMap((program) => {
-        let indexes = newProgramIndexesById.get(program.uuid);
-        if (!indexes && program.sourceType !== 'local') {
-          const externalId = createExternalId(
-            program.sourceType,
-            program.mediaSourceId,
-            program.externalKey,
-          );
-          indexes = newProgramIndexesById.get(externalId);
-        }
-        if (!indexes) {
-          return [];
-        }
-        return indexes.map(
-          (index) =>
-            ({
-              customShowUuid: customShowId,
-              contentUuid: program.uuid,
-              index,
-            }) satisfies NewCustomShowContent,
-        );
-      }),
-      (csc) => csc.index,
-      'asc',
-    );
+      return {
+        customShowUuid: customShowId,
+        contentUuid: program.id,
+        index,
+      } satisfies NewCustomShowContent;
+    });
 
-    await this.db.transaction().execute(async (tx) => {
+    this.drizzle.transaction((tx) => {
       if (allNewCustomContent.length > 0) {
-        await tx
-          .deleteFrom('customShowContent')
-          .where('customShowContent.customShowUuid', '=', customShowId)
-          .execute();
+        tx.delete(CustomShowContent)
+          .where(eq(CustomShowContent.customShowUuid, customShowId))
+          .run();
         for (const contentChunk of chunk(allNewCustomContent, 1_000)) {
-          await tx
-            .insertInto('customShowContent')
-            .values(contentChunk)
-            .execute();
+          tx.insert(CustomShowContent).values(contentChunk).run();
         }
       }
     });

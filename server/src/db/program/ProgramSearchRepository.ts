@@ -9,16 +9,11 @@ import { jsonArrayFrom } from 'kysely/helpers/sqlite';
 import { last } from 'lodash-es';
 import type { Dictionary, StrictExclude } from 'ts-essentials';
 import { match } from 'ts-pattern';
-import {
-  AllProgramFields,
-  selectProgramsBuilder,
-  withProgramExternalIds,
-} from '../programQueryHelpers.ts';
+import { AllProgramFields } from '../programQueryHelpers.ts';
 import type { ProgramType } from '../schema/Program.ts';
 import type { ProgramGroupingType } from '../schema/ProgramGrouping.ts';
 import type { MediaSourceId, MediaSourceType } from '../schema/base.ts';
 import type { DB } from '../schema/db.ts';
-import type { ProgramWithRelations } from '../schema/derivedTypes.ts';
 import type { DrizzleDBAccess } from '../schema/index.ts';
 import { isDefined } from '../../util/index.ts';
 import type { ProgramDao } from '../schema/Program.ts';
@@ -50,14 +45,33 @@ export class ProgramSearchRepository {
       .then((dbResult) => dbResult?.programs ?? []);
   }
 
-  async getMediaSourceLibraryPrograms(
-    libraryId: string,
-  ): Promise<ProgramWithRelations[]> {
-    return selectProgramsBuilder(this.db, { includeGroupingExternalIds: true })
-      .where('libraryId', '=', libraryId)
-      .selectAll()
-      .select(withProgramExternalIds)
-      .execute();
+  async getMediaSourceLibraryPrograms(libraryId: string) {
+    return this.drizzleDB.query.program.findMany({
+      where: (fields, { eq }) => eq(fields.libraryId, libraryId),
+      with: {
+        album: {
+          with: {
+            externalIds: true,
+          },
+        },
+        artist: {
+          with: {
+            externalIds: true,
+          },
+        },
+        season: {
+          with: {
+            externalIds: true,
+          },
+        },
+        show: {
+          with: {
+            externalIds: true,
+          },
+        },
+        externalIds: true,
+      },
+    });
   }
 
   async getProgramInfoForMediaSource(

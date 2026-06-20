@@ -1,18 +1,20 @@
 import { defaultXmlTvSettings } from '@/db/SettingsDB.js';
+import type { IChannelDB } from '@/db/interfaces/IChannelDB.js';
 import type { ISettingsDB } from '@/db/interfaces/ISettingsDB.js';
 import { MediaSourceDB } from '@/db/mediaSourceDB.js';
 import { MediaSourceApiFactory } from '@/external/MediaSourceApiFactory.js';
 import { globalOptions } from '@/globals.js';
 import { TVGuideService } from '@/services/TvGuideService.js';
-import { LineupCreator } from '@/services/dynamic_channels/LineupCreator.js';
 import { KEYS } from '@/types/inject.js';
 import { fileExists } from '@/util/fsUtil.js';
 import { isNonEmptyString, mapAsyncSeq } from '@/util/index.js';
+import { InjectLogger } from '@/util/inject.js';
 import { Logger } from '@/util/logging/LoggerFactory.js';
 import { PlexDvr } from '@tunarr/types/plex';
 import dayjs from 'dayjs';
 import { inject, injectable, LazyServiceIdentifier } from 'inversify';
 import z from 'zod';
+import { EventService } from '../services/EventService.ts';
 import { GlobalScheduler } from '../services/Scheduler.ts';
 import { Maybe } from '../types/util.ts';
 import { SubtitleExtractorTask } from './SubtitleExtractorTask.ts';
@@ -37,16 +39,18 @@ export class UpdateXmlTvTask extends Task2<typeof UpdateXmlTvTaskRequest> {
   public ID = UpdateXmlTvTask.ID;
   schema = UpdateXmlTvTaskRequest;
 
+  @InjectLogger() protected declare readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.Logger) logger: Logger,
     @inject(KEYS.SettingsDB) private settingsDB: ISettingsDB,
     @inject(TVGuideService) private guideService: TVGuideService,
     @inject(MediaSourceDB) private mediaSourceDB: MediaSourceDB,
     @inject(new LazyServiceIdentifier(() => MediaSourceApiFactory))
     private mediaSourceApiFactory: MediaSourceApiFactory,
-    @inject(LineupCreator) private lineupCreator: LineupCreator,
+    @inject(EventService) private eventService: EventService,
+    @inject(KEYS.ChannelDB) private channelDB: IChannelDB,
   ) {
-    super(logger);
+    super();
     this.logger.setBindings({ task: UpdateXmlTvTask.ID });
   }
 
@@ -74,8 +78,6 @@ export class UpdateXmlTvTask extends Task2<typeof UpdateXmlTvTaskRequest> {
         // Re-read
         xmltvSettings = this.settingsDB.xmlTvSettings();
       }
-
-      await this.lineupCreator.promoteAllPendingLineups();
 
       if (isNonEmptyString(channelId)) {
         await this.guideService.refreshGuide(
@@ -108,6 +110,24 @@ export class UpdateXmlTvTask extends Task2<typeof UpdateXmlTvTaskRequest> {
         .catch((err) => this.logger.error(err));
 
       this.logger.info('XMLTV Updated at %s', dayjs().format());
+
+      // Notify native clients that the schedule has changed
+      if (isNonEmptyString(channelId)) {
+        this.eventService.push({
+          type: 'channel_schedule_changed',
+          level: 'info',
+          channelId,
+        });
+      } else {
+        const allChannels = await this.channelDB.getAllChannels();
+        for (const channel of allChannels) {
+          this.eventService.push({
+            type: 'channel_schedule_changed',
+            level: 'info',
+            channelId: channel.uuid,
+          });
+        }
+      }
     } catch (err) {
       this.logger.error(err, 'Unable to update TV guide');
       return;

@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { SaveableChannel } from '@tunarr/types';
 import tmp from 'tmp-promise';
+import { copyPreMigratedDb } from '../testing/testDbFactory.ts';
 import { mock } from 'ts-mockito';
 import { v4 } from 'uuid';
 import { test as baseTest, describe, expect } from 'vitest';
@@ -21,6 +22,7 @@ import { BasicChannelRepository } from './channel/BasicChannelRepository.ts';
 import { ChannelProgramRepository } from './channel/ChannelProgramRepository.ts';
 import { LineupRepository } from './channel/LineupRepository.ts';
 import { ChannelConfigRepository } from './channel/ChannelConfigRepository.ts';
+import { ChannelReadOpsRepository } from './channel/ChannelReadOpsRepository.ts';
 import { MaterializeLineupCommand } from '../commands/MaterializeLineupCommand.ts';
 
 type Fixture = {
@@ -33,6 +35,7 @@ type Fixture = {
 const test = baseTest.extend<Fixture>({
   db: async ({}, use) => {
     const dbResult = await tmp.dir({ unsafeCleanup: true });
+    await copyPreMigratedDb(dbResult.path);
     const opts = setGlobalOptionsUnchecked({
       database: dbResult.path,
       log_level: 'debug',
@@ -65,6 +68,11 @@ const test = baseTest.extend<Fixture>({
       execute: async () => ({}),
     } as any;
 
+    const mockMaterializeProgramsCommand = {
+      execute: async (programs: any[]) =>
+        programs.map((p: any) => ({ uuid: p.uuid, type: 'movie' })),
+    } as any;
+
     const fileSystemService = new FileSystemService(globalOptions());
 
     const programConverter = new ProgramConverter(
@@ -78,14 +86,18 @@ const test = baseTest.extend<Fixture>({
       fileSystemService,
       mockWorkerPoolFactory,
       mockMaterializeLineupCommand,
+      mockMaterializeProgramsCommand,
       mock<IProgramDB>(),
       programConverter,
     );
+
+    const channelReadOpsRepo = new ChannelReadOpsRepository(dbAccess.drizzle!);
 
     const basicChannelRepo = new BasicChannelRepository(
       dbAccess.db!,
       dbAccess.drizzle!,
       mock(CacheImageService),
+      channelReadOpsRepo,
       lineupRepo,
     );
 
@@ -101,6 +113,7 @@ const test = baseTest.extend<Fixture>({
       channelProgramRepo,
       lineupRepo,
       channelConfigRepo,
+      channelReadOpsRepo,
     );
 
     await use(channelDb);
@@ -368,8 +381,8 @@ describe('ChannelDB', () => {
           duration: 30000,
           type: 'movie',
           sourceType: 'plex',
-          externalKey: faker.string.alphanumeric(),
-          externalSourceId: faker.string.alphanumeric(),
+          externalKey: faker.string.alphanumeric({ length: 16 }),
+          externalSourceId: faker.string.alphanumeric({ length: 16 }),
           title: `Test Movie ${i}`,
           year: 2020 + i,
         });

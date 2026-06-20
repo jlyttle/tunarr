@@ -19,6 +19,7 @@ import { TruthyQueryParam } from '../types/schemas.ts';
 import { getBooleanEnvVar, TUNARR_ENV_VARS } from '../util/env.ts';
 import { isDev, isNonEmptyString, run } from '../util/index.js';
 import { channelsApi } from './channelsApi.js';
+import { nativePlaybackApi } from './nativePlaybackApi.js';
 import { CreditsApiController } from './creditsApi.ts';
 import { customShowsApiV2 } from './customShowsApi.js';
 import { debugApi } from './debugApi.js';
@@ -40,6 +41,8 @@ import { SmartCollectionsApiController } from './smartCollectionsApi.ts';
 import { systemApiRouter } from './systemApi.js';
 import { tasksApiRouter } from './tasksApi.js';
 import { trashApi } from './trashApi.ts';
+import { streamSelectionRouter } from './streamSelectionApi.ts';
+import { troubleshootApiRouter } from './troubleshootApi.js';
 import { xmlTvSettingsRouter } from './xmltvSettingsApi.js';
 
 export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
@@ -62,6 +65,7 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
     })
     .register(tasksApiRouter)
     .register(channelsApi)
+    .register(nativePlaybackApi)
     .register(customShowsApiV2)
     .register(fillerListsApi)
     .register(programmingApi)
@@ -78,6 +82,8 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
     .register(sessionApiRouter)
     .register(embyApiRouter)
     .register(settingsApi)
+    .register(streamSelectionRouter)
+    .register(troubleshootApiRouter)
     .register(trashApi)
     .register(container.get(SmartCollectionsApiController).mount)
     .register(container.get(CreditsApiController).mount)

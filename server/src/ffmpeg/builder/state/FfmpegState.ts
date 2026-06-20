@@ -14,7 +14,14 @@ import {
   StdoutOutputLocation,
 } from '../constants.ts';
 
-export const VaapiTonemapType = ['vaapi', 'opencl'] as const;
+export type AudioCodecOverride = {
+  /** Output audio stream index (0-based among mapped audio streams). */
+  outputIndex: number;
+  /** Target codec to transcode to (e.g. 'ac3'). */
+  codec: string;
+};
+
+const VaapiTonemapType = ['vaapi', 'opencl'] as const;
 export type VaapiTonemapType = TupleToUnion<typeof VaapiTonemapType>;
 
 export type VaapiPipelineOptions = {
@@ -51,33 +58,23 @@ export const DefaultPipelineOptions: PipelineOptions = {
   },
 };
 
-export const DefaultFfmpegState: Partial<DataProps<FfmpegState>> = {
-  threadCount: null,
-  start: null,
-  duration: null,
-  mapMetadata: false,
-  decoderHwAccelMode: 'none',
-  encoderHwAccelMode: 'none',
-  softwareScalingAlgorithm: 'fast_bilinear',
-  softwareDeinterlaceFilter: 'yadif=1',
-  vaapiDevice: null,
-};
-
 type FfmpegStateFields = MarkRequired<
   Partial<DataProps<FfmpegState>>,
   'version'
 >;
 
 export class FfmpegState {
-  readonly version: FfmpegVersionResult;
+  readonly version!: FfmpegVersionResult;
 
   threadCount: Nullable<number> = null;
   start: Nullable<Duration> = null;
   duration: Nullable<Duration> = null;
   logLevel: FfmpegLogLevel = 'error';
   // metadata
-  mapMetadata: boolean = false;
-  doNotMapMetadata: boolean;
+  /**
+   * When true, adds `-map_metadata -1` to strip all metadata from the output.
+   */
+  stripMetadata: boolean = false;
   metadataServiceName: Nullable<string> = null;
   metadataServiceProvider: Nullable<string> = null;
   decoderHwAccelMode: HardwareAccelerationMode = HardwareAccelerationMode.None;
@@ -90,7 +87,36 @@ export class FfmpegState {
   outputFormat: OutputFormat = MpegTsOutputFormat; // TODO: No
   outputLocation: OutputLocation = StdoutOutputLocation;
   ptsOffset?: number;
+  /**
+   * Explicit flag indicating whether this is the first transcode in the HLS
+   * session. When set, it takes precedence over the `ptsOffset === 0` heuristic
+   * for deciding whether to include `discont_start` in the ffmpeg HLS flags.
+   */
+  isFirstTranscode?: boolean;
+  /**
+   * When true, FFmpeg will write `#EXT-X-ENDLIST` to the HLS playlist on exit.
+   * Used for finite streams (e.g. troubleshooter) so hls.js stops polling.
+   */
+  emitEndList: boolean = false;
   tonemapHdr: boolean = false;
+
+  /**
+   * When true, maps all streams from the input and copies them,
+   * bypassing individual video/audio pipeline construction.
+   * Used for passthrough modes like `hls_direct_v2`.
+   *
+   * Audio streams with codecs incompatible with the output container
+   * (e.g. DTS/TrueHD in MPEG-TS) are transcoded per
+   * {@link audioCodecOverrides}.
+   */
+  copyAllStreams: boolean = false;
+
+  /**
+   * Per-stream audio codec overrides for copy-all mode. Each entry maps
+   * an output audio stream index to a target codec (e.g. `ac3`).
+   * Streams not listed here are copied as-is.
+   */
+  audioCodecOverrides: AudioCodecOverride[] = [];
 
   // HLS
   get hlsPlaylistPath(): Maybe<string> {
@@ -146,7 +172,7 @@ export class FfmpegState {
   ) {
     return this.create({
       version,
-      doNotMapMetadata: true,
+      stripMetadata: true,
       metadataServiceProvider: 'Tunarr',
       metadataServiceName: channelName,
       outputFormat,

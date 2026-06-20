@@ -1,11 +1,13 @@
 import type { ProgramOption } from '@/helpers/slotSchedulerUtil';
 import { useRandomSlotFormContext } from '@/hooks/useRandomSlotFormContext.ts';
+import { Trans } from '@lingui/react/macro';
 import { Add } from '@mui/icons-material';
 import { Button } from '@mui/material';
 import dayjs from 'dayjs';
 import { first, map, round, sortBy } from 'lodash-es';
 import { useCallback } from 'react';
 import { match } from 'ts-pattern';
+import { v4 } from 'uuid';
 import { useSlotProgramOptionsContext } from '../../hooks/programming_controls/useSlotProgramOptions.ts';
 import type { SlotViewModel } from '../../model/SlotModels.ts';
 
@@ -73,11 +75,13 @@ export const AddRandomSlotButton = ({ onAdd }: AddRandomSlotButtonProps) => {
     const newSlot = match(programOption)
       .returnType<SlotViewModel>()
       .with({ type: 'movie' }, () => ({
+        id: v4(),
         ...baseSlot,
         type: 'movie',
         order: 'chronological',
       }))
       .with({ type: 'custom-show' }, (cs) => ({
+        id: v4(),
         ...baseSlot,
         type: 'custom-show',
         customShowId: cs.customShowId,
@@ -88,6 +92,7 @@ export const AddRandomSlotButton = ({ onAdd }: AddRandomSlotButtonProps) => {
       .with({ type: 'filler' }, (f) => ({
         ...baseSlot,
         ...f,
+        id: v4(),
         type: 'filler',
         decayFactor: 0.5,
         durationWeighting: 'linear',
@@ -97,12 +102,14 @@ export const AddRandomSlotButton = ({ onAdd }: AddRandomSlotButtonProps) => {
         isMissing: false,
       }))
       .with({ type: 'show' }, (s) => ({
+        id: v4(),
         ...baseSlot,
         type: 'show',
         showId: s.showId,
         order: 'next',
         show: null,
         seasonFilter: [],
+        seasonExcludeFilter: [],
       }))
       .with({ type: 'flex' }, () => ({
         ...baseSlot,
@@ -116,6 +123,7 @@ export const AddRandomSlotButton = ({ onAdd }: AddRandomSlotButtonProps) => {
         order: 'next',
       }))
       .with({ type: 'smart-collection' }, (c) => ({
+        id: v4(),
         ...baseSlot,
         type: 'smart-collection',
         smartCollectionId: c.collectionId,
@@ -131,7 +139,7 @@ export const AddRandomSlotButton = ({ onAdd }: AddRandomSlotButtonProps) => {
 
   return (
     <Button startIcon={<Add />} variant="contained" onClick={() => addSlot()}>
-      Add Slot
+      <Trans>Add Slot</Trans>
     </Button>
   );
 };

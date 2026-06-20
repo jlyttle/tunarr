@@ -8,7 +8,7 @@ describe('resolveSubtitleDelivery', () => {
     subtitleUnsupportedFallback: 'burn',
   } as const;
 
-  it('uses HLS delivery for text subtitles with a resolved path on session HLS', () => {
+  it('uses HLS delivery for text subtitles on session HLS', () => {
     expect(
       resolveSubtitleDelivery({
         channel: baseChannel,
@@ -17,6 +17,19 @@ describe('resolveSubtitleDelivery', () => {
           codec: 'subrip',
           type: 'external',
           path: '/tmp/subtitles.srt',
+        },
+      }),
+    ).toBe('hls');
+  });
+
+  it('uses HLS delivery for embedded text subtitles without an extracted path', () => {
+    expect(
+      resolveSubtitleDelivery({
+        channel: baseChannel,
+        streamMode: 'hls',
+        subtitleStream: {
+          codec: 'subrip',
+          type: 'embedded',
         },
       }),
     ).toBe('hls');

@@ -1,3 +1,4 @@
+import constants from '@tunarr/shared/constants';
 import dayjs from 'dayjs';
 import { inject, injectable } from 'inversify';
 import { groupBy, isEmpty, maxBy, sumBy } from 'lodash-es';
@@ -5,12 +6,13 @@ import { ProgramPlayHistoryDB } from '../../db/ProgramPlayHistoryDB.ts';
 import { ChannelOrm } from '../../db/schema/Channel.ts';
 import {
   ChannelFillerShowWithContent,
-  ProgramWithRelations,
+  ProgramOrmWithExternalIds,
 } from '../../db/schema/derivedTypes.ts';
 import { OneDayMillis } from '../../ffmpeg/builder/constants.ts';
-import { KEYS } from '../../types/inject.ts';
+
 import { OpenDateTimeRange } from '../../types/OpenDateTimeRange.ts';
-import { Maybe } from '../../types/util.ts';
+import { Maybe, Nullable } from '../../types/util.ts';
+import { InjectLogger } from '../../util/inject.ts';
 import { Logger } from '../../util/logging/LoggerFactory.ts';
 import { loggingDef } from '../../util/logging/loggingDef.ts';
 import { random } from '../../util/random.ts';
@@ -19,6 +21,7 @@ import {
   EmptyFillerPickResult,
   FillerPickResult,
   IFillerPicker,
+  type FillerPickOptions,
 } from '../interfaces/IFillerPicker.ts';
 
 // A (near) re-implementation of the original DTV filler picker.
@@ -27,11 +30,11 @@ import {
   category: 'scheduling',
 })
 export class FillerPickerV2 implements IFillerPicker {
+  @InjectLogger() declare private readonly logger: Logger;
+
   constructor(
     @inject(ProgramPlayHistoryDB)
     private programPlayHistoryDB: ProgramPlayHistoryDB,
-    @inject(KEYS.Logger)
-    private logger: Logger,
   ) {}
 
   async pickFiller(
@@ -39,13 +42,16 @@ export class FillerPickerV2 implements IFillerPicker {
     fillers: ChannelFillerShowWithContent[],
     maxDuration: number,
     now: number = +dayjs(),
+    options?: FillerPickOptions,
   ): Promise<FillerPickResult> {
     if (isEmpty(fillers)) {
       return Promise.resolve(EmptyFillerPickResult);
     }
 
     const fillerRepeatCooldownMs =
-      channel.fillerRepeatCooldown ?? DefaultFillerCooldownMillis;
+      options?.fillerRepeatCooldownOverrideMs ??
+      channel.fillerRepeatCooldown ??
+      DefaultFillerCooldownMillis;
 
     const channelHistoryForFiller =
       await this.programPlayHistoryDB.getFillerHistory(
@@ -87,7 +93,12 @@ export class FillerPickerV2 implements IFillerPicker {
       const timeSincePlayedFiller = lastPlay
         ? now - dayjs(lastPlay.playedAt).valueOf()
         : OneDayMillis;
-      const fillerCooldownMs = cooldown * 1000;
+      const listCooldownOverride =
+        options?.fillerListCooldownOverrides?.[fillerShow.uuid];
+      const fillerCooldownMs =
+        listCooldownOverride !== undefined
+          ? listCooldownOverride * 1000
+          : cooldown * 1000;
 
       if (timeSincePlayedFiller >= fillerCooldownMs) {
         // Check whether this list has at least one program that fits
@@ -96,7 +107,7 @@ export class FillerPickerV2 implements IFillerPicker {
         // we'd risk picking a list and then failing to find a program.
         let hasEligibleProgram = false;
         for (const program of filler.fillerContent) {
-          if (program.duration > maxDuration) continue;
+          if (program.duration > maxDuration + constants.SLACK) continue;
           const programLastPlayed = fillerHistory?.find(
             (h) => h.programUuid === program.uuid,
           );
@@ -108,7 +119,10 @@ export class FillerPickerV2 implements IFillerPicker {
           } else {
             const timeUntilProgramCanPlay =
               fillerRepeatCooldownMs - timeSincePlayed;
-            if (program.duration + timeUntilProgramCanPlay <= maxDuration) {
+            if (
+              program.duration + timeUntilProgramCanPlay <=
+              maxDuration + constants.SLACK
+            ) {
               minimumWait = Math.min(minimumWait, timeUntilProgramCanPlay);
               this.logger.trace('New minimumWait: %d', minimumWait);
             }
@@ -144,7 +158,10 @@ export class FillerPickerV2 implements IFillerPicker {
           (min, p) => Math.min(min, p.duration),
           Number.MAX_SAFE_INTEGER,
         );
-        if (shortestProgram + timeUntilListIsCandidate <= maxDuration) {
+        if (
+          shortestProgram + timeUntilListIsCandidate <=
+          maxDuration + constants.SLACK
+        ) {
           minimumWait = Math.min(
             minimumWait,
             shortestProgram + timeUntilListIsCandidate,
@@ -168,10 +185,10 @@ export class FillerPickerV2 implements IFillerPicker {
     const fillerHistory = fillerPlayHistoryById[pickedFiller.fillerShow.uuid];
     const shuffledPrograms = random.shuffle([...pickedFiller.fillerContent]);
     let programTotalWeight = 0;
-    let pickedProgram: Maybe<ProgramWithRelations>;
+    let pickedProgram: Nullable<ProgramOrmWithExternalIds> = null;
 
     for (const program of shuffledPrograms) {
-      if (program.duration > maxDuration) {
+      if (program.duration > maxDuration + constants.SLACK) {
         this.logger.trace(
           'Skipping program %s (%s) from filler list %s because it is too long (%d > %d)',
           program.uuid,
@@ -202,7 +219,10 @@ export class FillerPickerV2 implements IFillerPicker {
         );
         const timeUntilProgramCanPlay =
           fillerRepeatCooldownMs - timeSincePlayed;
-        if (program.duration + timeUntilProgramCanPlay <= maxDuration) {
+        if (
+          program.duration + timeUntilProgramCanPlay <=
+          maxDuration + constants.SLACK
+        ) {
           minimumWait = Math.min(minimumWait, timeUntilProgramCanPlay);
           this.logger.trace('New minimumWait: %d', minimumWait);
         }

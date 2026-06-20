@@ -1,18 +1,19 @@
-import dayjs from 'dayjs';
-import duration from 'dayjs/plugin/duration';
 import { TextField } from '@mui/material';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import dayjs from 'dayjs';
+import duration from 'dayjs/plugin/duration';
+import { isUndefined, omit } from 'lodash-es';
 import { useCallback, useEffect, useState } from 'react';
 import {
   addProgramsToCurrentChannel,
   setProgramAtIndex,
 } from '../../store/channelEditor/actions.ts';
-import { isUndefined, omit } from 'lodash-es';
 import type { UIFlexProgram } from '../../types/index.ts';
+import { Trans, useLingui } from '@lingui/react/macro';
 
 dayjs.extend(duration);
 
@@ -31,6 +32,7 @@ const AddFlexModal = ({
   onClose,
   initialProgram,
 }: AddRedirectModalProps) => {
+  const { t } = useLingui();
   const [duration, setDuration] = useState(
     (initialProgram?.duration
       ? initialProgram.duration / 1000
@@ -70,13 +72,12 @@ const AddFlexModal = ({
           {
             ...omit(initialProgram, 'index'),
             duration: parsedDuration * 1000,
-            persisted: false,
           },
           initialProgram.index,
         );
       } else {
         addProgramsToCurrentChannel([
-          { type: 'flex', duration: parsedDuration * 1000, persisted: false },
+          { type: 'flex', duration: parsedDuration * 1000 },
         ]);
       }
       onClose();
@@ -86,29 +87,29 @@ const AddFlexModal = ({
   return (
     <Dialog open={open}>
       <DialogTitle>
-        {!isUndefined(initialProgram) ? 'Edit' : 'Add'} Flex Time
+        {!isUndefined(initialProgram) ? <Trans>Edit Flex Time</Trans> : <Trans>Add Flex Time</Trans>}
       </DialogTitle>
       <DialogContent>
         <TextField
           fullWidth
           margin="normal"
-          label="Duration (seconds)"
+          label={t`Duration (seconds)`}
           value={duration}
           error={isInvalid}
           onChange={(e) => setDurationValidated(e.target.value)}
           helperText={
             isNotNumeric
-              ? 'Duration must be numeric'
+              ? t`Duration must be numeric`
               : !isGreaterThanZero
-                ? 'Duration must be greater than 0.'
+                ? t`Duration must be greater than 0.`
                 : dayjs.duration(parsedDuration, 'seconds').humanize()
           }
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={() => onClose()}>Cancel</Button>
+        <Button onClick={() => onClose()}><Trans>Cancel</Trans></Button>
         <Button variant="contained" onClick={() => addFlex()}>
-          Save
+          <Trans>Save</Trans>
         </Button>
       </DialogActions>
     </Dialog>

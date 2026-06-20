@@ -4,7 +4,7 @@ import type { ISettingsDB } from '@/db/interfaces/ISettingsDB.js';
 import { ChannelLineupMigrator } from '@/migration/lineups/ChannelLineupMigrator.js';
 import { FixerRunner } from '@/tasks/fixers/FixerRunner.js';
 import { KEYS } from '@/types/inject.js';
-import { inject, injectable, interfaces } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { Kysely } from 'kysely';
 import { isUndefined } from 'lodash-es';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -18,7 +18,9 @@ import { DB } from './db/schema/db.ts';
 import { DrizzleDBAccess } from './db/schema/index.ts';
 import { MediaSourceApiFactory } from './external/MediaSourceApiFactory.ts';
 import { IWorkerPool } from './interfaces/IWorkerPool.ts';
+import { CustomShowSyncService } from './services/CustomShowSyncService.ts';
 import { EventService } from './services/EventService.ts';
+import { FeatureFlagService } from './services/FeatureFlagService.ts';
 import { FileCacheService } from './services/FileCacheService.ts';
 import { HdhrService } from './services/HDHRService.ts';
 import { HealthCheckService } from './services/HealthCheckService.js';
@@ -69,10 +71,10 @@ export class ServerContext {
   public readonly mediaSourceApiFactory!: MediaSourceApiFactory;
 
   @inject(KEYS.DatabaseFactory)
-  public readonly databaseFactory!: interfaces.AutoFactory<Kysely<DB>>;
+  public readonly databaseFactory!: () => Kysely<DB>;
 
   @inject(KEYS.DrizzleDatabaseFactory)
-  public readonly drizzleFactory!: interfaces.AutoFactory<DrizzleDBAccess>;
+  public readonly drizzleFactory!: () => DrizzleDBAccess;
 
   @inject(KEYS.WorkerPool)
   public readonly workerPool!: IWorkerPool;
@@ -91,6 +93,12 @@ export class ServerContext {
 
   @inject(SmartCollectionsDB)
   public readonly smartCollectionsDB!: SmartCollectionsDB;
+
+  @inject(CustomShowSyncService)
+  public readonly customShowSyncService!: CustomShowSyncService;
+
+  @inject(FeatureFlagService)
+  public readonly featureFlagService!: FeatureFlagService;
 }
 
 export class ServerRequestContext {
@@ -109,14 +117,4 @@ export const getServerContext = () => {
   const ctx = ServerRequestContext.currentServerContext();
   if (isUndefined(ctx)) throw new Error('No current server context!!');
   return ctx;
-};
-
-export const withServerContext = <T>(f: (ctx: ServerContext) => T) => {
-  return f(getServerContext());
-};
-
-export const withServerContextAsync = async <T>(
-  f: (ctx: ServerContext) => Promise<T>,
-) => {
-  return await f(getServerContext());
 };

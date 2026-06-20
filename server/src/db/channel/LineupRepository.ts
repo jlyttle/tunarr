@@ -1,6 +1,7 @@
-import type { IProgramDB } from '@/db/interfaces/IProgramDB.js';
+import { globalOptions } from '@/globals.js';
 import { FileSystemService } from '@/services/FileSystemService.js';
 import { KEYS } from '@/types/inject.js';
+import { typedProperty } from '@/types/path.js';
 import { jsonSchema } from '@/types/schemas.js';
 import { Nullable } from '@/types/util.js';
 import { Timer } from '@/util/Timer.js';
@@ -12,15 +13,18 @@ import { MutexMap } from '@/util/mutexMap.js';
 import { seq } from '@tunarr/shared/util';
 import {
   ChannelProgram,
-  ChannelProgramming,
   CondensedChannelProgram,
   CondensedChannelProgramming,
+  CondensedContentProgram,
   ContentProgram,
 } from '@tunarr/types';
 import { UpdateChannelProgrammingRequest } from '@tunarr/types/api';
-import { inject, injectable, interfaces } from 'inversify';
+import { CondensedFillerProgram } from '@tunarr/types/schemas';
+import { and, eq, inArray, notInArray } from 'drizzle-orm';
+import { inject, injectable } from 'inversify';
 import { Kysely } from 'kysely';
 import {
+  chunk,
   drop,
   entries,
   filter,
@@ -32,10 +36,9 @@ import {
   isUndefined,
   map,
   mapValues,
-  nth,
+  omit,
   omitBy,
   partition,
-  omit,
   reject,
   sum,
   sumBy,
@@ -49,6 +52,16 @@ import { join } from 'node:path';
 import { MarkRequired } from 'ts-essentials';
 import { match } from 'ts-pattern';
 import { MaterializeLineupCommand } from '../../commands/MaterializeLineupCommand.ts';
+import { MaterializeProgramsCommand } from '../../commands/MaterializeProgramsCommand.ts';
+import { IWorkerPool } from '../../interfaces/IWorkerPool.ts';
+import {
+  asyncMapToRecord,
+  groupByUniqProp,
+  isDefined,
+  isNonEmptyString,
+  mapReduceAsyncSeq,
+  run,
+} from '../../util/index.ts';
 import { ProgramConverter } from '../converters/ProgramConverter.ts';
 import {
   ContentItem,
@@ -61,7 +74,6 @@ import {
   LineupSchema,
   PendingProgram,
 } from '../derived_types/Lineup.ts';
-import { IWorkerPool } from '../../interfaces/IWorkerPool.ts';
 import {
   ChannelAndLineup,
   ChannelAndRawLineup,
@@ -69,39 +81,18 @@ import {
 } from '../interfaces/IChannelDB.ts';
 import { SchemaBackedDbAdapter } from '../json/SchemaBackedJsonDBAdapter.ts';
 import { calculateStartTimeOffsets } from '../lineupUtil.ts';
+import { Channel, ChannelOrm } from '../schema/Channel.ts';
 import {
-  AllProgramGroupingFields,
-  withPrograms,
-  withTrackAlbum,
-  withTrackArtist,
-  withTvSeason,
-  withTvShow,
-} from '../programQueryHelpers.ts';
-import {
-  Channel,
-  ChannelOrm,
-} from '../schema/Channel.ts';
-import { NewChannelProgram } from '../schema/ChannelPrograms.ts';
+  ChannelPrograms,
+  NewChannelProgram,
+} from '../schema/ChannelPrograms.ts';
 import { DB } from '../schema/db.ts';
-import { DrizzleDBAccess } from '../schema/index.ts';
 import {
   ChannelOrmWithPrograms,
-  ChannelWithPrograms,
+  ChannelOrmWithRelations,
 } from '../schema/derivedTypes.ts';
-import {
-  asyncMapToRecord,
-  groupByFunc,
-  groupByUniqProp,
-  isDefined,
-  isNonEmptyString,
-  mapReduceAsyncSeq,
-  programExternalIdString,
-  run,
-} from '../../util/index.ts';
-import { typedProperty } from '@/types/path.js';
-import { globalOptions } from '@/globals.js';
-import { eq } from 'drizzle-orm';
-import { chunk } from 'lodash-es';
+import { DrizzleDBAccess } from '../schema/index.ts';
+import { ChannelReadOpsRepository } from './ChannelReadOpsRepository.ts';
 
 // Module-level cache shared within this module
 const fileDbCache: Record<string | number, Low<Lineup>> = {};
@@ -112,39 +103,40 @@ const SqliteMaxDepthLimit = 1000;
 type ProgramRelationOperation = { operation: 'add' | 'remove'; id: string };
 
 function channelProgramToLineupItemFunc(
-  dbIdByUniqueId: Record<string, string>,
-): (p: ChannelProgram) => LineupItem {
-  return (p) =>
-    match(p)
-      .returnType<LineupItem>()
-      .with({ type: 'content' }, (program) => ({
-        type: 'content',
-        id: program.persisted ? program.id! : dbIdByUniqueId[program.uniqueId]!,
-        durationMs: program.duration,
-      }))
-      .with({ type: 'custom' }, (program) => ({
-        type: 'content',
-        durationMs: program.duration,
-        id: program.id,
-        customShowId: program.customShowId,
-      }))
-      .with({ type: 'filler' }, (program) => ({
-        type: 'content',
-        durationMs: program.duration,
-        id: program.id,
-        fillerListId: program.fillerListId,
-        fillerType: program.fillerType,
-      }))
-      .with({ type: 'redirect' }, (program) => ({
-        type: 'redirect',
-        channel: program.channel,
-        durationMs: program.duration,
-      }))
-      .with({ type: 'flex' }, (program) => ({
-        type: 'offline',
-        durationMs: program.duration,
-      }))
-      .exhaustive();
+  p: CondensedChannelProgram,
+): LineupItem {
+  return match(p)
+    .returnType<LineupItem>()
+    .with({ type: 'content' }, (program) => ({
+      type: 'content',
+      id: program.id,
+      durationMs: program.duration,
+      startOffsetMs: program.startOffsetMs,
+    }))
+    .with({ type: 'custom' }, (program) => ({
+      type: 'content',
+      durationMs: program.duration,
+      id: program.id,
+      customShowId: program.customShowId,
+    }))
+    .with({ type: 'filler' }, (program) => ({
+      type: 'content',
+      durationMs: program.duration,
+      id: program.id,
+      fillerListId: program.fillerListId,
+      fillerType: program.fillerType,
+    }))
+    .with({ type: 'redirect' }, (program) => ({
+      type: 'redirect',
+      channel: program.channel,
+      durationMs: program.duration,
+    }))
+    .with({ type: 'flex' }, (program) => ({
+      type: 'offline',
+      durationMs: program.duration,
+      fillerConfig: program.fillerConfig,
+    }))
+    .exhaustive();
 }
 
 @injectable()
@@ -154,18 +146,21 @@ export class LineupRepository {
     className: this.constructor.name,
   });
 
-  private timer = new Timer(this.logger, 'trace');
+  private timer = new Timer('trace');
 
   constructor(
     @inject(KEYS.Database) private db: Kysely<DB>,
     @inject(KEYS.DrizzleDB) private drizzleDB: DrizzleDBAccess,
     @inject(FileSystemService) private fileSystemService: FileSystemService,
     @inject(KEYS.WorkerPoolFactory)
-    private workerPoolProvider: interfaces.AutoFactory<IWorkerPool>,
+    private workerPoolProvider: () => IWorkerPool,
     @inject(MaterializeLineupCommand)
     private materializeLineupCommand: MaterializeLineupCommand,
-    @inject(KEYS.ProgramDB) private programDB: IProgramDB,
+    @inject(MaterializeProgramsCommand)
+    private materializeProgramsCommand: MaterializeProgramsCommand,
     @inject(ProgramConverter) private programConverter: ProgramConverter,
+    @inject(KEYS.ChannelReadOpsRepository)
+    private readonly channelReadOps: ChannelReadOpsRepository,
   ) {}
 
   async createLineup(channelId: string): Promise<void> {
@@ -173,7 +168,10 @@ export class LineupRepository {
     await db.write();
   }
 
-  async getFileDb(channelId: string, forceRead: boolean = false): Promise<Low<Lineup>> {
+  async getFileDb(
+    channelId: string,
+    forceRead: boolean = false,
+  ): Promise<Low<Lineup>> {
     return await fileDbLocks.getOrCreateLock(channelId).then((lock) =>
       lock.runExclusive(async () => {
         const existing = fileDbCache[channelId];
@@ -203,6 +201,12 @@ export class LineupRepository {
         return db;
       }),
     );
+  }
+
+  // Bypasses Low
+  async saveChannelLineupDirect(channelId: string, lineup: Lineup) {
+    const outPath = this.fileSystemService.getChannelLineupPath(channelId);
+    await fs.writeFile(outPath, JSON.stringify(lineup));
   }
 
   async markLineupFileForDeletion(
@@ -286,38 +290,7 @@ export class LineupRepository {
   ): Promise<Lineup> {
     const db = await this.getFileDb(channelId);
     await db.update((data) => {
-      if (isDefined(newLineup.items)) {
-        data.items = newLineup.items;
-        data.startTimeOffsets =
-          newLineup.startTimeOffsets ??
-          calculateStartTimeOffsets(newLineup.items);
-      }
-
-      if (isDefined(newLineup.schedule)) {
-        if (newLineup.schedule === null) {
-          data.schedule = undefined;
-        } else {
-          data.schedule = newLineup.schedule;
-        }
-      }
-
-      if (isDefined(newLineup.pendingPrograms)) {
-        data.pendingPrograms =
-          newLineup.pendingPrograms === null
-            ? undefined
-            : newLineup.pendingPrograms;
-      }
-
-      if (isDefined(newLineup.onDemandConfig)) {
-        data.onDemandConfig =
-          newLineup.onDemandConfig === null
-            ? undefined
-            : newLineup.onDemandConfig;
-      }
-
-      data.version = newLineup?.version ?? data.version;
-
-      data.lastUpdated = dayjs().valueOf();
+      LineupRepository.applyUpdateLineupRequest(newLineup, data);
     });
 
     if (isDefined(newLineup.items)) {
@@ -325,6 +298,44 @@ export class LineupRepository {
       await this.updateChannelDuration(channelId, newDur);
     }
     return db.data;
+  }
+
+  static applyUpdateLineupRequest(
+    newLineup: UpdateChannelLineupRequest,
+    data: Lineup,
+  ) {
+    if (isDefined(newLineup.items)) {
+      data.items = newLineup.items;
+      data.startTimeOffsets =
+        newLineup.startTimeOffsets ??
+        calculateStartTimeOffsets(newLineup.items);
+    }
+
+    if (isDefined(newLineup.schedule)) {
+      if (newLineup.schedule === null) {
+        data.schedule = undefined;
+      } else {
+        data.schedule = newLineup.schedule;
+      }
+    }
+
+    if (isDefined(newLineup.pendingPrograms)) {
+      data.pendingPrograms =
+        newLineup.pendingPrograms === null
+          ? undefined
+          : newLineup.pendingPrograms;
+    }
+
+    if (isDefined(newLineup.onDemandConfig)) {
+      data.onDemandConfig =
+        newLineup.onDemandConfig === null
+          ? undefined
+          : newLineup.onDemandConfig;
+    }
+
+    data.version = newLineup?.version ?? data.version;
+
+    data.lastUpdated = dayjs().valueOf();
   }
 
   private updateChannelDuration(id: string, newDur: number): Promise<number> {
@@ -352,17 +363,17 @@ export class LineupRepository {
   async setChannelPrograms(
     channel: Channel,
     lineup: readonly LineupItem[],
-  ): Promise<Channel | null>;
+  ): Promise<ChannelOrm | null>;
   async setChannelPrograms(
     channel: string | Channel,
     lineup: readonly LineupItem[],
     startTime?: number,
-  ): Promise<Channel | null>;
+  ): Promise<ChannelOrm | null>;
   async setChannelPrograms(
     channel: string | Channel,
     lineup: readonly LineupItem[],
     startTime?: number,
-  ): Promise<Channel | null> {
+  ): Promise<ChannelOrm | null> {
     const loadedChannel = await run(async () => {
       if (isString(channel)) {
         return this.db
@@ -381,38 +392,38 @@ export class LineupRepository {
 
     const allIds = uniq(map(filter(lineup, isContentItem), 'id'));
 
-    return await this.db.transaction().execute(async (tx) => {
-      if (!isUndefined(startTime)) {
-        loadedChannel.startTime = startTime;
-      }
-      loadedChannel.duration = sumBy(lineup, typedProperty('durationMs'));
-      const updatedChannel = await tx
-        .updateTable('channel')
-        .where('channel.uuid', '=', loadedChannel.uuid)
-        .set('duration', sumBy(lineup, typedProperty('durationMs')))
-        .$if(isDefined(startTime), (_) => _.set('startTime', startTime!))
-        .returningAll()
-        .executeTakeFirst();
+    return this.drizzleDB.transaction((tx) => {
+      const updatedChannel = tx
+        .update(Channel)
+        .set({
+          duration: sumBy(lineup, typedProperty('durationMs')),
+          startTime: isDefined(startTime) ? startTime : undefined,
+        })
+        .where(eq(Channel.uuid, loadedChannel.uuid))
+        .returning()
+        .get();
 
       for (const idChunk of chunk(allIds, 500)) {
-        await tx
-          .deleteFrom('channelPrograms')
-          .where('channelUuid', '=', loadedChannel.uuid)
-          .where('programUuid', 'not in', idChunk)
-          .execute();
+        tx.delete(ChannelPrograms)
+          .where(
+            and(
+              eq(ChannelPrograms.channelUuid, loadedChannel.uuid),
+              notInArray(ChannelPrograms.programUuid, idChunk),
+            ),
+          )
+          .run();
       }
 
       for (const idChunk of chunk(allIds, 500)) {
-        await tx
-          .insertInto('channelPrograms')
+        tx.insert(ChannelPrograms)
           .values(
             map(idChunk, (id) => ({
               programUuid: id,
               channelUuid: loadedChannel.uuid,
             })),
           )
-          .onConflict((oc) => oc.doNothing())
-          .executeTakeFirst();
+          .onConflictDoNothing()
+          .run();
       }
 
       return updatedChannel ?? null;
@@ -502,7 +513,9 @@ export class LineupRepository {
     }
   }
 
-  async loadAllLineups(): Promise<Record<string, { channel: ChannelOrm; lineup: Lineup }>> {
+  async loadAllLineups(): Promise<
+    Record<string, { channel: ChannelOrm; lineup: Lineup }>
+  > {
     const allChannels = await this.drizzleDB.query.channels
       .findMany({ orderBy: (fields, { asc }) => asc(fields.number) })
       .execute();
@@ -568,7 +581,10 @@ export class LineupRepository {
     );
   }
 
-  async loadLineup(channelId: string, forceRead: boolean = false): Promise<Lineup> {
+  async loadLineup(
+    channelId: string,
+    forceRead: boolean = false,
+  ): Promise<Lineup> {
     const db = await this.getFileDb(channelId, forceRead);
     return db.data;
   }
@@ -593,11 +609,10 @@ export class LineupRepository {
 
   async loadChannelAndLineupOrm(
     channelId: string,
-  ): Promise<ChannelAndLineup<ChannelOrm> | null> {
-    const channel = await this.drizzleDB.query.channels.findFirst({
-      where: (ch, { eq }) => eq(ch.uuid, channelId),
-      with: { transcodeConfig: true },
-    });
+  ): Promise<ChannelAndLineup<
+    MarkRequired<ChannelOrmWithRelations, 'fillerShows'>
+  > | null> {
+    const channel = await this.channelReadOps.getChannelOrm(channelId);
     if (isNil(channel)) {
       return null;
     }
@@ -618,10 +633,10 @@ export class LineupRepository {
           with: {
             program: {
               with: {
-                show: true,
-                season: true,
-                artist: true,
-                album: true,
+                show: { with: { externalIds: true } },
+                season: { with: { externalIds: true } },
+                artist: { with: { externalIds: true } },
+                album: { with: { externalIds: true } },
                 externalIds: true,
               },
             },
@@ -643,79 +658,6 @@ export class LineupRepository {
     return {
       channel,
       lineup: await this.loadLineup(channelId),
-    };
-  }
-
-  async loadAndMaterializeLineup(
-    channelId: string,
-    offset: number = 0,
-    limit: number = -1,
-  ): Promise<ChannelProgramming | null> {
-    const channel = await this.db
-      .selectFrom('channel')
-      .selectAll(['channel'])
-      .where('channel.uuid', '=', channelId)
-      .leftJoin(
-        'channelPrograms',
-        'channel.uuid',
-        'channelPrograms.channelUuid',
-      )
-      .select((eb) =>
-        withPrograms(eb, {
-          joins: {
-            customShows: true,
-            tvShow: [
-              'programGrouping.uuid',
-              'programGrouping.title',
-              'programGrouping.summary',
-              'programGrouping.type',
-            ],
-            tvSeason: [
-              'programGrouping.uuid',
-              'programGrouping.title',
-              'programGrouping.summary',
-              'programGrouping.type',
-            ],
-            trackArtist: [
-              'programGrouping.uuid',
-              'programGrouping.title',
-              'programGrouping.summary',
-              'programGrouping.type',
-            ],
-            trackAlbum: [
-              'programGrouping.uuid',
-              'programGrouping.title',
-              'programGrouping.summary',
-              'programGrouping.type',
-            ],
-          },
-        }),
-      )
-      .groupBy('channel.uuid')
-      .orderBy('channel.number asc')
-      .executeTakeFirst();
-
-    if (isNil(channel)) {
-      return null;
-    }
-
-    const lineup = await this.loadLineup(channelId);
-    const len = lineup.items.length;
-    const cleanOffset = offset < 0 ? 0 : offset;
-    const cleanLimit = limit < 0 ? len : limit;
-
-    const { lineup: apiLineup, offsets } = await this.buildApiLineup(
-      channel,
-      take(drop(lineup.items, cleanOffset), cleanLimit),
-    );
-
-    return {
-      icon: channel.icon,
-      name: channel.name,
-      number: channel.number,
-      totalPrograms: len,
-      programs: apiLineup,
-      startTimeOffsets: offsets,
     };
   }
 
@@ -747,53 +689,44 @@ export class LineupRepository {
 
     const contentItems = filter(pagedLineup, isContentItem);
 
-    const directPrograms = await this.timer.timeAsync('direct', () =>
-      this.db
-        .selectFrom('channelPrograms')
-        .where('channelUuid', '=', channelId)
-        .innerJoin('program', 'channelPrograms.programUuid', 'program.uuid')
-        .selectAll('program')
-        .select((eb) => [
-          withTvShow(eb, AllProgramGroupingFields, true),
-          withTvSeason(eb, AllProgramGroupingFields, true),
-          withTrackAlbum(eb, AllProgramGroupingFields, true),
-          withTrackArtist(eb, AllProgramGroupingFields, true),
-        ])
-        .execute(),
-    );
+    const directPrograms = (
+      await this.timer.timeAsync('select programs', () =>
+        this.drizzleDB.query.channelPrograms.findMany({
+          where: (fields, { eq }) => eq(fields.channelUuid, channelId),
+          with: {
+            program: {
+              with: {
+                show: { with: { externalIds: true } },
+                season: { with: { externalIds: true } },
+                album: { with: { externalIds: true } },
+                artist: { with: { externalIds: true } },
+                externalIds: true,
+              },
+            },
+          },
+        }),
+      )
+    ).map(({ program }) => program);
 
-    const externalIds = await this.timer.timeAsync('eids', () =>
-      this.db
-        .selectFrom('channelPrograms')
-        .where('channelUuid', '=', channelId)
-        .innerJoin(
-          'programExternalId',
-          'channelPrograms.programUuid',
-          'programExternalId.programUuid',
-        )
-        .selectAll('programExternalId')
-        .execute(),
+    const programsById = groupByUniqProp(
+      await this.materializeProgramsCommand.execute(directPrograms),
+      'uuid',
     );
-
-    const externalIdsByProgramId = groupBy(
-      externalIds,
-      (eid) => eid.programUuid,
-    );
-
-    const programsById = groupByUniqProp(directPrograms, 'uuid');
 
     const materializedPrograms = this.timer.timeSync('program convert', () => {
       const ret: Record<string, ContentProgram> = {};
       forEach(uniqBy(contentItems, 'id'), (item) => {
         const program = programsById[item.id];
         if (!program) {
+          this.logger.warn(
+            'Failed to materialize program with ID %s, this could mean it is missing a media source ID or library ID',
+            item.id,
+          );
           return;
         }
 
-        const converted = this.programConverter.programDaoToContentProgram(
-          program,
-          externalIdsByProgramId[program.uuid] ?? [],
-        );
+        const converted =
+          this.programConverter.materializedProgramToContentProgram(program);
 
         if (converted) {
           ret[converted.id] = converted;
@@ -808,7 +741,7 @@ export class LineupRepository {
       () =>
         this.buildCondensedLineup(
           channel,
-          new Set([...seq.collect(directPrograms, (p) => p.uuid)]),
+          new Set([...Object.keys(programsById)]),
           pagedLineup,
         ),
     );
@@ -857,16 +790,14 @@ export class LineupRepository {
       return null;
     }
 
-    const updateChannel = async (lineup: readonly LineupItem[]) => {
-      return await this.db.transaction().execute(async (tx) => {
-        await tx
-          .updateTable('channel')
-          .where('channel.uuid', '=', id)
+    const updateChannel = (lineup: readonly LineupItem[]) => {
+      return this.drizzleDB.transaction((tx) => {
+        tx.update(Channel)
           .set({
             duration: sumBy(lineup, typedProperty('durationMs')),
           })
-          .limit(1)
-          .executeTakeFirstOrThrow();
+          .where(eq(Channel.uuid, id))
+          .run();
 
         const allNewIds = new Set([
           ...uniq(map(filter(lineup, isContentItem), (p) => p.id)),
@@ -902,16 +833,21 @@ export class LineupRepository {
           );
 
           if (!isEmpty(removes)) {
-            await tx
-              .deleteFrom('channelPrograms')
-              .where('channelPrograms.programUuid', 'in', map(removes, 'id'))
-              .where('channelPrograms.channelUuid', '=', id)
-              .execute();
+            tx.delete(ChannelPrograms)
+              .where(
+                and(
+                  inArray(
+                    ChannelPrograms.programUuid,
+                    map(removes, typedProperty('id')),
+                  ),
+                  eq(ChannelPrograms.channelUuid, id),
+                ),
+              )
+              .run();
           }
 
           if (!isEmpty(adds)) {
-            await tx
-              .insertInto('channelPrograms')
+            tx.insert(ChannelPrograms)
               .values(
                 map(
                   adds,
@@ -922,69 +858,23 @@ export class LineupRepository {
                     }) satisfies NewChannelProgram,
                 ),
               )
-              .execute();
+              .run();
           }
         }
         return channel;
       });
     };
 
-    const createNewLineup = async (
+    const createNewLineup = (
       programs: ChannelProgram[],
       lineupPrograms: ChannelProgram[] = programs,
     ) => {
-      const upsertedPrograms =
-        await this.programDB.upsertContentPrograms(programs);
-      const dbIdByUniqueId = groupByFunc(
-        upsertedPrograms,
-        programExternalIdString,
-        (p) => p.uuid,
-      );
-      return map(lineupPrograms, channelProgramToLineupItemFunc(dbIdByUniqueId));
-    };
-
-    const upsertPrograms = async (programs: ChannelProgram[]) => {
-      const upsertedPrograms =
-        await this.programDB.upsertContentPrograms(programs);
-      return groupByFunc(
-        upsertedPrograms,
-        programExternalIdString,
-        (p) => p.uuid,
-      );
+      return map(lineupPrograms, channelProgramToLineupItemFunc);
     };
 
     if (req.type === 'manual') {
       const newLineupItems = await run(async () => {
-        const newItems = await this.timer.timeAsync(
-          'createNewLineup',
-          async () => {
-            const programs = req.programs;
-            const dbIdByUniqueId = await upsertPrograms(programs);
-            const convertFunc = channelProgramToLineupItemFunc(dbIdByUniqueId);
-            return seq.collect(req.lineup, (lineupItem) => {
-              switch (lineupItem.type) {
-                case 'index': {
-                  const program = nth(programs, lineupItem.index);
-                  if (program) {
-                    return convertFunc({
-                      ...program,
-                      duration: lineupItem.duration ?? program.duration,
-                    });
-                  }
-                  return null;
-                }
-                case 'persisted': {
-                  return {
-                    type: 'content',
-                    id: lineupItem.programId,
-                    customShowId: lineupItem.customShowId,
-                    durationMs: lineupItem.duration,
-                  } satisfies ContentItem;
-                }
-              }
-            });
-          },
-        );
+        const newItems = req.lineup.map(channelProgramToLineupItemFunc);
         if (req.append) {
           const existingLineup = await this.loadLineup(channel.uuid);
           return [...existingLineup.items, ...newItems];
@@ -993,7 +883,7 @@ export class LineupRepository {
         }
       });
 
-      const updatedChannel = await this.timer.timeAsync('updateChannel', () =>
+      const updatedChannel = this.timer.timeSync('updateChannel', () =>
         updateChannel(newLineupItems),
       );
 
@@ -1052,9 +942,9 @@ export class LineupRepository {
         );
       }
 
-      const newLineup = await createNewLineup(programs);
+      const newLineup = createNewLineup(programs);
 
-      const updatedChannel = await updateChannel(newLineup);
+      const updatedChannel = updateChannel(newLineup);
       await this.saveLineup(id, {
         items: newLineup,
         schedule: req.schedule,
@@ -1067,51 +957,6 @@ export class LineupRepository {
     }
 
     return null;
-  }
-
-  private async buildApiLineup(
-    channel: ChannelWithPrograms,
-    lineup: LineupItem[],
-  ): Promise<{ lineup: ChannelProgram[]; offsets: number[] }> {
-    const allChannels = await this.db
-      .selectFrom('channel')
-      .select(['channel.uuid', 'channel.number', 'channel.name'])
-      .execute();
-    let lastOffset = 0;
-    const offsets: number[] = [];
-
-    const programsById = groupByUniqProp(channel.programs, 'uuid');
-
-    const programs: ChannelProgram[] = [];
-
-    for (const item of lineup) {
-      const apiItem = match(item)
-        .with({ type: 'content' }, (contentItem) => {
-          const fullProgram = programsById[contentItem.id];
-          if (!fullProgram) {
-            return null;
-          }
-          return this.programConverter.programDaoToContentProgram(
-            fullProgram,
-            fullProgram.externalIds ?? [],
-          );
-        })
-        .otherwise((item) =>
-          this.programConverter.lineupItemToChannelProgram(
-            channel,
-            item,
-            allChannels,
-          ),
-        );
-
-      if (apiItem) {
-        offsets.push(lastOffset);
-        lastOffset += item.durationMs;
-        programs.push(apiItem);
-      }
-    }
-
-    return { lineup: programs, offsets };
   }
 
   private async buildCondensedLineup(
@@ -1179,37 +1024,32 @@ export class LineupRepository {
             item.channel,
           );
           p = {
-            persisted: true,
             type: 'flex',
             duration: item.durationMs,
           };
         }
       } else if (item.customShowId) {
         p = {
-          persisted: true,
           type: 'custom',
           customShowId: item.customShowId,
           duration: item.durationMs,
           index: customShowIndexes[item.customShowId]![item.id] ?? -1,
           id: item.id,
         };
-      } else if (item.fillerListId) {
+      } else if (isNonEmptyString(item.fillerListId)) {
         p = {
-          persisted: true,
+          ...item,
           type: 'filler',
           fillerListId: item.fillerListId,
           fillerType: item.fillerType,
-          id: item.id,
           duration: item.durationMs,
-        };
+        } satisfies CondensedFillerProgram;
       } else {
         if (dbProgramIds.has(item.id)) {
           p = {
-            persisted: true,
-            type: 'content',
-            id: item.id,
+            ...item,
             duration: item.durationMs,
-          };
+          } satisfies CondensedContentProgram;
         }
       }
 

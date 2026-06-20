@@ -9,7 +9,6 @@ import {
   TruthyQueryParam,
 } from '@/types/schemas.js';
 import type { RouterPluginAsyncCallback } from '@/types/serverType.js';
-import { getBooleanEnvVar, TUNARR_ENV_VARS } from '@/util/env.js';
 import {
   groupByUniq,
   groupByUniqAndMap,
@@ -35,8 +34,7 @@ import {
   SearchFilterQuerySchema,
   TerminalProgramSchema,
 } from '@tunarr/types/schemas';
-import axios, { AxiosHeaders, isAxiosError } from 'axios';
-import type { HttpHeader } from 'fastify/types/utils.js';
+import axios, { isAxiosError } from 'axios';
 import { jsonArrayFrom } from 'kysely/helpers/sqlite';
 import {
   compact,
@@ -44,10 +42,8 @@ import {
   first,
   head,
   isNil,
-  isNull,
   isUndefined,
   map,
-  omitBy,
   trimStart,
   values,
 } from 'lodash-es';
@@ -74,10 +70,11 @@ import type { DrizzleDBAccess } from '../db/schema/index.ts';
 import { EmbyApiClient } from '../external/emby/EmbyApiClient.ts';
 import { globalOptions } from '../globals.ts';
 import { FfprobeStreamDetails } from '../stream/FfprobeStreamDetails.ts';
-import { ExternalStreamDetailsFetcherFactory } from '../stream/StreamDetailsFetcher.ts';
+import { ProgramStreamDetailsFetcher } from '../stream/ProgramStreamDetailsFetcher.ts';
 import { TypedError } from '../types/errors.ts';
 import { KEYS } from '../types/inject.ts';
 import type { Maybe } from '../types/util.ts';
+import { extractAxiosHeaders } from '../util/axios.ts';
 
 const LookupExternalProgrammingSchema = z.object({
   externalId: z
@@ -132,10 +129,24 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
           req.params.id,
         );
         if (program) {
+          const materializedProgram = head(
+            await container
+              .get<MaterializeProgramsCommand>(MaterializeProgramsCommand)
+              .execute([program]),
+          );
+
+          if (!materializedProgram) {
+            logger.warn(
+              'Failed to materialize program with ID %s.',
+              program.uuid,
+            );
+            return res.status(404).send();
+          }
+
           return res.send(
             compact([
-              req.serverCtx.programConverter.programOrmToContentProgram(
-                program,
+              req.serverCtx.programConverter.materializedProgramToContentProgram(
+                materializedProgram,
               ),
             ]),
           );
@@ -150,8 +161,14 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
           grouping.type,
         );
 
-      const apiPrograms = seq.collect(programs, (program) =>
-        req.serverCtx.programConverter.programOrmToContentProgram(program),
+      const materializedPrograms = await container
+        .get<MaterializeProgramsCommand>(MaterializeProgramsCommand)
+        .execute(programs);
+
+      const apiPrograms = materializedPrograms.map((program) =>
+        req.serverCtx.programConverter.materializedProgramToContentProgram(
+          program,
+        ),
       );
 
       return res.send(apiPrograms);
@@ -477,23 +494,17 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
 
         const fullUrl = url.toString();
 
-        if (getBooleanEnvVar(TUNARR_ENV_VARS.PROXY_ARTWORK_ENV_VAR, false)) {
+        if (req.serverCtx.featureFlagService.get('proxyArtwork')) {
           try {
             const proxyRes = await axios.request<stream.Readable>({
               url: fullUrl,
               responseType: 'stream',
             });
 
-            let headers: Partial<Record<HttpHeader, string | string[]>>;
-            if (proxyRes.headers instanceof AxiosHeaders) {
-              headers = {
-                ...proxyRes.headers,
-              };
-            } else {
-              headers = { ...omitBy(proxyRes.headers, isNull) };
-            }
-
-            return res.status(200).headers(headers).send(proxyRes.data);
+            return res
+              .status(200)
+              .headers(extractAxiosHeaders(proxyRes.headers))
+              .send(proxyRes.data);
           } catch (e) {
             if (isAxiosError(e) && e.response?.status === 404) {
               return res.status(404).send();
@@ -547,9 +558,7 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
       const ffprobe = container.get<FfprobeStreamDetails>(FfprobeStreamDetails);
 
       const result = await container
-        .get<ExternalStreamDetailsFetcherFactory>(
-          ExternalStreamDetailsFetcherFactory,
-        )
+        .get<ProgramStreamDetailsFetcher>(ProgramStreamDetailsFetcher)
         .getStream({
           lineupItem: { ...program, mediaSourceId },
           server,
@@ -731,16 +740,10 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
               responseType: 'stream',
             });
 
-            let headers: Partial<Record<HttpHeader, string | string[]>>;
-            if (proxyRes.headers instanceof AxiosHeaders) {
-              headers = {
-                ...proxyRes.headers,
-              };
-            } else {
-              headers = { ...omitBy(proxyRes.headers, isNull) };
-            }
-
-            return res.status(200).headers(headers).send(proxyRes.data);
+            return res
+              .status(200)
+              .headers(extractAxiosHeaders(proxyRes.headers))
+              .send(proxyRes.data);
           } catch (e) {
             if (isAxiosError(e) && e.response?.status === 404) {
               logger.error(
@@ -1028,7 +1031,7 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
         operationId: 'getProgramByExternalId',
         params: LookupExternalProgrammingSchema,
         response: {
-          200: ContentProgramSchema,
+          200: TerminalProgramSchema,
           400: z.object({ message: z.string() }),
           404: z.void(),
           500: z.string(),
@@ -1052,10 +1055,11 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
         return res.status(404).send();
       }
 
-      const converted =
-        req.serverCtx.programConverter.programOrmToContentProgram(program);
+      const converted = await container
+        .get<MaterializeProgramsCommand>(MaterializeProgramsCommand)
+        .execute([program]);
 
-      if (!converted) {
+      if (converted.length === 0) {
         return res
           .status(500)
           .send(
@@ -1063,7 +1067,7 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
           );
       }
 
-      return res.send(converted);
+      return res.send(head(converted));
     },
   );
 

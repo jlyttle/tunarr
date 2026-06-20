@@ -1,7 +1,7 @@
 import { type Channel } from '@tunarr/types';
 import { range } from 'lodash-es';
 import { type MarkOptional } from 'ts-essentials';
-import type { DropdownOption } from './DropdownOption';
+import type { DropdownOption } from './DropdownOption.ts';
 
 export const OneDayMillis = 1000 * 60 * 60 * 24;
 export const OneWeekMillis = OneDayMillis * 7;
@@ -64,10 +64,10 @@ export const Jellyfin = 'jellyfin';
 export const Emby = 'emby';
 export const Imported = 'imported';
 export const Local = 'local';
-export const Playlists = 'playlists';
-export const Library = 'library';
 
 export const AlphanumericCharCodes = [
   '#'.charCodeAt(0),
   ...range('a'.charCodeAt(0), 'z'.charCodeAt(0) + 1),
-];
+]; // magic number for top bar padding; TODO: calc it off ref
+
+export const TopBarPadddingPx = 64;

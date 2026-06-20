@@ -5,9 +5,9 @@ import { MediaSourceId } from '../../db/schema/base.ts';
 import { MediaSourceApiFactory } from '../../external/MediaSourceApiFactory.ts';
 import { PlexHostLookup } from '../../external/plex/PlexHostLookup.ts';
 import { TypedError } from '../../types/errors.ts';
-import { KEYS } from '../../types/inject.ts';
 import { Result } from '../../types/result.ts';
 import { Maybe } from '../../types/util.ts';
+import { InjectLogger } from '../../util/inject.ts';
 import { Logger } from '../../util/logging/LoggerFactory.ts';
 import { Command } from '../Command.ts';
 
@@ -19,8 +19,9 @@ type BackfillPlexClientIdentifierRequest = {
 export class BackfillPlexClientIdentifierCommand
   implements Command<BackfillPlexClientIdentifierRequest, Result<Maybe<string>>>
 {
+  @InjectLogger() declare private readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.Logger) private logger: Logger,
     @inject(MediaSourceApiFactory)
     private mediaSourceApiFactory: MediaSourceApiFactory,
     @inject(MediaSourceDB) private mediaSourceDB: MediaSourceDB,

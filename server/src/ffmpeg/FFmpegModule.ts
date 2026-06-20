@@ -1,48 +1,24 @@
-import type { ISettingsDB } from '@/db/interfaces/ISettingsDB.js';
 import type { TranscodeConfigOrm } from '@/db/schema/TranscodeConfig.js';
 import { FfmpegStreamFactory } from '@/ffmpeg/FfmpegStreamFactory.js';
-import type { IFFMPEG } from '@/ffmpeg/ffmpegBase.js';
 import { KEYS } from '@/types/inject.js';
-import type { ChannelStreamMode } from '@tunarr/types';
 import { ContainerModule } from 'inversify';
-import type { IChannelDB } from '../db/interfaces/IChannelDB.ts';
 import type { ChannelOrm } from '../db/schema/Channel.ts';
-import { bindFactoryFunc } from '../util/inject.ts';
-import type { PipelineBuilderFactory } from './builder/pipeline/PipelineBuilderFactory.ts';
+import { bindAssistedFactory } from '../util/assistedInject.ts';
 import { FfmpegInfo } from './ffmpegInfo.ts';
 
-export type FFmpegFactory = (
+export type FFmpegAssistedFactory = (
   transcodeConfig: TranscodeConfigOrm,
   channel: ChannelOrm,
-  streamMode: ChannelStreamMode,
-) => IFFMPEG;
+) => FfmpegStreamFactory;
 
-const FFmpegModule = new ContainerModule((bind) => {
-  bindFactoryFunc<FFmpegFactory>(bind, KEYS.FFmpegFactory, (ctx) => {
-    const settingsDB = ctx.container.get<ISettingsDB>(KEYS.SettingsDB);
-    return (transcodeConfig, channel) => {
-      return new FfmpegStreamFactory(
-        settingsDB.ffmpegSettings(),
-        transcodeConfig,
-        channel,
-        ctx.container.get(FfmpegInfo),
-        settingsDB,
-        ctx.container.get<PipelineBuilderFactory>(KEYS.PipelineBuilderFactory),
-        ctx.container.get<IChannelDB>(KEYS.ChannelDB),
-      );
-    };
-  }).whenTargetNamed(FfmpegStreamFactory.name);
+const FFmpegModule = new ContainerModule(({ bind }) => {
+  bindAssistedFactory<FfmpegStreamFactory, FFmpegAssistedFactory>(
+    bind,
+    KEYS.FFmpegFactory,
+    FfmpegStreamFactory,
+  );
 
-  bindFactoryFunc<FFmpegFactory>(bind, KEYS.FFmpegFactory, (ctx) => {
-    return (transcodeConfig, channel, streamMode) => {
-      return ctx.container.getNamed<FFmpegFactory>(
-        KEYS.FFmpegFactory,
-        FfmpegStreamFactory.name,
-      )(transcodeConfig, channel, streamMode);
-    };
-  }).whenTargetIsDefault();
-
-  bind(FfmpegInfo).toSelf().inSingletonScope();
+  bind(FfmpegInfo).toSelf();
 });
 
 export { FFmpegModule };

@@ -42,6 +42,7 @@ import { StreamConnectionDetails } from '@tunarr/types/api';
 import { ChannelConcatStreamMode } from '@tunarr/types/schemas';
 import dayjs from 'dayjs';
 import { inject, injectable } from 'inversify';
+import { InjectLogger } from '../util/inject.ts';
 import { Dictionary } from 'ts-essentials';
 import { ISettingsDB } from '../db/interfaces/ISettingsDB.ts';
 import { EventService } from '../services/EventService.ts';
@@ -52,11 +53,12 @@ export type SessionKey = `${string}_${SessionType}`;
 
 @injectable()
 export class SessionManager {
+  @InjectLogger() private declare readonly logger: Logger;
+
   #sessionLocker = new MutexMap();
   #sessions: Record<SessionKey, Session> = {};
 
   constructor(
-    @inject(KEYS.Logger) private logger: Logger,
     @inject(KEYS.ChannelDB) private channelDB: IChannelDB,
     @inject(OnDemandChannelService)
     private onDemandChannelService: OnDemandChannelService,
@@ -303,8 +305,10 @@ export class SessionManager {
           });
 
           session.on('stop', () => {
-            this.deleteSession(channelId, sessionType);
-            this.shutdownChildSessions(channelId, sessionType);
+            if (this.getSession(channelId, sessionType) === session) {
+              this.deleteSession(channelId, sessionType);
+              this.shutdownChildSessions(channelId, sessionType);
+            }
             if (session) {
               this.pauseChannelIfNecessary(session, connection).catch(() => {});
             }
@@ -320,8 +324,13 @@ export class SessionManager {
           });
 
           session.on('cleanup', () => {
-            this.deleteSession(channelId, sessionType);
-            this.shutdownChildSessions(channelId, sessionType);
+            // Verify the session in the map is the same instance. A delayed
+            // cleanup timer from a previous session must not delete a
+            // replacement session that was created at the same key.
+            if (this.getSession(channelId, sessionType) === session) {
+              this.deleteSession(channelId, sessionType);
+              this.shutdownChildSessions(channelId, sessionType);
+            }
           });
 
           session.on('removeConnection', (_, connection) => {

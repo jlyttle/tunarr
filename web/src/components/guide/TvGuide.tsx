@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import {
   Box,
@@ -14,19 +15,20 @@ import { seq } from '@tunarr/shared/util';
 import type { Channel } from '@tunarr/types';
 import { type ChannelLineup, type TvGuideProgram } from '@tunarr/types';
 import dayjs, { type Dayjs } from 'dayjs';
-import { compact, isEmpty, isNull, isUndefined, round } from 'lodash-es';
+import { compact, isNull, isUndefined, round } from 'lodash-es';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { match, P } from 'ts-pattern';
 import { useInterval } from 'usehooks-ts';
 import { betterHumanize } from '../../helpers/dayjs.ts';
+import { extractProgramGrandparent } from '../../helpers/programUtil.ts';
 import { alternateColors, isNonEmptyString } from '../../helpers/util';
 import { useRandomProgramBackgroundColor } from '../../hooks/colorHooks.ts';
 import { useChannelsSuspense } from '../../hooks/useChannels.ts';
 import { useServerEvents } from '../../hooks/useServerEvents.ts';
 import { useTvGuides, useTvGuidesPrefetch } from '../../hooks/useTvGuide';
 import type { Maybe, Nullable } from '../../types/util.ts';
-import TunarrLogo from '../TunarrLogo';
 import PaddedPaper from '../base/PaddedPaper';
+import { ChannelIconDisplay } from '../channels/ChannelIconDisplay.tsx';
 import { ChannelOptionsMenu } from '../channels/ChannelOptionsMenu.tsx';
 import ProgramDetailsDialog from '../programs/ProgramDetailsDialog.tsx';
 import { TvGuideGridChild } from './TvGuideGridChild.tsx';
@@ -59,6 +61,7 @@ type Props = {
 };
 
 export function TvGuide({ channelId, start, end, showStealth = true }: Props) {
+  const { t } = useLingui();
   const theme = useTheme();
   // Workaround for issue with page jumping on-zoom or nav caused by collapsing
   // div when loading new guide data
@@ -189,43 +192,54 @@ export function TvGuide({ channelId, start, end, showStealth = true }: Props) {
     ) => {
       const title = match(program)
         .with(
-          { type: 'content', grandparent: { title: P.nonNullable } },
-          ({ grandparent }) => grandparent.title,
+          { type: 'content' },
+          ({ program }) => !!extractProgramGrandparent(program),
+          ({ program }) => extractProgramGrandparent(program)!.title,
         )
-        .with({ type: 'content' }, (p) => p.title)
+        .with({ type: 'content' }, ({ program }) => program.title)
         .with(
-          { type: 'custom', program: { title: P.nonNullable } },
-          ({ program: { title } }) => title,
+          {
+            type: 'custom',
+            program: { program: P.select({ title: P.nonNullable }) },
+          },
+          ({ title }) => title,
         )
-        .with({ type: 'custom' }, () => 'Custom Program')
-        .with({ type: 'redirect' }, (p) => `Redirect to Channel ${p.channel}`)
+        .with({ type: 'custom' }, () => t`Custom Program`)
+        .with({ type: 'redirect' }, (p) => t`Redirect to Channel ${p.channel}`)
         .with({ type: 'flex' }, (p) => p.title ?? flexTitle)
         .exhaustive();
 
       const episodeTitle = match(program)
         .with(
-          { type: 'custom', program: { subtype: 'movie' } },
-          ({ program }) =>
-            compact([program.date ? dayjs(program.date).year() : null]).join(
+          { type: 'custom', program: { program: { type: 'movie' } } },
+          ({ program: { program: p } }) =>
+            compact([p.releaseDate ? dayjs(p.releaseDate).year() : null]).join(
               ',',
             ),
         )
-        .with({ type: 'content', subtype: 'episode' }, (p) => {
-          const epTitle = p.title;
-          if (isUndefined(p.parent?.index) || isUndefined(p.index)) {
-            return epTitle;
-          }
-          const season = p.parent.index.toString().padStart(2, '0');
-          const epIndex = p.index.toString().padStart(2, '0');
-          return `S${season}E${epIndex} - ${epTitle}`;
-        })
-        .with({ type: 'content', subtype: 'movie' }, (p) =>
-          compact([p.date ? dayjs(p.date).year() : null]).join(','),
-        )
-        .with({ type: 'content' }, (p) => p.title)
         .with(
-          { type: 'custom', program: P.nonNullable },
-          ({ program }) => program.title,
+          { type: 'content', program: { type: 'episode' } },
+          ({ program: p }) => {
+            const epTitle = p.title;
+            if (isUndefined(p.season?.index) || isUndefined(p.episodeNumber)) {
+              return epTitle;
+            }
+            const season = p.season.index.toString().padStart(2, '0');
+            const epIndex = p.episodeNumber.toString().padStart(2, '0');
+            return `S${season}E${epIndex} - ${epTitle}`;
+          },
+        )
+        .with(
+          { type: 'content', program: { type: 'movie' } },
+          ({ program: p }) =>
+            compact([p.releaseDate ? dayjs(p.releaseDate).year() : null]).join(
+              ',',
+            ),
+        )
+        .with({ type: 'content' }, ({ program: p }) => p.title)
+        .with(
+          { type: 'custom', program: { program: P.select(P.nonNullable) } },
+          (program) => program.title,
         )
         .with({ type: 'custom' }, () => '')
         .otherwise(() => '');
@@ -320,7 +334,7 @@ export function TvGuide({ channelId, start, end, showStealth = true }: Props) {
                     </Box>
                   )}
                   <Box sx={{ fontSize: '12px' }}>
-                    {remainingTime ? ` (${remainingTime} left)` : null}
+                    {remainingTime ? <Trans>{remainingTime} left</Trans> : null}
                   </Box>
                 </>
               ))}
@@ -337,7 +351,7 @@ export function TvGuide({ channelId, start, end, showStealth = true }: Props) {
     const bg = alternateColors(index, theme.palette.mode);
     return (
       <Tooltip
-        title={'No programming scheduled for this time period'}
+        title={t`No programming scheduled for this time period`}
         placement="top"
       >
         <TvGuideItem
@@ -360,7 +374,7 @@ export function TvGuide({ channelId, start, end, showStealth = true }: Props) {
               m: 0.5,
             }}
           >
-            No Programming scheduled
+            <Trans>No Programming scheduled</Trans>
           </Box>
         </TvGuideItem>
       </Tooltip>
@@ -395,7 +409,6 @@ export function TvGuide({ channelId, start, end, showStealth = true }: Props) {
       const fillerLength = lineup.programs[0].start - startUnix;
       alignedLineup.unshift({
         type: 'flex',
-        persisted: false,
         duration: fillerLength,
         start: startUnix,
         stop: lineup.programs[0].start,
@@ -423,16 +436,16 @@ export function TvGuide({ channelId, start, end, showStealth = true }: Props) {
 
   const programId =
     modalProgram?.type === 'custom'
-      ? modalProgram.program?.uniqueId
+      ? modalProgram.program?.id
       : modalProgram?.type === 'content'
         ? modalProgram?.id
         : null;
 
   const programType =
     modalProgram?.type === 'custom'
-      ? modalProgram.program?.subtype
+      ? modalProgram.program?.program.type
       : modalProgram?.type === 'content'
-        ? modalProgram?.subtype
+        ? modalProgram?.program.type
         : null;
 
   return (
@@ -479,11 +492,10 @@ export function TvGuide({ channelId, start, end, showStealth = true }: Props) {
                   disableRipple
                   disableElevation
                   startIcon={
-                    isEmpty(channel.icon?.path) ? (
-                      <TunarrLogo style={{ width: '40px' }} />
-                    ) : (
-                      <img style={{ width: '40px' }} src={channel.icon?.path} />
-                    )
+                    <ChannelIconDisplay
+                      icon={channel.icon}
+                      style={{ width: '40px' }}
+                    />
                   }
                   onClick={(event) => handleClick(event, channel)}
                   endIcon={<KeyboardArrowDownIcon />}
@@ -564,7 +576,7 @@ export function TvGuide({ channelId, start, end, showStealth = true }: Props) {
                 }}
               >
                 <Typography sx={{ m: 4 }}>
-                  An error occurred: {error.message}
+                  <Trans>An error occurred: {error.message}</Trans>
                 </Typography>
               </Box>
             ) : isPending ? (

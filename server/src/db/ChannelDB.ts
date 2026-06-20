@@ -1,4 +1,3 @@
-import type { ChannelQueryBuilder } from '@/db/ChannelQueryBuilder.js';
 import type {
   ChannelAndLineup,
   ChannelAndRawLineup,
@@ -8,7 +7,6 @@ import type {
 import { KEYS } from '@/types/inject.js';
 import type { Maybe, Nullable, PagedResult } from '@/types/util.js';
 import type {
-  ChannelProgramming,
   CondensedChannelProgramming,
   SaveableChannel,
 } from '@tunarr/types';
@@ -16,29 +14,28 @@ import type { UpdateChannelProgrammingRequest } from '@tunarr/types/api';
 import type { ContentProgramType } from '@tunarr/types/schemas';
 import { inject, injectable } from 'inversify';
 import type { MarkRequired } from 'ts-essentials';
+import { BasicChannelRepository } from './channel/BasicChannelRepository.ts';
+import { ChannelConfigRepository } from './channel/ChannelConfigRepository.ts';
+import { ChannelProgramRepository } from './channel/ChannelProgramRepository.ts';
+import { ChannelReadOpsRepository } from './channel/ChannelReadOpsRepository.ts';
+import { LineupRepository } from './channel/LineupRepository.ts';
 import type {
   Lineup,
   LineupItem,
   PendingProgram,
 } from './derived_types/Lineup.ts';
+import type { PageParams } from './interfaces/IChannelDB.ts';
 import type { Channel, ChannelOrm } from './schema/Channel.ts';
-import type { ProgramDao } from './schema/Program.ts';
 import type { ProgramExternalId } from './schema/ProgramExternalId.ts';
 import type { ChannelSubtitlePreferences } from './schema/SubtitlePreferences.ts';
 import type {
   ChannelOrmWithPrograms,
   ChannelOrmWithRelations,
-  ChannelOrmWithTranscodeConfig,
-  ChannelWithRelations,
   MusicArtistOrm,
+  ProgramOrmWithExternalIds,
   ProgramWithRelationsOrm,
   TvShowOrm,
 } from './schema/derivedTypes.ts';
-import { BasicChannelRepository } from './channel/BasicChannelRepository.ts';
-import { ChannelProgramRepository } from './channel/ChannelProgramRepository.ts';
-import { LineupRepository } from './channel/LineupRepository.ts';
-import { ChannelConfigRepository } from './channel/ChannelConfigRepository.ts';
-import type { PageParams } from './interfaces/IChannelDB.ts';
 
 @injectable()
 export class ChannelDB implements IChannelDB {
@@ -51,57 +48,63 @@ export class ChannelDB implements IChannelDB {
     private readonly lineup: LineupRepository,
     @inject(KEYS.ChannelConfigRepository)
     private readonly channelConfig: ChannelConfigRepository,
+    @inject(KEYS.ChannelReadOpsRepository)
+    private readonly channelReadOps: ChannelReadOpsRepository,
   ) {}
 
   // --- BasicChannelRepository delegation ---
 
   channelExists(channelId: string): Promise<boolean> {
-    return this.basicChannel.channelExists(channelId);
+    return this.channelReadOps.channelExists(channelId);
   }
 
   getChannelOrm(
     id: string | number,
-  ): Promise<Maybe<ChannelOrmWithTranscodeConfig>> {
-    return this.basicChannel.getChannelOrm(id);
+  ): Promise<
+    Maybe<
+      MarkRequired<ChannelOrmWithRelations, 'transcodeConfig' | 'fillerShows'>
+    >
+  > {
+    return this.channelReadOps.getChannelOrm(id);
   }
 
-  getChannel(id: string | number): Promise<Maybe<ChannelWithRelations>>;
+  getChannel(id: string | number): Promise<Maybe<ChannelOrmWithRelations>>;
   getChannel(
     id: string | number,
     includeFiller: true,
-  ): Promise<Maybe<MarkRequired<ChannelWithRelations, 'fillerShows'>>>;
+  ): Promise<Maybe<MarkRequired<ChannelOrmWithRelations, 'fillerShows'>>>;
   getChannel(
     id: string | number,
     includeFiller: boolean,
-  ): Promise<Maybe<ChannelWithRelations>>;
+  ): Promise<Maybe<ChannelOrmWithRelations>>;
   getChannel(
     id: string | number,
     includeFiller: boolean = false,
-  ): Promise<Maybe<ChannelWithRelations>> {
+  ): Promise<Maybe<ChannelOrmWithRelations>> {
     if (includeFiller) {
-      return this.basicChannel.getChannel(id, true);
+      return this.channelReadOps.getChannel(id, true);
     }
-    return this.basicChannel.getChannel(id);
-  }
-
-  getChannelBuilder(
-    id: string | number,
-  ): ChannelQueryBuilder<ChannelWithRelations> {
-    return this.basicChannel.getChannelBuilder(id);
+    return this.channelReadOps.getChannel(id);
   }
 
   getAllChannels(): Promise<ChannelOrm[]> {
-    return this.basicChannel.getAllChannels();
+    return this.channelReadOps.getAllChannels();
   }
 
-  saveChannel(createReq: SaveableChannel): Promise<ChannelAndLineup<Channel>> {
+  saveChannel(
+    createReq: SaveableChannel,
+  ): Promise<
+    ChannelAndLineup<MarkRequired<ChannelOrmWithRelations, 'fillerShows'>>
+  > {
     return this.basicChannel.saveChannel(createReq);
   }
 
   updateChannel(
     id: string,
     updateReq: SaveableChannel,
-  ): Promise<ChannelAndLineup<Channel>> {
+  ): Promise<
+    ChannelAndLineup<MarkRequired<ChannelOrmWithRelations, 'fillerShows'>>
+  > {
     return this.basicChannel.updateChannel(id, updateReq);
   }
 
@@ -117,7 +120,11 @@ export class ChannelDB implements IChannelDB {
     return this.basicChannel.syncChannelDuration(id);
   }
 
-  copyChannel(id: string): Promise<ChannelAndLineup<Channel>> {
+  copyChannel(
+    id: string,
+  ): Promise<
+    ChannelAndLineup<MarkRequired<ChannelOrmWithRelations, 'fillerShows'>>
+  > {
     return this.basicChannel.copyChannel(id);
   }
 
@@ -135,10 +142,6 @@ export class ChannelDB implements IChannelDB {
     typeFilter?: ContentProgramType,
   ): Promise<Maybe<MarkRequired<ChannelOrmWithRelations, 'programs'>>> {
     return this.channelProgram.getChannelAndPrograms(uuid, typeFilter);
-  }
-
-  getChannelAndProgramsOld(uuid: string) {
-    return this.channelProgram.getChannelAndProgramsOld(uuid);
   }
 
   getChannelTvShows(
@@ -167,23 +170,18 @@ export class ChannelDB implements IChannelDB {
     return this.channelProgram.getChannelProgramExternalIds(uuid);
   }
 
-  getChannelFallbackPrograms(uuid: string): Promise<ProgramDao[]> {
+  getChannelFallbackPrograms(
+    uuid: string,
+  ): Promise<Maybe<ProgramOrmWithExternalIds>> {
     return this.channelProgram.getChannelFallbackPrograms(uuid);
   }
 
-  replaceChannelPrograms(
-    channelId: string,
-    programIds: string[],
-  ): Promise<void> {
-    return this.channelProgram.replaceChannelPrograms(channelId, programIds);
+  replaceChannelPrograms(channelId: string, programIds: string[]): void {
+    this.channelProgram.replaceChannelPrograms(channelId, programIds);
   }
 
   findChannelsForProgramId(programId: string): Promise<ChannelOrm[]> {
     return this.channelProgram.findChannelsForProgramId(programId);
-  }
-
-  getAllChannelsAndPrograms(): Promise<ChannelOrmWithPrograms[]> {
-    return this.channelProgram.getAllChannelsAndPrograms();
   }
 
   // --- LineupRepository delegation ---
@@ -200,14 +198,6 @@ export class ChannelDB implements IChannelDB {
     return this.lineup.loadCondensedLineup(channelId, offset, limit);
   }
 
-  loadAndMaterializeLineup(
-    channelId: string,
-    offset?: number,
-    limit?: number,
-  ): Promise<ChannelProgramming | null> {
-    return this.lineup.loadAndMaterializeLineup(channelId, offset, limit);
-  }
-
   loadChannelAndLineup(
     channelId: string,
   ): Promise<ChannelAndLineup<Channel> | null> {
@@ -216,7 +206,9 @@ export class ChannelDB implements IChannelDB {
 
   loadChannelAndLineupOrm(
     channelId: string,
-  ): Promise<ChannelAndLineup<ChannelOrm> | null> {
+  ): Promise<ChannelAndLineup<
+    MarkRequired<ChannelOrmWithRelations, 'fillerShows'>
+  > | null> {
     return this.lineup.loadChannelAndLineupOrm(channelId);
   }
 
@@ -226,7 +218,9 @@ export class ChannelDB implements IChannelDB {
     return this.lineup.loadChannelWithProgamsAndLineup(channelId);
   }
 
-  loadAllLineups(): Promise<Record<string, { channel: ChannelOrm; lineup: Lineup }>> {
+  loadAllLineups(): Promise<
+    Record<string, { channel: ChannelOrm; lineup: Lineup }>
+  > {
     return this.lineup.loadAllLineups();
   }
 
@@ -266,17 +260,18 @@ export class ChannelDB implements IChannelDB {
   setChannelPrograms(
     channel: Channel,
     lineup: readonly LineupItem[],
-  ): Promise<Channel | null>;
+  ): Promise<ChannelOrm | null>;
   setChannelPrograms(
     channel: string | Channel,
     lineup: readonly LineupItem[],
     startTime?: number,
-  ): Promise<Channel | null>;
+  ): Promise<ChannelOrm | null>;
   setChannelPrograms(
     channel: string | Channel,
     lineup: readonly LineupItem[],
     startTime?: number,
-  ): Promise<Channel | null> {
+  ): Promise<ChannelOrm | null> {
+    // TODO: Update LineupRepository.setChannelPrograms to return ChannelOrm
     return this.lineup.setChannelPrograms(channel, lineup, startTime);
   }
 

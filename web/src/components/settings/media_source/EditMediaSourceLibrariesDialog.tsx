@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { Trans } from '@lingui/react/macro';
 import {
   FindReplace,
   Movie,
@@ -90,13 +92,13 @@ export const EditMediaSourceLibrariesDialog = ({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>Manage Libraries</DialogTitle>
+      <DialogTitle><Trans>Manage Libraries</Trans></DialogTitle>
       <DialogContent>
         <List
           sx={{ width: '100%' }}
           subheader={
             <ListSubheader sx={{ backgroundColor: 'inherit' }}>
-              Libraries
+              <Trans>Libraries</Trans>
             </ListSubheader>
           }
         >
@@ -113,7 +115,7 @@ export const EditMediaSourceLibrariesDialog = ({
               {library.enabled && (
                 <Tooltip
                   placement="top"
-                  title={`Last Scanned: ${library.lastScannedAt ? dayjs(library.lastScannedAt)?.format() : 'never'}`}
+                  title={t`Last Scanned: ${library.lastScannedAt ? dayjs(library.lastScannedAt)?.format() : t`never`}`}
                 >
                   <span>
                     <IconButton
@@ -144,19 +146,15 @@ export const EditMediaSourceLibrariesDialog = ({
               <Tooltip
                 placement="top"
                 title={
-                  library.mediaType === 'music_videos'
-                    ? 'Music Video libraries are not yet supported'
-                    : library.isLocked
-                      ? 'Cannot disable libraries when they are locked'
-                      : null
+                  library.isLocked
+                    ? t`Cannot disable libraries when they are locked`
+                    : null
                 }
               >
                 <span>
                   <Switch
                     edge="end"
-                    disabled={
-                      library.isLocked || library.mediaType === 'music_videos'
-                    }
+                    disabled={library.isLocked}
                     checked={library.enabled}
                     onChange={(ev) =>
                       updateLibraryEnabled(library.id, ev.target.checked)
@@ -170,7 +168,7 @@ export const EditMediaSourceLibrariesDialog = ({
       </DialogContent>
       <DialogActions>
         <Button variant="contained" onClick={() => onClose()}>
-          Close
+          <Trans>Close</Trans>
         </Button>
       </DialogActions>
     </Dialog>

@@ -1,10 +1,11 @@
 import { betterHumanize } from '@/helpers/dayjs';
 import { isNonEmptyString } from '@/helpers/util';
+import { t } from '@lingui/core/macro';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import type { FillerList } from '@tunarr/types';
 import { type ChannelProgram, type CustomShow } from '@tunarr/types';
 import dayjs from 'dayjs';
-import { isNil, join, negate, reject } from 'lodash-es';
+import { filter, isNil, join } from 'lodash-es';
 import { useCallback } from 'react';
 import { match } from 'ts-pattern';
 import { useCustomShows } from './useCustomShows';
@@ -37,43 +38,44 @@ export const useProgramTitleFormatter = () => {
   const baseItemTitleFormatter = useCallback(
     (program: ChannelProgram) =>
       match(program)
-        .with(
-          { type: 'custom' },
-          (p) =>
-            `${customShows[p.customShowId]?.name ?? 'Custom Show'} - ${p.index
-              .toString()
-              .padStart(3, '0')} - `,
-        )
-        .with({ type: 'redirect' }, (p) => `Redirect to "${p.channelName}"`)
-        .with({ type: 'flex' }, () => 'Flex')
-        .with(
-          { type: 'filler' },
-          (p) => `${fillerLists[p.fillerListId]?.name ?? 'Filler List'} - `,
-        )
-        .with({ type: 'content' }, (p) => {
-          switch (p.subtype) {
+        .with({ type: 'custom' }, (p) => {
+          const showName = customShows[p.customShowId]?.name ?? t`Custom Show`;
+          const idx = p.index.toString().padStart(3, '0');
+          return `${showName} - ${idx} - `;
+        })
+        .with({ type: 'redirect' }, (p) => t`Redirect to "${p.channelName}"`)
+        .with({ type: 'flex' }, () => t`Flex`)
+        .with({ type: 'filler' }, () => '')
+        .with({ type: 'content' }, ({ program }) => {
+          switch (program.type) {
             case 'movie':
             case 'music_video':
             case 'other_video':
-              return p.title;
+              return program.title;
             case 'episode': {
               // TODO: this makes some assumptions about number of seasons
               // and episodes... it may break
               const epPart =
-                !isNil(p.parent?.index) && !isNil(p.index)
-                  ? ` S${p.parent.index.toString().padStart(2, '0')}E${p.index
+                !isNil(program.season?.index) && !isNil(program.episodeNumber)
+                  ? ` S${program.season?.index.toString().padStart(2, '0')}E${program.episodeNumber
                       .toString()
                       .padStart(2, '0')}`
                   : '';
-              return isNonEmptyString(p.grandparent?.title)
-                ? `${p.grandparent.title}${epPart} - ${p.title}`
-                : p.title;
+              const showTitle =
+                program.show?.title ?? program.season?.show?.title;
+              return isNonEmptyString(showTitle)
+                ? `${showTitle}${epPart} - ${program.title}`
+                : program.title;
             }
             case 'track': {
               return join(
-                reject(
-                  [p.grandparent?.title, p.parent?.title, p.title],
-                  negate(isNonEmptyString),
+                filter(
+                  [
+                    program.artist?.title ?? program.album?.artist?.title,
+                    program.album?.title,
+                    program.title,
+                  ],
+                  isNonEmptyString,
                 ),
                 ' - ',
               );
@@ -94,10 +96,19 @@ export const useProgramTitleFormatter = () => {
       ) {
         title += ` ${baseItemTitleFormatter(program.program)}`;
       }
-      const dur = betterHumanize(
-        dayjs.duration({ milliseconds: program.duration }),
-        { exact: true },
-      );
+
+      let dur: string;
+      if (program.type === 'content' && program.startOffsetMs) {
+        dur = betterHumanize(
+          dayjs.duration(program.duration - program.startOffsetMs),
+          { exact: true },
+        );
+      } else {
+        dur = betterHumanize(
+          dayjs.duration({ milliseconds: program.duration }),
+          { exact: true },
+        );
+      }
 
       return `${title} - (${dur})`;
     },

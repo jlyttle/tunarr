@@ -1,45 +1,29 @@
-import { ChannelQueryBuilder } from '@/db/ChannelQueryBuilder.js';
 import { CacheImageService } from '@/services/cacheImageService.js';
 import { ChannelNotFoundError } from '@/types/errors.js';
 import { KEYS } from '@/types/inject.js';
 import { Result } from '@/types/result.js';
 import { Maybe } from '@/types/util.js';
 import dayjs from '@/util/dayjs.js';
-import { booleanToNumber } from '@/util/sqliteUtil.js';
 import type { SaveableChannel, Watermark } from '@tunarr/types';
-import { eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import { inject, injectable } from 'inversify';
 import { Kysely } from 'kysely';
-import { jsonArrayFrom } from 'kysely/helpers/sqlite';
-import {
-  isEmpty,
-  isNil,
-  isNumber,
-  isString,
-  isUndefined,
-  map,
-  sum,
-} from 'lodash-es';
+import { isEmpty, isNil, isUndefined, map, sum } from 'lodash-es';
 import { MarkRequired } from 'ts-essentials';
 import { v4 } from 'uuid';
 import { isDefined, isNonEmptyString } from '../../util/index.ts';
 import { ChannelAndLineup } from '../interfaces/IChannelDB.ts';
-import {
-  Channel,
-  ChannelOrm,
-  ChannelUpdate,
-  NewChannel,
-} from '../schema/Channel.ts';
-import { NewChannelFillerShow } from '../schema/ChannelFillerShow.ts';
-import {
-  ChannelWithRelations,
-  ChannelOrmWithTranscodeConfig,
-} from '../schema/derivedTypes.ts';
-import {
-  NewChannelSubtitlePreference,
-} from '../schema/SubtitlePreferences.ts';
+import { Channel, NewChannelOrm } from '../schema/Channel.ts';
+import { ChannelFillerShow } from '../schema/ChannelFillerShow.ts';
+import { ChannelPrograms } from '../schema/ChannelPrograms.ts';
 import type { DB } from '../schema/db.ts';
+import { ChannelOrmWithRelations } from '../schema/derivedTypes.ts';
 import type { DrizzleDBAccess } from '../schema/index.ts';
+import {
+  ChannelSubtitlePreferences,
+  NewChannelSubtitlePreferenceOrm,
+} from '../schema/SubtitlePreferences.ts';
+import { ChannelReadOpsRepository } from './ChannelReadOpsRepository.ts';
 import { LineupRepository } from './LineupRepository.ts';
 
 function sanitizeChannelWatermark(
@@ -59,34 +43,34 @@ function sanitizeChannelWatermark(
   };
 }
 
-function updateRequestToChannel(updateReq: SaveableChannel): ChannelUpdate {
+function updateRequestToChannel(
+  updateReq: SaveableChannel,
+): Partial<NewChannelOrm> {
   const sanitizedWatermark = sanitizeChannelWatermark(updateReq.watermark);
 
   return {
     number: updateReq.number,
-    watermark: sanitizedWatermark
-      ? JSON.stringify(sanitizedWatermark)
-      : undefined,
-    icon: JSON.stringify(updateReq.icon),
+    watermark: sanitizedWatermark ?? undefined,
+    icon: updateReq.icon,
     guideMinimumDuration: updateReq.guideMinimumDuration,
     groupTitle: updateReq.groupTitle,
-    disableFillerOverlay: booleanToNumber(updateReq.disableFillerOverlay),
+    disableFillerOverlay: updateReq.disableFillerOverlay,
     startTime: +dayjs(updateReq.startTime).second(0).millisecond(0),
-    offline: JSON.stringify(updateReq.offline),
+    offline: updateReq.offline,
     name: updateReq.name,
     duration: updateReq.duration,
-    stealth: booleanToNumber(updateReq.stealth),
+    stealth: updateReq.stealth,
     fillerRepeatCooldown: updateReq.fillerRepeatCooldown,
     guideFlexTitle: updateReq.guideFlexTitle,
     transcodeConfigId: updateReq.transcodeConfigId,
     streamMode: updateReq.streamMode,
-    subtitlesEnabled: booleanToNumber(updateReq.subtitlesEnabled),
+    subtitlesEnabled: updateReq.subtitlesEnabled,
     subtitleDeliveryMethod: updateReq.subtitleDeliveryMethod,
     subtitleUnsupportedFallback: updateReq.subtitleUnsupportedFallback,
-  } satisfies ChannelUpdate;
+  } satisfies Partial<NewChannelOrm>;
 }
 
-function createRequestToChannel(saveReq: SaveableChannel): NewChannel {
+function createRequestToChannel(saveReq: SaveableChannel): NewChannelOrm {
   const now = +dayjs();
 
   return {
@@ -94,24 +78,24 @@ function createRequestToChannel(saveReq: SaveableChannel): NewChannel {
     createdAt: now,
     updatedAt: now,
     number: saveReq.number,
-    watermark: saveReq.watermark ? JSON.stringify(saveReq.watermark) : null,
-    icon: JSON.stringify(saveReq.icon),
+    watermark: saveReq.watermark ?? null,
+    icon: saveReq.icon,
     guideMinimumDuration: saveReq.guideMinimumDuration,
     groupTitle: saveReq.groupTitle,
-    disableFillerOverlay: saveReq.disableFillerOverlay ? 1 : 0,
+    disableFillerOverlay: saveReq.disableFillerOverlay,
     startTime: saveReq.startTime,
-    offline: JSON.stringify(saveReq.offline),
+    offline: saveReq.offline,
     name: saveReq.name,
     duration: saveReq.duration,
-    stealth: saveReq.stealth ? 1 : 0,
+    stealth: saveReq.stealth,
     fillerRepeatCooldown: saveReq.fillerRepeatCooldown,
     guideFlexTitle: saveReq.guideFlexTitle,
     streamMode: saveReq.streamMode,
     transcodeConfigId: saveReq.transcodeConfigId,
-    subtitlesEnabled: booleanToNumber(saveReq.subtitlesEnabled),
+    subtitlesEnabled: saveReq.subtitlesEnabled,
     subtitleDeliveryMethod: saveReq.subtitleDeliveryMethod,
     subtitleUnsupportedFallback: saveReq.subtitleUnsupportedFallback,
-  } satisfies NewChannel;
+  } satisfies NewChannelOrm;
 }
 
 @injectable()
@@ -120,112 +104,48 @@ export class BasicChannelRepository {
     @inject(KEYS.Database) private db: Kysely<DB>,
     @inject(KEYS.DrizzleDB) private drizzleDB: DrizzleDBAccess,
     @inject(CacheImageService) private cacheImageService: CacheImageService,
+    @inject(KEYS.ChannelReadOpsRepository)
+    private channelReadOpsRepo: ChannelReadOpsRepository,
     @inject(KEYS.LineupRepository) private lineupRepository: LineupRepository,
   ) {}
 
-  async channelExists(channelId: string): Promise<boolean> {
-    const channel = await this.db
-      .selectFrom('channel')
-      .where('channel.uuid', '=', channelId)
-      .select('uuid')
-      .executeTakeFirst();
-    return !isNil(channel);
-  }
-
-  getChannelOrm(
-    id: string | number,
-  ): Promise<Maybe<ChannelOrmWithTranscodeConfig>> {
-    return this.drizzleDB.query.channels.findFirst({
-      where: (channel, { eq }) => {
-        return isString(id) ? eq(channel.uuid, id) : eq(channel.number, id);
-      },
-      with: {
-        transcodeConfig: true,
-      },
-    });
-  }
-
-  getChannel(id: string | number): Promise<Maybe<ChannelWithRelations>>;
-  getChannel(
-    id: string | number,
-    includeFiller: true,
-  ): Promise<Maybe<MarkRequired<ChannelWithRelations, 'fillerShows'>>>;
-  async getChannel(
-    id: string | number,
-    includeFiller: boolean = false,
-  ): Promise<Maybe<ChannelWithRelations>> {
-    return this.db
-      .selectFrom('channel')
-      .$if(isString(id), (eb) => eb.where('channel.uuid', '=', id as string))
-      .$if(isNumber(id), (eb) => eb.where('channel.number', '=', id as number))
-      .$if(includeFiller, (eb) =>
-        eb.select((qb) =>
-          jsonArrayFrom(
-            qb
-              .selectFrom('channelFillerShow')
-              .whereRef('channel.uuid', '=', 'channelFillerShow.channelUuid')
-              .select([
-                'channelFillerShow.channelUuid',
-                'channelFillerShow.fillerShowUuid',
-                'channelFillerShow.cooldown',
-                'channelFillerShow.weight',
-              ]),
-          ).as('fillerShows'),
-        ),
-      )
-      .selectAll()
-      .executeTakeFirst();
-  }
-
-  getChannelBuilder(id: string | number) {
-    return ChannelQueryBuilder.createForIdOrNumber(this.db, id);
-  }
-
-  getAllChannels(): Promise<ChannelOrm[]> {
-    return this.drizzleDB.query.channels
-      .findMany({
-        orderBy: (fields, { asc }) => asc(fields.number),
-      })
-      .execute();
-  }
-
   async saveChannel(
     createReq: SaveableChannel,
-  ): Promise<ChannelAndLineup<Channel>> {
-    const existing = await this.getChannel(createReq.number);
+  ): Promise<
+    ChannelAndLineup<MarkRequired<ChannelOrmWithRelations, 'fillerShows'>>
+  > {
+    const existing = await this.channelReadOpsRepo.getChannel(createReq.number);
     if (!isNil(existing)) {
       throw new Error(
         `Channel with number ${createReq.number} already exists: ${existing.name}`,
       );
     }
 
-    const channel = await this.db.transaction().execute(async (tx) => {
-      const channel = await tx
-        .insertInto('channel')
+    const channel = this.drizzleDB.transaction((tx) => {
+      const channel = tx
+        .insert(Channel)
         .values(createRequestToChannel(createReq))
-        .returningAll()
-        .executeTakeFirst();
+        .returning()
+        .get();
 
       if (!channel) {
         throw new Error('Error while saving new channel.');
       }
 
+      let filler: ChannelFillerShow[] = [];
       if (!isEmpty(createReq.fillerCollections)) {
-        await tx
-          .insertInto('channelFillerShow')
+        filler = tx
+          .insert(ChannelFillerShow)
           .values(
-            map(
-              createReq.fillerCollections,
-              (fc) =>
-                ({
-                  channelUuid: channel.uuid,
-                  cooldown: fc.cooldownSeconds,
-                  fillerShowUuid: fc.id,
-                  weight: fc.weight,
-                }) satisfies NewChannelFillerShow,
-            ),
+            map(createReq.fillerCollections, (fc) => ({
+              channelUuid: channel.uuid,
+              cooldown: fc.cooldownSeconds,
+              fillerShowUuid: fc.id,
+              weight: fc.weight,
+            })),
           )
-          .execute();
+          .returning()
+          .all();
       }
 
       const subtitlePreferences = createReq.subtitlePreferences?.map(
@@ -234,20 +154,20 @@ export class BasicChannelRepository {
             channelId: channel.uuid,
             uuid: v4(),
             languageCode: pref.langugeCode,
-            allowExternal: booleanToNumber(pref.allowExternal),
-            allowImageBased: booleanToNumber(pref.allowImageBased),
+            allowExternal: pref.allowExternal,
+            allowImageBased: pref.allowImageBased,
             filterType: pref.filter,
             priority: pref.priority,
-          }) satisfies NewChannelSubtitlePreference,
+          }) satisfies NewChannelSubtitlePreferenceOrm,
       );
       if (subtitlePreferences) {
-        await tx
-          .insertInto('channelSubtitlePreferences')
-          .values(subtitlePreferences)
-          .executeTakeFirstOrThrow();
+        tx.insert(ChannelSubtitlePreferences).values(subtitlePreferences).run();
       }
 
-      return channel;
+      return {
+        ...channel,
+        fillerShows: filler,
+      } satisfies MarkRequired<ChannelOrmWithRelations, 'fillerShows'>;
     });
 
     await this.lineupRepository.createLineup(channel.uuid);
@@ -271,8 +191,10 @@ export class BasicChannelRepository {
   async updateChannel(
     id: string,
     updateReq: SaveableChannel,
-  ): Promise<ChannelAndLineup<Channel>> {
-    const channel = await this.getChannel(id);
+  ): Promise<
+    ChannelAndLineup<MarkRequired<ChannelOrmWithRelations, 'fillerShows'>>
+  > {
+    const channel = await this.channelReadOpsRepo.getChannel(id);
 
     if (isNil(channel)) {
       throw new ChannelNotFoundError(id);
@@ -293,33 +215,24 @@ export class BasicChannelRepository {
       }
     }
 
-    await this.db.transaction().execute(async (tx) => {
-      await tx
-        .updateTable('channel')
-        .where('channel.uuid', '=', id)
-        .set(update)
-        .executeTakeFirstOrThrow();
+    this.drizzleDB.transaction((tx) => {
+      tx.update(Channel).set(update).where(eq(Channel.uuid, id)).run();
 
       if (!isEmpty(updateReq.fillerCollections)) {
         const channelFillerShows = map(
           updateReq.fillerCollections,
-          (filler) =>
-            ({
-              cooldown: filler.cooldownSeconds,
-              channelUuid: channel.uuid,
-              fillerShowUuid: filler.id,
-              weight: filler.weight,
-            }) satisfies NewChannelFillerShow,
+          (filler) => ({
+            cooldown: filler.cooldownSeconds,
+            channelUuid: channel.uuid,
+            fillerShowUuid: filler.id,
+            weight: filler.weight,
+          }),
         );
 
-        await tx
-          .deleteFrom('channelFillerShow')
-          .where('channelFillerShow.channelUuid', '=', channel.uuid)
-          .executeTakeFirstOrThrow();
-        await tx
-          .insertInto('channelFillerShow')
-          .values(channelFillerShows)
-          .executeTakeFirstOrThrow();
+        tx.delete(ChannelFillerShow)
+          .where(eq(ChannelFillerShow.channelUuid, channel.uuid))
+          .run();
+        tx.insert(ChannelFillerShow).values(channelFillerShows).run();
       }
       const subtitlePreferences = updateReq.subtitlePreferences?.map(
         (pref) =>
@@ -327,21 +240,17 @@ export class BasicChannelRepository {
             channelId: channel.uuid,
             uuid: v4(),
             languageCode: pref.langugeCode,
-            allowExternal: booleanToNumber(pref.allowExternal),
-            allowImageBased: booleanToNumber(pref.allowImageBased),
+            allowExternal: pref.allowExternal,
+            allowImageBased: pref.allowImageBased,
             filterType: pref.filter,
             priority: pref.priority,
-          }) satisfies NewChannelSubtitlePreference,
+          }) satisfies NewChannelSubtitlePreferenceOrm,
       );
-      await tx
-        .deleteFrom('channelSubtitlePreferences')
-        .where('channelSubtitlePreferences.channelId', '=', channel.uuid)
-        .executeTakeFirstOrThrow();
+      tx.delete(ChannelSubtitlePreferences)
+        .where(eq(ChannelSubtitlePreferences.channelId, channel.uuid))
+        .run();
       if (subtitlePreferences) {
-        await tx
-          .insertInto('channelSubtitlePreferences')
-          .values(subtitlePreferences)
-          .executeTakeFirstOrThrow();
+        tx.insert(ChannelSubtitlePreferences).values(subtitlePreferences).run();
       }
     });
 
@@ -360,7 +269,7 @@ export class BasicChannelRepository {
     }
 
     return {
-      channel: (await this.getChannel(id, true))!,
+      channel: (await this.channelReadOpsRepo.getChannelOrm(id))!,
       lineup: await this.lineupRepository.loadLineup(id),
     };
   }
@@ -387,7 +296,8 @@ export class BasicChannelRepository {
   }
 
   async syncChannelDuration(id: string): Promise<boolean> {
-    const channelAndLineup = await this.lineupRepository.loadChannelAndLineup(id);
+    const channelAndLineup =
+      await this.lineupRepository.loadChannelAndLineup(id);
     if (!channelAndLineup) {
       return false;
     }
@@ -404,8 +314,12 @@ export class BasicChannelRepository {
     return false;
   }
 
-  async copyChannel(id: string): Promise<ChannelAndLineup<Channel>> {
-    const channel = await this.getChannel(id);
+  async copyChannel(
+    id: string,
+  ): Promise<
+    ChannelAndLineup<MarkRequired<ChannelOrmWithRelations, 'fillerShows'>>
+  > {
+    const channel = await this.channelReadOpsRepo.getChannelOrm(id);
     if (!channel) {
       throw new Error(`Cannot copy channel: channel ID: ${id} not found`);
     }
@@ -414,78 +328,70 @@ export class BasicChannelRepository {
 
     const newChannelId = v4();
     const now = +dayjs();
-    const newChannel = await this.db.transaction().execute(async (tx) => {
-      const { number: maxId } = await tx
-        .selectFrom('channel')
-        .select('number')
-        .orderBy('number desc')
+    const newChannel = this.drizzleDB.transaction((tx) => {
+      const maxRow = tx
+        .select({ number: Channel.number })
+        .from(Channel)
+        .orderBy(desc(Channel.number))
         .limit(1)
-        .executeTakeFirstOrThrow();
-      const newChannel = await tx
-        .insertInto('channel')
+        .get();
+
+      const maxNumber = maxRow?.number ?? 0;
+
+      const { transcodeConfig: _, ...channelFields } = channel;
+      const newChannel = tx
+        .insert(Channel)
         .values({
-          ...channel,
+          ...channelFields,
           uuid: newChannelId,
           name: `${channel.name} - Copy`,
-          number: maxId + 1,
-          icon: JSON.stringify(channel.icon),
-          offline: JSON.stringify(channel.offline),
-          watermark: JSON.stringify(channel.watermark),
+          number: maxNumber + 1,
+          icon: channel.icon,
+          offline: channel.offline,
+          watermark: channel.watermark,
           createdAt: now,
           updatedAt: now,
           transcoding: null,
+          transcodeConfigId: channel.transcodeConfigId,
         })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+        .returning()
+        .get();
 
-      await tx
-        .insertInto('channelFillerShow')
-        .columns(['channelUuid', 'cooldown', 'fillerShowUuid', 'weight'])
-        .expression((eb) =>
-          eb
-            .selectFrom('channelFillerShow')
-            .select([
-              eb.val(newChannelId).as('channelUuid'),
-              'channelFillerShow.cooldown',
-              'channelFillerShow.fillerShowUuid',
-              'channelFillerShow.weight',
-            ])
-            .where('channelFillerShow.channelUuid', '=', channel.uuid),
+      const fillerShows = tx
+        .insert(ChannelFillerShow)
+        .select(
+          tx
+            .select({
+              channelUuid: sql<string>`${newChannelId}`.as('channelUuid'),
+              fillerShowUuid: ChannelFillerShow.fillerShowUuid,
+              cooldown: ChannelFillerShow.cooldown,
+              weight: ChannelFillerShow.weight,
+            })
+            .from(ChannelFillerShow)
+            .where(eq(ChannelFillerShow.channelUuid, channel.uuid)),
         )
-        .executeTakeFirstOrThrow();
+        .returning()
+        .all();
 
-      await tx
-        .insertInto('channelPrograms')
-        .columns(['channelUuid', 'programUuid'])
-        .expression((eb) =>
-          eb
-            .selectFrom('channelPrograms')
-            .select([
-              eb.val(newChannelId).as('channelUuid'),
-              'channelPrograms.programUuid',
-            ])
-            .where('channelPrograms.channelUuid', '=', channel.uuid),
+      tx.insert(ChannelPrograms)
+        .select(
+          tx
+            .select({
+              channelUuid: sql<string>`${newChannelId}`.as('channelUuid'),
+              programUuid: ChannelPrograms.programUuid,
+            })
+            .from(ChannelPrograms)
+            .where(eq(ChannelPrograms.channelUuid, channel.uuid)),
         )
-        .executeTakeFirstOrThrow();
+        .run();
 
-      await tx
-        .insertInto('channelCustomShows')
-        .columns(['channelUuid', 'customShowUuid'])
-        .expression((eb) =>
-          eb
-            .selectFrom('channelCustomShows')
-            .select([
-              eb.val(newChannelId).as('channelUuid'),
-              'channelCustomShows.customShowUuid',
-            ])
-            .where('channelCustomShows.channelUuid', '=', channel.uuid),
-        )
-        .executeTakeFirstOrThrow();
-
-      return newChannel;
+      return { ...newChannel, fillerShows };
     });
 
-    const newLineup = await this.lineupRepository.saveLineup(newChannel.uuid, lineup);
+    const newLineup = await this.lineupRepository.saveLineup(
+      newChannel.uuid,
+      lineup,
+    );
 
     return {
       channel: newChannel,
@@ -502,16 +408,11 @@ export class BasicChannelRepository {
       await this.lineupRepository.markLineupFileForDeletion(channelId);
       marked = true;
 
-      await this.db.transaction().execute(async (tx) => {
-        await tx
-          .deleteFrom('channelSubtitlePreferences')
-          .where('channelId', '=', channelId)
-          .executeTakeFirstOrThrow();
-        await tx
-          .deleteFrom('channel')
-          .where('uuid', '=', channelId)
-          .limit(1)
-          .executeTakeFirstOrThrow();
+      this.drizzleDB.transaction((tx) => {
+        tx.delete(ChannelSubtitlePreferences)
+          .where(eq(ChannelSubtitlePreferences.channelId, channelId))
+          .run();
+        tx.delete(Channel).where(eq(Channel.uuid, channelId)).run();
       });
 
       const removeRefs = () =>

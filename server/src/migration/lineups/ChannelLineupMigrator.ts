@@ -2,27 +2,34 @@ import { type IChannelDB } from '@/db/interfaces/IChannelDB.js';
 import { RandomSlotDurationSpecMigration } from '@/migration/lineups/RandomSlotDurationSpecMigration.js';
 import { KEYS } from '@/types/inject.js';
 import { Json } from '@/types/schemas.js';
+import { InjectLogger } from '@/util/inject.js';
 import { Logger } from '@/util/logging/LoggerFactory.js';
 import dayjs from 'dayjs';
-import { inject, injectable, interfaces } from 'inversify';
-import { findIndex, isArray } from 'lodash-es';
+import { inject, injectable, ServiceIdentifier } from 'inversify';
+import { findIndex, isArray, isNumber, isString } from 'lodash-es';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { CurrentLineupSchemaVersion } from '../../db/derived_types/Lineup.ts';
+import { LineupRepository } from '../../db/channel/LineupRepository.ts';
+import {
+  CurrentLineupSchemaVersion,
+  LineupSchema,
+} from '../../db/derived_types/Lineup.ts';
 import { FileSystemService } from '../../services/FileSystemService.ts';
 import { parseIntOrNull } from '../../util/index.ts';
 import { getFirstValue } from '../../util/json.ts';
 import { JsonFileMigrator } from '../JsonFileMigrator.ts';
+import { AddSlotIdMigration } from './AddSlotIdMigration.ts';
 import { ChannelLineupMigration } from './ChannelLineupMigration.ts';
 import { SlotProgrammingMigration } from './SlotProgrammingMigration.ts';
 import { SlotShowIdMigration } from './SlotShowIdMigration.ts';
 
-const MigrationSteps: interfaces.ServiceIdentifier<
+const MigrationSteps: ServiceIdentifier<
   ChannelLineupMigration<number, number>
 >[] = [
   SlotShowIdMigration,
   RandomSlotDurationSpecMigration,
   SlotProgrammingMigration,
+  AddSlotIdMigration,
 ];
 
 /**
@@ -32,10 +39,12 @@ const MigrationSteps: interfaces.ServiceIdentifier<
 export class ChannelLineupMigrator extends JsonFileMigrator<
   ChannelLineupMigration<number, number>
 > {
+  @InjectLogger() declare private readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.Logger) private logger: Logger,
     @inject(KEYS.ChannelDB) private channelDB: IChannelDB,
     @inject(FileSystemService) private fileSystemService: FileSystemService,
+    @inject(LineupRepository) private lineupRepository: LineupRepository,
   ) {
     super(MigrationSteps);
   }
@@ -60,7 +69,14 @@ export class ChannelLineupMigrator extends JsonFileMigrator<
       return;
     }
 
-    const version = getFirstValue('$.version@number()', lineup, parseIntOrNull);
+    const version = getFirstValue('$.version@number()', lineup, (value) => {
+      if (isNumber(value)) {
+        return value;
+      } else if (!isString(value)) {
+        return;
+      }
+      return parseIntOrNull(value);
+    });
     let currVersion = version ?? 0;
 
     if (currVersion === CurrentLineupSchemaVersion) {
@@ -109,7 +125,24 @@ export class ChannelLineupMigrator extends JsonFileMigrator<
         migrationIndex++;
       } while (currVersion <= CurrentLineupSchemaVersion);
 
-      await this.channelDB.saveLineup(channelId, lineup);
+      // Crazy run around - first ensure we have a proper schema
+      // We have to save it directly to avoid a read out from Low
+      // which may have an invalid schema still.
+      const parseResult = LineupSchema.safeParse(lineup);
+      if (!parseResult.success) {
+        this.logger.error(
+          parseResult.error,
+          'ChannelLineupMigrator did not produce a valid schema. Database may be corrupt.',
+        );
+        throw parseResult.error;
+      }
+
+      await this.lineupRepository.saveChannelLineupDirect(
+        channelId,
+        parseResult.data,
+      );
+
+      await this.lineupRepository.getFileDb(channelId, true);
       this.logger.info(
         'Successfully migrated channel %s from lineup version %d to %d',
         channelId,

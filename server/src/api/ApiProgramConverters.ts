@@ -8,6 +8,7 @@ import type {
   MusicAlbum,
   MusicArtist,
   MusicTrack,
+  MusicVideo,
   OtherVideo,
   ProgramGrouping,
   Season,
@@ -25,28 +26,34 @@ import type {
   ProgramGroupingOrmWithRelations,
   ProgramWithRelationsOrm,
 } from '../db/schema/derivedTypes.ts';
-import type { MediaSourceLibraryOrm } from '../db/schema/MediaSourceLibrary.ts';
+import type { MediaSourceLibrary } from '../db/schema/MediaSourceLibrary.ts';
 import type {
   ProgramGroupingSearchDocument,
   TerminalProgramSearchDocument,
 } from '../services/MeilisearchService.ts';
 import type { Maybe, Nullable } from '../types/util.ts';
 import { isNonEmptyString } from '../util/index.ts';
+import type { Logger } from '../util/logging/LoggerFactory.ts';
 import { LoggerFactory } from '../util/logging/LoggerFactory.ts';
 import { titleToSortTitle } from '../util/programs.ts';
 
 export class ApiProgramConverters {
-  private static logger = LoggerFactory.child({
-    className: ApiProgramConverters.name,
-  });
+  private static _logger?: Logger;
+  private static get logger() {
+    return (this._logger ??= LoggerFactory.child({
+      className: ApiProgramConverters.name,
+    }));
+  }
 
   private constructor() {}
 
   static convertProgram(
     program: ProgramWithRelationsOrm,
     searchDoc: Maybe<TerminalProgramSearchDocument>,
-    mediaSource: MediaSourceWithRelations,
-    mediaLibrary: MediaSourceLibraryOrm,
+    mediaSource?: MediaSourceWithRelations,
+    mediaLibrary?: MediaSourceLibrary,
+    parent?: ProgramGroupingOrmWithRelations,
+    grandparent?: ProgramGroupingOrmWithRelations,
   ): Nullable<TerminalProgram> {
     if (!program.canonicalId) {
       this.logger.warn(`Program %s doesn't have a canonicalId!`, program.uuid);
@@ -56,6 +63,18 @@ export class ApiProgramConverters {
 
     if (!externalId && program.sourceType !== 'local') {
       throw new Error('No external Id found');
+    }
+
+    if (!program.mediaSourceId && !mediaSource) {
+      this.logger.warn(
+        'Attempted to convert program without mediaSourceId without passing media source.',
+      );
+      return null;
+    } else if (!program.libraryId && !mediaLibrary) {
+      this.logger.warn(
+        'Attempted to convert program without libraryId without passing media library.',
+      );
+      return null;
     }
 
     const parsed = dayjs(
@@ -83,13 +102,13 @@ export class ApiProgramConverters {
     const uuid = program.uuid;
 
     const base = {
-      mediaSourceId: mediaSource.uuid,
-      libraryId: mediaLibrary.uuid,
+      mediaSourceId: program.mediaSourceId ?? mediaSource!.uuid,
+      libraryId: program.libraryId ?? mediaLibrary!.uuid,
       // externalLibraryId: mediaLibrary.externalKey,
       releaseDate: releaseDate,
       releaseDateString: program.originalAirDate,
       externalId: externalId ?? program.externalKey,
-      sourceType: mediaSource.type,
+      sourceType: program.sourceType,
       sortTitle: titleToSortTitle(program.title),
       artwork:
         program.artwork?.map(
@@ -125,8 +144,28 @@ export class ApiProgramConverters {
       ),
     } satisfies Partial<TerminalProgram>;
 
-    const result = match(program)
-      .returnType<TerminalProgram | null>()
+    const convertedParent =
+      parent && mediaSource && mediaLibrary
+        ? ApiProgramConverters.convertProgramGrouping(
+            parent,
+            undefined,
+            undefined,
+            mediaSource,
+            mediaLibrary,
+          )
+        : null;
+    const convertedGrandparent =
+      grandparent && mediaSource && mediaLibrary
+        ? ApiProgramConverters.convertProgramGrouping(
+            grandparent,
+            undefined,
+            undefined,
+            mediaSource,
+            mediaLibrary,
+          )
+        : null;
+
+    return match(program)
       .with(
         { type: 'episode' },
         (ep) =>
@@ -136,6 +175,14 @@ export class ApiProgramConverters {
             summary: ep.summary,
             originalTitle: null,
             episodeNumber: ep.episode ?? 0,
+            season:
+              convertedParent?.type === 'season' ? convertedParent : undefined,
+            show:
+              convertedGrandparent?.type === 'show'
+                ? convertedGrandparent
+                : undefined,
+            seasonId: ep.seasonUuid,
+            showId: ep.tvShowUuid,
           }) satisfies Episode,
       )
       .with(
@@ -159,6 +206,14 @@ export class ApiProgramConverters {
             type: 'track',
             originalTitle: null,
             trackNumber: program.episode ?? 0,
+            album:
+              convertedParent?.type === 'album' ? convertedParent : undefined,
+            artist:
+              convertedGrandparent?.type === 'artist'
+                ? convertedGrandparent
+                : undefined,
+            albumId: program.albumUuid,
+            artistId: program.artistUuid,
           }) satisfies MusicTrack,
       )
       .with(
@@ -172,16 +227,18 @@ export class ApiProgramConverters {
             originalTitle: null,
           }) satisfies OtherVideo,
       )
-      .otherwise(() => null);
-
-    if (!result) {
-      throw new Error(
-        'Could not convert program result for incoming document: ' +
-          JSON.stringify(program),
-      );
-    }
-
-    return result;
+      .with(
+        {
+          type: 'music_video',
+        },
+        () =>
+          ({
+            ...base,
+            type: 'music_video',
+            originalTitle: null,
+          }) satisfies MusicVideo,
+      )
+      .exhaustive();
   }
 
   static convertProgramGrouping(
@@ -189,7 +246,7 @@ export class ApiProgramConverters {
     doc: Maybe<ProgramGroupingSearchDocument>,
     childCounts: Maybe<ProgramGroupingChildCounts>,
     mediaSource: MediaSourceWithRelations,
-    mediaLibrary: MediaSourceLibraryOrm,
+    mediaLibrary: MediaSourceLibrary,
   ): Nullable<ProgramGrouping> {
     if (!grouping.canonicalId) {
       this.logger.warn(

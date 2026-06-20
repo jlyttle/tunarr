@@ -3,8 +3,11 @@ import { ContentGuideProgram, tag } from '@tunarr/types';
 import dayjs from 'dayjs';
 import { inject, injectable } from 'inversify';
 import { isUndefined } from 'lodash-es';
+import { createReadStream, createWriteStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import path, { dirname, extname } from 'node:path';
+import { Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { tmpName } from 'tmp-promise';
 import z from 'zod';
 import { IChannelDB } from '../db/interfaces/IChannelDB.ts';
@@ -15,7 +18,7 @@ import { MediaSourceWithRelations } from '../db/schema/derivedTypes.js';
 import { HttpReconnectOptions } from '../ffmpeg/builder/options/input/HttpReconnectOptions.ts';
 import { GlobalOptions } from '../globals.ts';
 import { TVGuideService } from '../services/TvGuideService.ts';
-import { ExternalStreamDetailsFetcherFactory } from '../stream/StreamDetailsFetcher.ts';
+import { ProgramStreamDetailsFetcher } from '../stream/ProgramStreamDetailsFetcher.ts';
 import { isImageBasedSubtitle } from '../stream/util.ts';
 import { KEYS } from '../types/inject.ts';
 import { OpenDateTimeRange } from '../types/OpenDateTimeRange.ts';
@@ -27,6 +30,7 @@ import {
 } from '../util/constants.ts';
 import { fileExists } from '../util/fsUtil.ts';
 import { isDefined } from '../util/index.ts';
+import { InjectLogger } from '../util/inject.ts';
 import { Logger } from '../util/logging/LoggerFactory.ts';
 import { getSubtitleCacheFilePath } from '../util/subtitles.ts';
 import { Task2 } from './Task.ts';
@@ -84,19 +88,19 @@ export class SubtitleExtractorTask extends Task2<
 
   schema = SubtitleExtractorTaskRequest;
 
+  @InjectLogger() declare protected readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.Logger) logger: Logger,
     @inject(TVGuideService) private guideService: TVGuideService,
     @inject(KEYS.ChannelDB) private channelDB: IChannelDB,
-    @inject(ExternalStreamDetailsFetcherFactory)
-    private streamDetailsFetcher: ExternalStreamDetailsFetcherFactory,
+    @inject(ProgramStreamDetailsFetcher)
+    private streamDetailsFetcher: ProgramStreamDetailsFetcher,
     @inject(MediaSourceDB) private mediaSourceDB: MediaSourceDB,
     @inject(KEYS.SettingsDB) private settingsDB: ISettingsDB,
     @inject(KEYS.GlobalOptions) private globalOptions: GlobalOptions,
     @inject(KEYS.ProgramDB) private programDB: IProgramDB,
-    // private request: SubtitleExtractorTaskRequest,
   ) {
-    super(logger);
+    super();
   }
 
   protected async runInternal(
@@ -157,9 +161,7 @@ export class SubtitleExtractorTask extends Task2<
         }
 
         const mediaSource = mediaSources.find(
-          (ms) =>
-            ms.uuid === program.externalSourceId ||
-            ms.name === program.externalSourceName,
+          (ms) => ms.uuid === program.program.mediaSourceId,
         );
         if (!mediaSource) {
           // log
@@ -232,9 +234,9 @@ export class SubtitleExtractorTask extends Task2<
 
           const filePath = getSubtitleCacheFilePath(
             {
-              externalKey: program.externalKey,
-              externalSourceId: tag(program.externalSourceId),
-              externalSourceType: program.externalSourceType,
+              externalKey: program.program.externalId,
+              externalSourceId: tag(program.program.mediaSourceId),
+              externalSourceType: program.program.sourceType,
               id: program.id,
             },
             { streamIndex: subtitle.index, codec: subtitle.codec },
@@ -256,7 +258,7 @@ export class SubtitleExtractorTask extends Task2<
             'Skipping existing subtitle extraction (stream index = %d) path for program %s (%s). File already exists: %s',
             subtitle.index,
             program.id,
-            program.title,
+            program.program.title,
             fullPath,
           );
           return;
@@ -321,7 +323,20 @@ export class SubtitleExtractorTask extends Task2<
 
     const copyResults = await Promise.allSettled(
       subtitlesToSave.map(async ({ outPath, tmpPath }) => {
-        return fs.cp(tmpPath, outPath);
+        // Stream through a Transform that drops stray NUL bytes that some
+        // sources (notably mov_text -> ass and certain Plex muxers) embed
+        // inside the extracted text. libass refuses to parse a file that
+        // contains a NUL, which manifests as missing burn-in subtitles
+        // with no obvious ffmpeg-level error.
+        await pipeline(
+          createReadStream(tmpPath),
+          new Transform({
+            transform(chunk: Buffer, _encoding, cb) {
+              cb(null, chunk.filter((byte) => byte !== 0x00));
+            },
+          }),
+          createWriteStream(outPath),
+        );
       }),
     );
 

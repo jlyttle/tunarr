@@ -5,12 +5,12 @@ import { sql, SQL } from 'drizzle-orm';
 import { SelectResultFields } from 'drizzle-orm/query-builders/select.types';
 import { SelectedFields } from 'drizzle-orm/sqlite-core';
 import tmp from 'tmp-promise';
+import { copyPreMigratedDb } from '../testing/testDbFactory.ts';
 import { StrictOmit } from 'ts-essentials';
 import { v4 } from 'uuid';
 import { test as baseTest } from 'vitest';
 import { bootstrapTunarr } from '../bootstrap.ts';
 import { setGlobalOptions } from '../globals.ts';
-import { LoggerFactory } from '../util/logging/LoggerFactory.ts';
 import { DBAccess } from './DBAccess.ts';
 import { IProgramDB } from './interfaces/IProgramDB.ts';
 import { ProgramDB } from './ProgramDB.ts';
@@ -51,6 +51,10 @@ import {
   ProgramGroupingType,
 } from './schema/ProgramGrouping.ts';
 import { NewMultiProgramGroupingId } from './schema/ProgramGroupingExternalId.ts';
+import {
+  NewProgramSubtitles,
+  ProgramSubtitles,
+} from './schema/ProgramSubtitles.ts';
 import { NewStudio } from './schema/Studio.ts';
 import { NewTag } from './schema/Tag.ts';
 
@@ -89,6 +93,7 @@ type Fixture = {
 const test = baseTest.extend<Fixture>({
   db: async ({}, use) => {
     const dbResult = await tmp.dir({ unsafeCleanup: true });
+    await copyPreMigratedDb(dbResult.path);
     setGlobalOptions({
       database: dbResult.path,
       log_level: 'debug',
@@ -100,32 +105,25 @@ const test = baseTest.extend<Fixture>({
   },
   programDb: async ({ db: _ }, use) => {
     const dbAccess = DBAccess.instance;
-    const logger = LoggerFactory.child({ className: 'ProgramDB' });
-
-    // Mock the task factories required by ProgramUpsertRepository
-    const mockTaskFactory = () => ({ enqueue: async () => {} }) as any;
 
     const metadataRepo = new ProgramMetadataRepository(dbAccess.drizzle!);
-    const externalIdRepo = new ProgramExternalIdRepository(logger, dbAccess.db!, dbAccess.drizzle!);
+    const externalIdRepo = new ProgramExternalIdRepository(
+      dbAccess.db!,
+      dbAccess.drizzle!,
+    );
     const groupingUpsertRepo = new ProgramGroupingUpsertRepository(
       dbAccess.db!,
       dbAccess.drizzle!,
       metadataRepo,
     );
     const upsertRepo = new ProgramUpsertRepository(
-      logger,
-      dbAccess.db!,
       dbAccess.drizzle!,
-      mockTaskFactory,
-      mockTaskFactory,
-      () => ({}) as any, // ProgramDaoMinterFactory
       externalIdRepo,
       metadataRepo,
-      groupingUpsertRepo,
     );
     const programDb = new ProgramDB(
       new BasicProgramRepository(dbAccess.db!, dbAccess.drizzle!),
-      new ProgramGroupingRepository(logger, dbAccess.db!, dbAccess.drizzle!),
+      new ProgramGroupingRepository(dbAccess.db!, dbAccess.drizzle!),
       externalIdRepo,
       upsertRepo,
       metadataRepo,
@@ -319,6 +317,28 @@ function createTag(): NewTag {
   return {
     uuid: v4(),
     tag: faker.string.alphanumeric({ length: 20 }),
+  };
+}
+
+function createSubtitle(
+  programId: string,
+  overrides?: Partial<NewProgramSubtitles>,
+): NewProgramSubtitles {
+  const now = dayjs().toDate();
+  return {
+    uuid: v4(),
+    programId,
+    createdAt: now,
+    updatedAt: now,
+    language: faker.helpers.arrayElement(['eng', 'spa', 'fra', 'deu', 'jpn']),
+    subtitleType: 'embedded',
+    default: false,
+    forced: false,
+    path: null,
+    sdh: false,
+    streamIndex: faker.number.int({ min: 2, max: 10 }),
+    codec: faker.helpers.arrayElement(['srt', 'ass', 'pgs', 'vobsub']),
+    ...overrides,
   };
 }
 
@@ -2474,6 +2494,188 @@ describe('ProgramDB', () => {
         const savedTagNames = programs[0]!.tags.map((t) => t.tag?.tag).sort();
         const expectedTagNames = episodeTags.map((t) => t.tag).sort();
         expect(savedTagNames).toEqual(expectedTagNames);
+      });
+    });
+
+    describe('program subtitles', () => {
+      test('should preserve embedded subtitles on re-upsert', async ({
+        programDb,
+        drizzle,
+      }) => {
+        const library = await createTestMediaSourceLibrary(drizzle);
+        const programData = createBaseProgram('movie', library.uuid, 'local', {
+          mediaSourceId: library.mediaSourceId,
+        });
+
+        const subtitles = [
+          createSubtitle(programData.uuid, { streamIndex: 2, language: 'eng' }),
+          createSubtitle(programData.uuid, { streamIndex: 3, language: 'spa' }),
+        ];
+
+        const program: NewProgramWithRelations = {
+          program: programData,
+          externalIds: [],
+          genres: [],
+          studios: [],
+          artwork: [],
+          credits: [],
+          versions: [],
+          subtitles,
+          tags: [],
+        };
+
+        const firstResult = await programDb.upsertPrograms([program]);
+        expect(firstResult).toHaveLength(1);
+
+        const subsAfterFirst = await drizzle.query.programSubtitles.findMany({
+          where: (fields, { eq }) => eq(fields.programId, firstResult[0]!.uuid),
+        });
+        expect(subsAfterFirst).toHaveLength(2);
+
+        const secondUpsertSubtitles = [
+          createSubtitle(programData.uuid, { streamIndex: 2, language: 'eng' }),
+          createSubtitle(programData.uuid, { streamIndex: 3, language: 'spa' }),
+        ];
+
+        const updatedProgram: NewProgramWithRelations = {
+          program: { ...programData, uuid: firstResult[0]!.uuid },
+          externalIds: [],
+          genres: [],
+          studios: [],
+          artwork: [],
+          credits: [],
+          versions: [],
+          subtitles: secondUpsertSubtitles,
+          tags: [],
+        };
+
+        await programDb.upsertPrograms([updatedProgram]);
+
+        const subsAfterSecond = await drizzle.query.programSubtitles.findMany({
+          where: (fields, { eq }) => eq(fields.programId, firstResult[0]!.uuid),
+        });
+        expect(subsAfterSecond).toHaveLength(2);
+        const indexes = subsAfterSecond.map((s) => s.streamIndex).sort();
+        expect(indexes).toEqual([2, 3]);
+      });
+
+      test('should add new subtitles and remove old ones on re-upsert', async ({
+        programDb,
+        drizzle,
+      }) => {
+        const library = await createTestMediaSourceLibrary(drizzle);
+        const programData = createBaseProgram('movie', library.uuid, 'local', {
+          mediaSourceId: library.mediaSourceId,
+        });
+
+        const initialSubtitles = [
+          createSubtitle(programData.uuid, { streamIndex: 2, language: 'eng' }),
+          createSubtitle(programData.uuid, { streamIndex: 3, language: 'spa' }),
+        ];
+
+        const program: NewProgramWithRelations = {
+          program: programData,
+          externalIds: [],
+          genres: [],
+          studios: [],
+          artwork: [],
+          credits: [],
+          versions: [],
+          subtitles: initialSubtitles,
+          tags: [],
+        };
+
+        const firstResult = await programDb.upsertPrograms([program]);
+
+        const changedSubtitles = [
+          createSubtitle(programData.uuid, { streamIndex: 3, language: 'spa' }),
+          createSubtitle(programData.uuid, { streamIndex: 4, language: 'fra' }),
+        ];
+
+        const updatedProgram: NewProgramWithRelations = {
+          program: { ...programData, uuid: firstResult[0]!.uuid },
+          externalIds: [],
+          genres: [],
+          studios: [],
+          artwork: [],
+          credits: [],
+          versions: [],
+          subtitles: changedSubtitles,
+          tags: [],
+        };
+
+        await programDb.upsertPrograms([updatedProgram]);
+
+        const subsAfterSecond = await drizzle.query.programSubtitles.findMany({
+          where: (fields, { eq }) => eq(fields.programId, firstResult[0]!.uuid),
+        });
+        expect(subsAfterSecond).toHaveLength(2);
+        const indexes = subsAfterSecond.map((s) => s.streamIndex).sort();
+        expect(indexes).toEqual([3, 4]);
+      });
+
+      test('should update metadata of existing subtitle on re-upsert', async ({
+        programDb,
+        drizzle,
+      }) => {
+        const library = await createTestMediaSourceLibrary(drizzle);
+        const programData = createBaseProgram('movie', library.uuid, 'local', {
+          mediaSourceId: library.mediaSourceId,
+        });
+
+        const initialSubtitles = [
+          createSubtitle(programData.uuid, {
+            streamIndex: 2,
+            language: 'eng',
+            default: false,
+            sdh: false,
+          }),
+        ];
+
+        const program: NewProgramWithRelations = {
+          program: programData,
+          externalIds: [],
+          genres: [],
+          studios: [],
+          artwork: [],
+          credits: [],
+          versions: [],
+          subtitles: initialSubtitles,
+          tags: [],
+        };
+
+        const firstResult = await programDb.upsertPrograms([program]);
+
+        const updatedSubtitles = [
+          createSubtitle(programData.uuid, {
+            streamIndex: 2,
+            language: 'eng',
+            default: true,
+            sdh: true,
+          }),
+        ];
+
+        const updatedProgram: NewProgramWithRelations = {
+          program: { ...programData, uuid: firstResult[0]!.uuid },
+          externalIds: [],
+          genres: [],
+          studios: [],
+          artwork: [],
+          credits: [],
+          versions: [],
+          subtitles: updatedSubtitles,
+          tags: [],
+        };
+
+        await programDb.upsertPrograms([updatedProgram]);
+
+        const subsAfterSecond = await drizzle.query.programSubtitles.findMany({
+          where: (fields, { eq }) => eq(fields.programId, firstResult[0]!.uuid),
+        });
+        expect(subsAfterSecond).toHaveLength(1);
+        expect(subsAfterSecond[0]!.streamIndex).toBe(2);
+        expect(subsAfterSecond[0]!.default).toBe(true);
+        expect(subsAfterSecond[0]!.sdh).toBe(true);
       });
     });
   });

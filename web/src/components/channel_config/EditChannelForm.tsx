@@ -1,5 +1,6 @@
 import UnsavedNavigationAlert from '@/components/settings/UnsavedNavigationAlert.tsx';
 import { DefaultChannel } from '@/helpers/constants.ts';
+import { useLingui } from '@lingui/react/macro';
 import { Badge } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -77,6 +78,10 @@ function getDefaultFormValues(channel: Channel): DeepRequired<SaveableChannel> {
         },
       ],
     },
+    icon: {
+      ...channel.icon,
+      useDefaultIconFallback: channel.icon?.useDefaultIconFallback ?? true,
+    },
     onDemand: {
       enabled: channel.onDemand.enabled,
     },
@@ -122,6 +127,7 @@ export function EditChannelForm({
   isNew,
   initialTab,
 }: EditChannelFormProps) {
+  const { t } = useLingui();
   const navigate = useNavigate({
     from: isNew ? '/channels/new' : '/channels/$channelId/edit',
   });
@@ -239,6 +245,13 @@ export function EditChannelForm({
     }
   };
 
+  const tabDescriptions: Record<string, string> = {
+    Properties: t`Properties`,
+    Flex: t`Flex`,
+    EPG: t`EPG`,
+    Streaming: t`Streaming`,
+  };
+
   const renderTab = (tab: EditChannelTabProps) => {
     const hasError = some(formErrorKeys, (k) => tab.fields.includes(k));
     return (
@@ -253,7 +266,7 @@ export function EditChannelForm({
             slotProps={{ badge: { style: { right: -3, top: -3 } } }}
             invisible={!hasError}
           >
-            {tab.description}
+            {tabDescriptions[tab.description] ?? tab.description}
           </Badge>
         }
       />
@@ -296,7 +309,7 @@ export function EditChannelForm({
     </Paper>
   );
 }
-export type EditChannelFormProps = {
+type EditChannelFormProps = {
   channel: Channel;
   isNew: boolean;
   initialTab?: EditChannelTabs;

@@ -1,15 +1,15 @@
 import type { ProgramExternalIdType } from '@/db/custom_types/ProgramExternalIdType.js';
 import { KEYS } from '@/types/inject.js';
 import type { Maybe } from '@/types/util.js';
-import type { ProgramExternalId } from '../schema/ProgramExternalId.ts';
-import { ProgramGroupingType } from '../schema/ProgramGrouping.ts';
-import type { ProgramWithRelationsOrm } from '../schema/derivedTypes.ts';
-import type { DrizzleDBAccess } from '../schema/index.ts';
-import type { DB } from '../schema/db.ts';
 import { inject, injectable } from 'inversify';
 import type { Kysely } from 'kysely';
-import { chunk, isEmpty } from 'lodash-es';
+import { chunk, isEmpty, uniq } from 'lodash-es';
 import type { MarkRequired } from 'ts-essentials';
+import type { ProgramExternalId } from '../schema/ProgramExternalId.ts';
+import { ProgramGroupingType } from '../schema/ProgramGrouping.ts';
+import type { DB } from '../schema/db.ts';
+import type { ProgramWithRelationsOrm } from '../schema/derivedTypes.ts';
+import type { DrizzleDBAccess } from '../schema/index.ts';
 
 @injectable()
 export class BasicProgramRepository {
@@ -80,21 +80,31 @@ export class BasicProgramRepository {
   async getProgramsByIds(
     ids: string[] | readonly string[],
     batchSize: number = 500,
-  ): Promise<ProgramWithRelationsOrm[]> {
-    const results: ProgramWithRelationsOrm[] = [];
-    for (const idChunk of chunk(ids, batchSize)) {
+  ): Promise<MarkRequired<ProgramWithRelationsOrm, 'externalIds'>[]> {
+    const results: MarkRequired<ProgramWithRelationsOrm, 'externalIds'>[] = [];
+    for (const idChunk of chunk(uniq(ids), batchSize)) {
       const res = await this.drizzleDB.query.program.findMany({
         where: (fields, { inArray }) => inArray(fields.uuid, idChunk),
         with: {
           album: {
             with: {
+              externalIds: true,
               artwork: true,
             },
           },
-          artist: true,
-          season: true,
+          artist: {
+            with: {
+              externalIds: true,
+            },
+          },
+          season: {
+            with: {
+              externalIds: true,
+            },
+          },
           show: {
             with: {
+              externalIds: true,
               artwork: true,
             },
           },
@@ -110,5 +120,31 @@ export class BasicProgramRepository {
       results.push(...res);
     }
     return results;
+  }
+
+  /**
+   * Given an array of program IDs, return the set of those IDs which exist in
+   * the database.
+   */
+  async filterNonExistentProgramIds(
+    programIds: string[],
+  ): Promise<Set<string>> {
+    const uniqIds = uniq(programIds);
+    if (uniqIds.length === 0) {
+      return new Set();
+    }
+
+    const promises = chunk(programIds, 500).map((programChunk) =>
+      this.drizzleDB.query.program.findMany({
+        where: (fields, { inArray }) => inArray(fields.uuid, programChunk),
+        columns: {
+          uuid: true,
+        },
+      }),
+    );
+
+    const allPrograms = await Promise.all(promises);
+
+    return new Set([...allPrograms.flat().map(({ uuid }) => uuid)]);
   }
 }

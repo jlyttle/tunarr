@@ -1,32 +1,26 @@
 import { MediaSourceId } from '@tunarr/shared';
 import { TerminalProgram, untag } from '@tunarr/types';
 import { inject, injectable } from 'inversify';
-import { NonEmptyArray } from 'ts-essentials';
+import { match } from 'ts-pattern';
 import { ApiProgramConverters } from '../api/ApiProgramConverters.ts';
 import { MediaSourceDB } from '../db/mediaSourceDB.ts';
 import { ProgramWithRelationsOrm } from '../db/schema/derivedTypes.ts';
-import { KEYS } from '../types/inject.ts';
+
 import { groupByUniq } from '../util/index.ts';
+import { InjectLogger } from '../util/inject.ts';
 import { Logger } from '../util/logging/LoggerFactory.ts';
 
 @injectable()
 export class MaterializeProgramsCommand {
+  @InjectLogger() private declare readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.Logger) private logger: Logger,
     @inject(MediaSourceDB) private mediaSourceDB: MediaSourceDB,
   ) {}
 
   async execute(
-    programs: NonEmptyArray<ProgramWithRelationsOrm>,
-  ): Promise<NonEmptyArray<TerminalProgram>>;
-  async execute(
     programs: ProgramWithRelationsOrm[],
-  ): Promise<TerminalProgram[]>;
-  async execute(
-    programs:
-      | ProgramWithRelationsOrm[]
-      | NonEmptyArray<ProgramWithRelationsOrm>,
-  ): Promise<TerminalProgram[] | NonEmptyArray<TerminalProgram>> {
+  ): Promise<TerminalProgram[]> {
     if (programs.length === 0) {
       return [];
     }
@@ -100,6 +94,68 @@ export class MaterializeProgramsCommand {
         );
         continue;
       }
+
+      // ApiProgramConverters.convertProgramGrouping()
+      match([apiItem, program])
+        .with(
+          [{ type: 'episode' }, { type: 'episode' }],
+          ([apiItem, dbItem]) => {
+            if (dbItem.season) {
+              const convertedSeason =
+                ApiProgramConverters.convertProgramGrouping(
+                  dbItem.season,
+                  undefined,
+                  undefined,
+                  ms,
+                  library,
+                );
+              if (convertedSeason?.type === 'season') {
+                apiItem.season = convertedSeason;
+              }
+            }
+            if (dbItem.show) {
+              const convertedShow = ApiProgramConverters.convertProgramGrouping(
+                dbItem.show,
+                undefined,
+                undefined,
+                ms,
+                library,
+              );
+              if (convertedShow?.type === 'show') {
+                apiItem.show = convertedShow;
+              }
+            }
+          },
+        )
+        .with([{ type: 'track' }, { type: 'track' }], ([apiItem, dbItem]) => {
+          if (dbItem.album) {
+            const convertedAlbum = ApiProgramConverters.convertProgramGrouping(
+              dbItem.album,
+              undefined,
+              undefined,
+              ms,
+              library,
+            );
+            if (convertedAlbum?.type === 'album') {
+              apiItem.album = convertedAlbum;
+            }
+          }
+
+          if (dbItem.artist) {
+            const convertedArtist = ApiProgramConverters.convertProgramGrouping(
+              dbItem.artist,
+              undefined,
+              undefined,
+              ms,
+              library,
+            );
+            if (convertedArtist?.type === 'artist') {
+              apiItem.artist = convertedArtist;
+            }
+          }
+        })
+        .otherwise(() => void 0);
+
       apiGroups.push(apiItem);
     }
 

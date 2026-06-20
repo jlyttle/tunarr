@@ -1,9 +1,9 @@
-import { channelProgramUniqueId } from '@/helpers/util.ts';
 import { useUpdateChannel } from '@/hooks/useUpdateChannel.ts';
 import { useUpdateLineup } from '@/hooks/useUpdateLineup.ts';
 import { resetLineup } from '@/store/channelEditor/actions.ts';
 import useStore from '@/store/index.ts';
 import { useChannelEditor } from '@/store/selectors.ts';
+import { Trans, useLingui } from '@lingui/react/macro';
 import {
   CalendarViewDay,
   CalendarViewMonth,
@@ -25,17 +25,8 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { seq } from '@tunarr/shared/util';
 import dayjs, { type Dayjs } from 'dayjs';
-import {
-  findIndex,
-  first,
-  groupBy,
-  isUndefined,
-  map,
-  reject,
-  values,
-} from 'lodash-es';
+import { isUndefined, reject } from 'lodash-es';
 import { useSnackbar } from 'notistack';
 import { useCallback, useMemo, useState } from 'react';
 import type { CalendarState } from '../slot_scheduler/ProgramCalendarView.tsx';
@@ -57,6 +48,7 @@ export function ChannelProgrammingConfig() {
   } = useChannelEditor();
   const theme = useTheme();
   const smallViewport = useMediaQuery(theme.breakpoints.down('sm'));
+  const { t } = useLingui();
   const programsDirty = useStore((s) => s.channelEditor.dirty.programs);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const snackbar = useSnackbar();
@@ -86,12 +78,12 @@ export function ChannelProgrammingConfig() {
       setIsSubmitting(false);
     },
     onSuccess: () => {
-      snackbar.enqueueSnackbar('Programs saved!', {
+      snackbar.enqueueSnackbar(t`Programs saved!`, {
         variant: 'success',
       });
     },
     onError: (error, vars) => {
-      snackbar.enqueueSnackbar('Error saving programs. ' + error.message, {
+      snackbar.enqueueSnackbar(t`Error saving programs. ${error.message}`, {
         variant: 'error',
       });
 
@@ -111,72 +103,17 @@ export function ChannelProgrammingConfig() {
       updateChannelMutation.mutate({ path: { id: channel.id }, body: channel });
     }
 
-    // Group programs by their unique ID. This will disregard their durations,
-    // but we will keep the durations when creating the minimal lineup below
-    const uniquePrograms = seq.collect(
-      values(groupBy(newLineup, channelProgramUniqueId)),
-      (v) => first(v),
-    );
-
-    // Create the in-order lineup which is a lookup array - we have the index
-    // to the actual program (in the unique programs list) and then the
-    // duration of the lineup item.
-    const lineup = map(
-      reject(newLineup, (lineupItem) => lineupItem.duration <= 0),
-      (lineupItem) => {
-        switch (lineupItem.type) {
-          case 'custom':
-            return {
-              type: 'persisted' as const,
-              programId: lineupItem.id,
-              customShowId: lineupItem.customShowId,
-              duration: lineupItem.duration,
-            };
-          case 'content':
-          case 'redirect':
-          case 'flex':
-          default: {
-            const index = findIndex(
-              uniquePrograms,
-              (uniq) =>
-                channelProgramUniqueId(lineupItem) ===
-                channelProgramUniqueId(uniq),
-            );
-            return {
-              duration: lineupItem.duration,
-              index,
-              type: 'index' as const,
-            };
-          }
-        }
-      },
-    );
-
     updateLineupMutation.mutate({
       path: {
         id: channel!.id,
       },
       body: {
         type: 'manual',
-        lineup,
-        programs: uniquePrograms,
+        lineup: reject(newLineup, (lineupItem) => lineupItem.duration <= 0),
         append: false,
       },
     });
   };
-
-  // const ref = useRef<HTMLDivElement | null>(null);
-  // const [listHeight, setListHeight] = useState(600);
-  // const windowSize = useWindowSize();
-
-  // useEffect(() => {
-  //   console.log(ref.current);
-  //   const rect = ref.current?.getBoundingClientRect();
-  //   if (rect && windowSize.height) {
-  //     console.log(rect.top, window.screenY);
-  //     setListHeight(windowSize.height - (rect.top + window.scrollY) - 50);
-  //   }
-  // }, [windowSize.height]);
 
   const renderView = () => {
     switch (view) {
@@ -235,22 +172,22 @@ export function ChannelProgrammingConfig() {
                 exclusive
                 onChange={(_, v) => setView(v as ViewType)}
               >
-                <Tooltip title="List">
+                <Tooltip title={t`List`}>
                   <ToggleButton value="list">
                     <List />
                   </ToggleButton>
                 </Tooltip>
-                <Tooltip title="Day">
+                <Tooltip title={t`Day`}>
                   <ToggleButton value="day">
                     <CalendarViewDay />
                   </ToggleButton>
                 </Tooltip>
-                <Tooltip title="Week">
+                <Tooltip title={t`Week`}>
                   <ToggleButton value="week">
                     <CalendarViewWeek />
                   </ToggleButton>
                 </Tooltip>
-                <Tooltip title="Month">
+                <Tooltip title={t`Month`}>
                   <ToggleButton value="month">
                     <CalendarViewMonth />
                   </ToggleButton>
@@ -277,7 +214,7 @@ export function ChannelProgrammingConfig() {
 
             {programsDirty && (
               <Tooltip
-                title="Reset changes made to the channel's lineup"
+                title={t`Reset changes made to the channel's lineup`}
                 placement="top"
               >
                 {smallViewport ? (
@@ -293,7 +230,7 @@ export function ChannelProgrammingConfig() {
                     disabled={!programsDirty}
                     startIcon={<Undo />}
                   >
-                    Reset
+                    <Trans>Reset</Trans>
                   </Button>
                 )}
               </Tooltip>
@@ -328,7 +265,7 @@ export function ChannelProgrammingConfig() {
                   )
                 }
               >
-                Save
+                <Trans>Save</Trans>
               </Button>
             )}
           </Stack>

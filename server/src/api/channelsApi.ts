@@ -2,14 +2,16 @@ import {
   dbChannelToApiChannel,
   ormChannelToApiChannel,
 } from '@/db/converters/channelConverters.js';
+import { globalOptions } from '@/globals.js';
 import { GlobalScheduler } from '@/services/Scheduler.js';
+import { validateSlotGroups } from '@/services/scheduling/slotGroupValidator.js';
 import { UpdateXmlTvTask } from '@/tasks/UpdateXmlTvTask.js';
 import { OpenDateTimeRange } from '@/types/OpenDateTimeRange.js';
 import type { RouterPluginAsyncCallback } from '@/types/serverType.js';
+import { deleteIfLocalAndCleared } from '@/util/iconUtil.js';
 import { isDefined } from '@/util/index.js';
 import { LoggerFactory } from '@/util/logging/LoggerFactory.js';
 import { timeNamedAsync } from '@/util/perf.js';
-import { seq } from '@tunarr/shared/util';
 import { type ChannelSession, type CreateChannelRequest } from '@tunarr/types';
 import {
   BasicIdParamSchema,
@@ -49,6 +51,7 @@ import {
   orderBy,
   reduce,
 } from 'lodash-es';
+import type { MarkRequired } from 'ts-essentials';
 import z from 'zod/v4';
 import { GetMaterializedChannelScheduleCommand } from '../commands/GetMaterializedChannelScheduleCommand.ts';
 import { MaterializeLineupCommand } from '../commands/MaterializeLineupCommand.ts';
@@ -57,7 +60,8 @@ import { MaterializeProgramsCommand } from '../commands/MaterializeProgramsComma
 import { RegenerateChannelLineupCommand } from '../commands/RegenerateChannelLineupCommand.ts';
 import { container } from '../container.ts';
 import { transcodeConfigOrmToDto } from '../db/converters/transcodeConfigConverters.ts';
-import type { LegacyChannelAndLineup } from '../db/interfaces/IChannelDB.ts';
+import type { ChannelAndLineup } from '../db/interfaces/IChannelDB.ts';
+import type { ChannelOrmWithRelations } from '../db/schema/derivedTypes.ts';
 import type { SessionType } from '../stream/Session.ts';
 import { Result } from '../types/result.ts';
 import { PagingParams } from '../types/schemas.ts';
@@ -160,7 +164,7 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
     async (req, res) => {
       try {
         const channelAndLineup =
-          await req.serverCtx.channelDB.loadChannelAndLineup(req.params.id);
+          await req.serverCtx.channelDB.loadChannelAndLineupOrm(req.params.id);
 
         if (!isNil(channelAndLineup)) {
           // TODO: This is super gnarly and we're doing this sorta custom everywhere.
@@ -181,8 +185,7 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
               subtitlePreferences: channelSubtitles,
             },
           });
-          // const loadedFillers =
-          //   await channelAndLineup.channel.channelFillers.load();
+
           const channelWithFillers = {
             ...apiChannel,
             fillerCollections: channelFillers.map((cf) => ({
@@ -218,7 +221,9 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
     },
     async (req, res) => {
       const body: CreateChannelRequest = req.body;
-      let insertResult: Result<LegacyChannelAndLineup>;
+      let insertResult: Result<
+        ChannelAndLineup<MarkRequired<ChannelOrmWithRelations, 'fillerShows'>>
+      >;
       switch (body.type) {
         case 'copy':
           insertResult = await Result.attemptAsync(() =>
@@ -247,13 +252,6 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
 
       const inserted = insertResult.get();
 
-      // const inserted = await attempt(() =>
-      //   req.serverCtx.channelDB.saveChannel(req.body),
-      // );
-      // if (isError(inserted)) {
-      //   return res.status(500).send(inserted);
-      // }
-
       GlobalScheduler.getScheduledJob(UpdateXmlTvTask.ID)
         .runNow(true)
         .catch((err) => logger.error(err, 'Error regenerating guide'));
@@ -280,7 +278,9 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
     },
     async (req, res) => {
       try {
-        const channel = await req.serverCtx.channelDB.getChannel(req.params.id);
+        const channel = await req.serverCtx.channelDB.getChannelOrm(
+          req.params.id,
+        );
 
         if (isNil(channel)) {
           return res
@@ -300,6 +300,17 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
         const channelUpdate = {
           ...req.body,
         };
+
+        // If icon is being cleared and the old icon was a local upload, delete it from disk
+        try {
+          await deleteIfLocalAndCleared(
+            channel.icon?.path ?? '',
+            req.body.icon?.path ?? '',
+            globalOptions().databaseDirectory,
+          );
+        } catch (e) {
+          logger.warn(e, 'Could not delete old channel icon file from disk');
+        }
 
         const updatedChannel = await req.serverCtx.channelDB.updateChannel(
           channel.uuid,
@@ -587,18 +598,33 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
         tags: ['Channels'],
         querystring: ChannelLineupQuery,
         response: {
-          200: z.array(ContentProgramSchema),
+          200: ContentProgramSchema.optional(),
           404: z.object({ error: z.string() }),
         },
       },
     },
     async (req, res) => {
-      const fallbacks =
-        await req.serverCtx.channelDB.getChannelFallbackPrograms(req.params.id);
-      const converted = seq.collect(fallbacks, (p) =>
-        req.serverCtx.programConverter.programDaoToContentProgram(p, []),
+      const fallback = await req.serverCtx.channelDB.getChannelFallbackPrograms(
+        req.params.id,
       );
-      return res.send(converted);
+      if (fallback && fallback.mediaSourceId && fallback.libraryId) {
+        const mediaSource = await req.serverCtx.mediaSourceDB.getById(
+          fallback.mediaSourceId,
+        );
+        const library = mediaSource?.libraries.find(
+          (lib) => lib.uuid === fallback.libraryId,
+        );
+        const converted =
+          req.serverCtx.programConverter.programOrmToContentProgram(
+            fallback,
+            mediaSource,
+            library,
+          );
+        if (converted) {
+          return res.send(converted);
+        }
+      }
+      return res.send();
     },
   );
 
@@ -722,6 +748,7 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
         }),
         response: {
           200: TimeSlotScheduleWithPrograms,
+          400: z.string(),
           404: z.string(),
         },
       },
@@ -737,11 +764,23 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
           .send(`Channel ID ${req.params.channelId} not found`);
       }
 
+      const groupValidation = validateSlotGroups(req.body.schedule.slots, {
+        scheduleType: 'time',
+      });
+      if (!groupValidation.valid) {
+        return res.status(400).send(groupValidation.errors.join('; '));
+      }
+
+      const sanitizedSchedule = {
+        ...req.body.schedule,
+        slots: groupValidation.sanitizedSlots,
+      };
+
       const { result } = await req.serverCtx.workerPool.queueTask({
         request: {
           type: 'channel',
           channelId: req.params.channelId,
-          schedule: req.body.schedule,
+          schedule: sanitizedSchedule,
           startTime: channel.startTime,
         },
         type: 'time-slots',
@@ -773,6 +812,7 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
         }),
         response: {
           200: SlotScheduleWithPrograms,
+          400: z.string(),
           404: z.string(),
         },
       },
@@ -788,11 +828,23 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
           .send(`Channel ID ${req.params.channelId} not found`);
       }
 
+      const groupValidation = validateSlotGroups(req.body.schedule.slots, {
+        scheduleType: 'random',
+      });
+      if (!groupValidation.valid) {
+        return res.status(400).send(groupValidation.errors.join('; '));
+      }
+
+      const sanitizedSchedule = {
+        ...req.body.schedule,
+        slots: groupValidation.sanitizedSlots,
+      };
+
       const { result } = await req.serverCtx.workerPool.queueTask({
         request: {
           type: 'channel',
           channelId: req.params.channelId,
-          schedule: req.body.schedule,
+          schedule: sanitizedSchedule,
           startTime: channel.startTime,
         },
         type: 'schedule-slots',

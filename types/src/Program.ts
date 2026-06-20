@@ -1,4 +1,21 @@
 import type z from 'zod/v4';
+import type {
+  BaseProgramSchema,
+  ChannelProgrammingSchema,
+  ChannelProgramSchema,
+  CondensedChannelProgramSchema,
+  CondensedContentProgramSchema,
+  ContentProgramParentSchema,
+  ContentProgramSchema,
+  CustomProgramSchema,
+  FillerProgramSchema,
+  FlexProgramSchema,
+  MusicAlbumContentProgramSchema,
+  MusicArtistContentProgramSchema,
+  RedirectProgramSchema,
+  TvSeasonContentProgramSchema,
+  TvShowContentProgramSchema,
+} from './schemas/lineups.js';
 import { type CondensedChannelProgrammingSchema } from './schemas/lineups.js';
 import type {
   Actor,
@@ -7,7 +24,6 @@ import type {
   Episode,
   EpisodeMetadata,
   EpisodeWithHierarchy,
-  FillerProgramSchema,
   Folder,
   Genre,
   IdentifierSchema,
@@ -22,21 +38,22 @@ import type {
   Movie,
   MovieMetadata,
   MusicAlbum,
-  MusicAlbumContentProgramSchema,
   MusicAlbumMetadata,
   MusicArtist,
-  MusicArtistContentProgramSchema,
   MusicArtistMetadata,
   MusicTrack,
   MusicTrackMetadata,
   MusicTrackWithHierarchy,
   MusicVideo,
+  MusicVideoMetadata,
   NamedEntity,
   OtherVideo,
   OtherVideoMetadata,
   Person,
   Playlist,
   ProgramGroupingSchema,
+  ProgramSchema,
+  ProgramTypeSchema,
   Season,
   SeasonMetadata,
   Show,
@@ -44,23 +61,7 @@ import type {
   StructuralProgramGroupingSchema,
   Studio,
   TerminalProgramSchema,
-  TvSeasonContentProgramSchema,
-  TvShowContentProgramSchema,
   Writer,
-} from './schemas/programmingSchema.js';
-import {
-  type BaseProgramSchema,
-  type ChannelProgramSchema,
-  type ChannelProgrammingSchema,
-  type CondensedChannelProgramSchema,
-  type CondensedContentProgramSchema,
-  type ContentProgramParentSchema,
-  type ContentProgramSchema,
-  type CustomProgramSchema,
-  type FlexProgramSchema,
-  type ProgramSchema,
-  type ProgramTypeSchema,
-  type RedirectProgramSchema,
 } from './schemas/programmingSchema.js';
 import { type ExternalIdSchema } from './schemas/utilSchemas.js';
 
@@ -119,7 +120,7 @@ export const isFillerProgram = isProgramType<FillerProgram>('filler');
 
 export function programUniqueId(program: BaseProgram): string | null {
   if (isContentProgram(program)) {
-    return program.uniqueId;
+    return program.id;
   } else if (isFlexProgram(program)) {
     return 'flex'; // Cannot really be unique identified
   } else if (isRedirectProgram(program)) {
@@ -195,6 +196,7 @@ export type EpisodeMetadata = z.infer<typeof EpisodeMetadata>;
 export type SeasonMetadata = z.infer<typeof SeasonMetadata>;
 export type ShowMetadata = z.infer<typeof ShowMetadata>;
 export type OtherVideoMetadata = z.infer<typeof OtherVideoMetadata>;
+export type MusicVideoMetadata = z.infer<typeof MusicVideoMetadata>;
 export type MusicArtistMetadata = z.infer<typeof MusicArtistMetadata>;
 export type MusicAlbumMetadata = z.infer<typeof MusicAlbumMetadata>;
 export type MusicTrackMetadata = z.infer<typeof MusicTrackMetadata>;
@@ -208,7 +210,7 @@ export function isEpisodeWithHierarchy(
 export function isMusicTrackWithHierarchy(
   f: TerminalProgram,
 ): f is MusicTrackWithHierarchy {
-  return f.type === 'track' && !!f.album && (!!f.album?.artist || !!f.artist);
+  return f.type === 'track' && !!f.album && !!(f.album?.artist ?? f.artist);
 }
 
 export function getChildItemType(typ: ProgramOrFolder['type']) {
@@ -255,6 +257,19 @@ export function getParentItem(
       return input.artist;
     case 'track':
       return input.album;
+  }
+}
+
+export function getGrandparentItem(input: Episode): Show | undefined;
+export function getGrandparentItem(input: MusicTrack): MusicArtist | undefined;
+export function getGrandparentItem(
+  input: Episode | MusicTrack,
+): Show | MusicArtist | undefined {
+  switch (input.type) {
+    case 'episode':
+      return input.show ?? input.season?.show;
+    case 'track':
+      return input.artist ?? input.album?.artist;
   }
 }
 

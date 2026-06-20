@@ -1,6 +1,7 @@
 import { DefaultChannelIcon } from '@/db/schema/base.js';
 import type { Channel, SubtitlePreference } from '@tunarr/types';
 import { filter, orderBy } from 'lodash-es';
+import type { MarkRequired } from 'ts-essentials';
 import {
   isDefined,
   isNonEmptyArray,
@@ -9,15 +10,14 @@ import {
 } from '../../util/index.ts';
 import { numberToBoolean } from '../../util/sqliteUtil.ts';
 import type { ChannelAndLineup } from '../interfaces/IChannelDB.ts';
-import type {
-  ChannelOrmWithRelations,
-  ChannelWithRelations,
-} from '../schema/derivedTypes.ts';
+import type { ChannelOrmWithRelations } from '../schema/derivedTypes.ts';
 
 export const dbChannelToApiChannel = ({
   channel,
   lineup,
-}: ChannelAndLineup<ChannelWithRelations>): Channel => {
+}: ChannelAndLineup<
+  MarkRequired<ChannelOrmWithRelations, 'fillerShows'>
+>): Channel => {
   const subtitlePreferences = orderBy(
     channel.subtitlePreferences?.map(
       (pref) =>
@@ -37,7 +37,7 @@ export const dbChannelToApiChannel = ({
     id: channel.uuid,
     number: channel.number,
     watermark: nilToUndefined(channel.watermark),
-    fillerCollections: channel.fillerShows?.map((filler) => ({
+    fillerCollections: channel.fillerShows.map((filler) => ({
       id: filler.fillerShowUuid,
       cooldownSeconds: filler.cooldown,
       weight: filler.weight,
@@ -46,21 +46,21 @@ export const dbChannelToApiChannel = ({
     icon: channel.icon ?? DefaultChannelIcon,
     guideMinimumDuration: channel.guideMinimumDuration,
     groupTitle: channel.groupTitle || '',
-    disableFillerOverlay: channel.disableFillerOverlay === 1,
+    disableFillerOverlay: channel.disableFillerOverlay ?? false,
     fillerRepeatCooldown: nullToUndefined(channel.fillerRepeatCooldown),
     startTime: channel.startTime,
     offline: channel.offline,
     name: channel.name,
     transcoding: nilToUndefined(channel.transcoding),
     duration: channel.duration,
-    stealth: channel.stealth === 1,
+    stealth: channel.stealth ?? false,
     onDemand: {
       enabled: isDefined(lineup.onDemandConfig),
     },
     programCount: filter(lineup.items, { type: 'content' }).length,
     streamMode: channel.streamMode,
     transcodeConfigId: channel.transcodeConfigId,
-    subtitlesEnabled: numberToBoolean(channel.subtitlesEnabled),
+    subtitlesEnabled: channel.subtitlesEnabled ?? false,
     subtitleDeliveryMethod: channel.subtitleDeliveryMethod ?? 'burn',
     subtitleUnsupportedFallback: channel.subtitleUnsupportedFallback ?? 'burn',
     subtitlePreferences: isNonEmptyArray(subtitlePreferences)

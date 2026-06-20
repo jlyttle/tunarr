@@ -2,10 +2,10 @@ import {
   PixelFormatUnknown,
   type PixelFormat,
 } from '@/ffmpeg/builder/format/PixelFormat.js';
-import type { TranscodeAspectRatioMode } from '@tunarr/types';
 import type { FrameSize } from '@/ffmpeg/builder/types.js';
 import { FrameDataLocation } from '@/ffmpeg/builder/types.js';
 import type { DataProps, Nullable } from '@/types/util.js';
+import type { TranscodeAspectRatioMode } from '@tunarr/types';
 import { isEqual, merge } from 'lodash-es';
 import type { MarkOptional } from 'ts-essentials';
 import type { VideoFormat } from '../constants.ts';
@@ -14,7 +14,7 @@ import { ColorFormat } from '../format/ColorFormat.ts';
 type FrameStateFields = DataProps<FrameState>;
 
 // Some fields are always required...
-export const DefaultFrameState: Omit<
+const DefaultFrameState: Omit<
   FrameStateFields,
   'scaledSize' | 'paddedSize' | 'isAnamorphic'
 > = {
@@ -42,23 +42,23 @@ export type FrameStateOpts = MarkOptional<
 >;
 
 export class FrameState {
-  scaledSize: FrameSize;
-  paddedSize: FrameSize;
+  scaledSize!: FrameSize;
+  paddedSize!: FrameSize;
   croppedSize?: FrameSize;
-  resizeMode: TranscodeAspectRatioMode;
-  isAnamorphic: boolean;
-  realtime: boolean;
-  videoFormat: VideoFormat;
-  videoPreset: Nullable<string>;
-  videoProfile: Nullable<string>;
-  frameRate: Nullable<number>;
-  videoTrackTimescale: Nullable<number>;
-  videoBitrate: Nullable<number>;
-  videoBufferSize: Nullable<number>;
-  frameDataLocation: FrameDataLocation;
-  deinterlace: boolean;
-  pixelFormat: Nullable<PixelFormat>;
-  colorFormat: Nullable<ColorFormat>;
+  resizeMode!: TranscodeAspectRatioMode;
+  isAnamorphic!: boolean;
+  realtime!: boolean;
+  videoFormat!: VideoFormat;
+  videoPreset!: Nullable<string>;
+  videoProfile!: Nullable<string>;
+  frameRate!: Nullable<number>;
+  videoTrackTimescale!: Nullable<number>;
+  videoBitrate!: Nullable<number>;
+  videoBufferSize!: Nullable<number>;
+  frameDataLocation!: FrameDataLocation;
+  deinterlace!: boolean;
+  pixelFormat!: Nullable<PixelFormat>;
+  colorFormat!: Nullable<ColorFormat>;
   infiniteLoop: boolean = false;
 
   forceSoftwareOverlay = false;

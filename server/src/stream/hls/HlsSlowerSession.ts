@@ -1,13 +1,12 @@
 import type { ChannelOrmWithTranscodeConfig } from '@/db/schema/derivedTypes.js';
 import type { FfmpegTranscodeSession } from '@/ffmpeg/FfmpegTrancodeSession.js';
-import type { ProgramStream } from '@/stream/ProgramStream.js';
 import type { StreamProgramCalculator } from '@/stream/StreamProgramCalculator.js';
 import type { Result } from '@/types/result.js';
 import { makeFfmpegPlaylistUrl } from '@/util/serverUtil.js';
 import dayjs from 'dayjs';
 import { basename } from 'node:path';
 import type { DeepRequired, StrictOmit } from 'ts-essentials';
-import type { FFmpegFactory } from '../../ffmpeg/FFmpegModule.ts';
+import type { FFmpegAssistedFactory } from '../../ffmpeg/FFmpegModule.ts';
 import type { HlsOptions } from '../../ffmpeg/builder/constants.ts';
 import {
   defaultHlsOptions,
@@ -16,6 +15,7 @@ import {
 } from '../../ffmpeg/builder/constants.ts';
 import type { GetPlayerContextRequest } from '../PlayerStreamContext.ts';
 import { PlayerContext } from '../PlayerStreamContext.ts';
+import type { ProgramStream } from '../ProgramStream.ts';
 import type { ProgramStreamFactory } from '../ProgramStreamFactory.ts';
 import type { BaseHlsSessionOptions } from './BaseHlsSession.ts';
 import { BaseHlsSession } from './BaseHlsSession.ts';
@@ -30,14 +30,14 @@ export class HlsSlowerSession extends BaseHlsSession {
   // Start in lookahead mode
   #realtimeTranscode: boolean = false;
   #programCalculator: StreamProgramCalculator;
-  #concatSession: FfmpegTranscodeSession;
+  #concatSession?: FfmpegTranscodeSession;
 
   constructor(
     channel: ChannelOrmWithTranscodeConfig,
     options: BaseHlsSessionOptions,
     programCalculator: StreamProgramCalculator,
     private programStreamFactory: ProgramStreamFactory,
-    private ffmpegFactory: FFmpegFactory,
+    private ffmpegFactory: FFmpegAssistedFactory,
   ) {
     super(channel, options);
     this.#programCalculator = programCalculator;
@@ -52,7 +52,7 @@ export class HlsSlowerSession extends BaseHlsSession {
       {
         allowSkip: true,
         channelId: this.channel.uuid,
-        startTime: this.transcodedUntil.valueOf(),
+        startTime: (this.transcodedUntil ?? dayjs()).valueOf(),
         sessionToken,
       },
     );
@@ -72,10 +72,12 @@ export class HlsSlowerSession extends BaseHlsSession {
         result.lineupItem,
         result.channelContext,
         result.sourceChannel,
-        request.audioOnly,
-        this.#realtimeTranscode,
         this.channel.transcodeConfig,
-        this.sessionType,
+        {
+          audioOnly: request.audioOnly,
+          realtime: this.#realtimeTranscode,
+          streamMode: this.sessionType,
+        },
       );
 
       let programStream = this.programStreamFactory(context, NutOutputFormat);
@@ -119,7 +121,7 @@ export class HlsSlowerSession extends BaseHlsSession {
       });
 
       transcodeSessionResult.forEach((transcodeSession) => {
-        this.transcodedUntil = this.transcodedUntil.add(
+        this.transcodedUntil = (this.transcodedUntil ?? dayjs()).add(
           transcodeSession.streamDuration,
         );
       });
@@ -157,7 +159,6 @@ export class HlsSlowerSession extends BaseHlsSession {
     const ffmpeg = this.ffmpegFactory(
       this.channel.transcodeConfig,
       this.channel,
-      this.sessionType,
     );
 
     this.#concatSession = await ffmpeg.createConcatSession(streamUrl, {

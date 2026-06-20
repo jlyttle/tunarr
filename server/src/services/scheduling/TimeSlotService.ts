@@ -27,20 +27,22 @@ import {
 import { createEntropy, MersenneTwister19937, Random } from 'random-js';
 import type { NonEmptyArray } from 'ts-essentials';
 import type { Nilable } from '../../types/util.ts';
-import { slotIteratorKey } from './ProgramIterator.ts';
 import type {
   PaddedProgram,
   SlotSchedulerProgram,
 } from './slotSchedulerUtil.js';
 import {
   addHeadAndTailFillerToSlot,
+  applyMidRollBreaks,
+  createFillerIterators,
   createPaddedProgram,
-  createProgramIterators,
   createProgramMap,
+  createSlotIterators,
+  createSlotProgramIterator,
   deduplicatePrograms,
   distributeFlex,
+  getFillerIteratorsForSlot,
   maybeAddPrePostFiller,
-  slotFillerIterators,
 } from './slotSchedulerUtil.js';
 import { TimeSlotImpl } from './TimeSlotImpl.js';
 
@@ -70,7 +72,6 @@ function pushOrExtendFlex(
     const newItem: FlexProgram = {
       type: 'flex',
       duration: newDuration,
-      persisted: false,
     };
     lineup[lineup.length - 1] = newItem;
     return flexDurationMs;
@@ -78,7 +79,6 @@ function pushOrExtendFlex(
 
   const newItem: FlexProgram = {
     type: 'flex',
-    persisted: false,
     duration: flexDurationMs,
   };
 
@@ -100,11 +100,14 @@ export async function scheduleTimeSlots(
   // Load programs
   // TODO: include redirects and custom programs!
   const allPrograms = deduplicatePrograms(programs);
-  const contentProgramIteratorsById = createProgramIterators(
+  const programMap = createProgramMap(allPrograms);
+  const fillerIterators = createFillerIterators(
     schedule.slots,
-    createProgramMap(allPrograms),
+    programMap,
     random,
   );
+  const { iterators: slotIterators, resetPeriodCallbacks } =
+    createSlotIterators(schedule.slots, programMap, random);
 
   const periodDuration = dayjs.duration(1, schedule.period);
   const periodMs = dayjs.duration(1, schedule.period).asMilliseconds();
@@ -117,9 +120,10 @@ export async function scheduleTimeSlots(
           ...slot,
           startTime: slot.startTime,
         },
-        contentProgramIteratorsById[slotIteratorKey(slot)]!,
+        ('id' in slot ? slotIterators.get(slot.id) : undefined) ??
+          createSlotProgramIterator(slot, programMap, random),
         random,
-        slotFillerIterators(slot, contentProgramIteratorsById),
+        getFillerIteratorsForSlot(slot, fillerIterators),
       ),
   );
 
@@ -152,6 +156,7 @@ export async function scheduleTimeSlots(
     timeCursor = timeCursor.add(program.duration);
   };
 
+  let lastPeriodIndex = -1;
   let dstActive = timeCursor.utcOffset() !== startOfYear.utcOffset();
   while (timeCursor.isBefore(upperLimit)) {
     const inDst = timeCursor.utcOffset() !== startOfYear.utcOffset();
@@ -168,8 +173,14 @@ export async function scheduleTimeSlots(
     } else if (startedinDst && !dstActive) {
       dstOffset = -OneHourMillis;
     }
-    let currOffset =
-      (timeCursor.diff(startOfCurrentPeriod) + dstOffset) % periodMs;
+    const totalOffsetMs = timeCursor.diff(startOfCurrentPeriod) + dstOffset;
+    let currOffset = totalOffsetMs % periodMs;
+
+    const currentPeriodIndex = Math.floor(totalOffsetMs / periodMs);
+    if (currentPeriodIndex !== lastPeriodIndex) {
+      for (const cb of resetPeriodCallbacks) cb();
+      lastPeriodIndex = currentPeriodIndex;
+    }
 
     let currSlot: TimeSlotImpl<CondensedChannelProgram> | null = null;
     let lateMillis: number | null = null;
@@ -233,8 +244,15 @@ export async function scheduleTimeSlots(
       continue;
     }
 
+    // Push the redirect program for the length of the whole slot
+    // and then continue. There will be no filler or padding,
+    // it really isn't necessary.
     if (program.type === 'redirect') {
       program = { ...program, duration: slotDuration };
+      channelPrograms.push(program);
+      currSlot.advanceIterator();
+      timeCursor = timeCursor.add(program.duration);
+      continue;
     }
 
     // Program longer than we have left? Add it and move on...
@@ -290,6 +308,10 @@ export async function scheduleTimeSlots(
       );
     }
 
+    const finalPrograms: PaddedProgram[] = paddedPrograms.flatMap((pp) =>
+      applyMidRollBreaks(pp, currSlot, currSlot.midRollConfig, random),
+    );
+
     // We have two options here if there is remaining time in the slot
     // If we want to be "greedy", we can keep attempting to look for items
     // to fill the time for this slot. This works mainly if we're doing a
@@ -300,19 +322,21 @@ export async function scheduleTimeSlots(
       currSlot.type !== 'filler'
     ) {
       distributeFlex(
-        paddedPrograms,
+        finalPrograms,
         schedule.padMs,
         Math.max(
           0,
-          slotDuration - sumBy(paddedPrograms, (p) => p.totalDuration),
+          slotDuration - sumBy(finalPrograms, (p) => p.totalDuration),
         ),
       );
     } else {
-      const lastProgram = last(paddedPrograms)!;
-      lastProgram.padMs += remainingTimeInSlot;
+      const lastProgram = last(finalPrograms);
+      if (lastProgram) {
+        lastProgram.padMs += remainingTimeInSlot;
+      }
     }
 
-    forEach(paddedPrograms, ({ program, padMs, filler }) => {
+    forEach(finalPrograms, ({ program, padMs, filler }) => {
       pushProgram(filler.head);
       pushProgram(filler.pre);
       pushProgram(program);

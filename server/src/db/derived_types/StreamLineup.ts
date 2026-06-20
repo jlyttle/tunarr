@@ -2,10 +2,10 @@
 // but contain a bit more context and are used during an
 // active streaming session
 
+import type { OfflineFillerConfig } from '@tunarr/types/schemas';
 import type { MarkRequired, StrictOmit } from 'ts-essentials';
-import type { EmbyT, JellyfinT, LocalT } from '../../types/internal.ts';
 import type { MarkNotNilable } from '../../types/util.ts';
-import { MediaSourceType } from '../schema/base.js';
+import type { MediaSourceType } from '../schema/base.js';
 import type {
   ProgramWithRelationsOrm,
   SpecificProgramSourceOrmType,
@@ -52,42 +52,6 @@ export function isContentBackedLineupItem(
   );
 }
 
-export function isPlexBackedLineupItem(
-  item: StreamLineupItem,
-): item is PlexBackedStreamLineupItem {
-  return (
-    isContentBackedLineupItem(item) &&
-    item.program.sourceType === MediaSourceType.Plex
-  );
-}
-
-export function isJellyfinBackedLineupItem(
-  item: StreamLineupItem,
-): item is SpecificSourceContentBackedStreamLineupItem<JellyfinT> {
-  return (
-    isContentBackedLineupItem(item) &&
-    item.program.sourceType === MediaSourceType.Jellyfin
-  );
-}
-
-export function isEmnyBackedLineupItem(
-  item: StreamLineupItem,
-): item is SpecificSourceContentBackedStreamLineupItem<EmbyT> {
-  return (
-    isContentBackedLineupItem(item) &&
-    item.program.sourceType === MediaSourceType.Emby
-  );
-}
-
-export function isLocalBackedLineupItem(
-  item: StreamLineupItem,
-): item is SpecificSourceContentBackedStreamLineupItem<LocalT> {
-  return (
-    isContentBackedLineupItem(item) &&
-    item.program.sourceType === MediaSourceType.Local
-  );
-}
-
 export type ContentBackedStreamLineupItem =
   | CommercialStreamLineupItem
   | ProgramStreamLineupItem
@@ -126,6 +90,7 @@ export type MinimalPlexBackedStreamLineupItem = SpecificProgramSourceOrmType<
 export type OfflineStreamLineupItem = BaseStreamLineupItem & {
   type: 'offline';
   duration: number;
+  fillerConfig?: OfflineFillerConfig;
 };
 
 type BaseContentBackedStreamLineupItem = BaseStreamLineupItem & {
@@ -144,6 +109,7 @@ export type FallbackStreamLineupItem = BaseContentBackedStreamLineupItem & {
 
 export type ProgramStreamLineupItem = BaseContentBackedStreamLineupItem & {
   type: 'program';
+  customShowId?: string;
 };
 
 export type RedirectStreamLineupItem = BaseStreamLineupItem & {

@@ -6,9 +6,7 @@ import type { ChannelSubtitlePreferences } from '../schema/SubtitlePreferences.t
 
 @injectable()
 export class ChannelConfigRepository {
-  constructor(
-    @inject(KEYS.Database) private db: Kysely<DB>,
-  ) {}
+  constructor(@inject(KEYS.Database) private db: Kysely<DB>) {}
 
   async getChannelSubtitlePreferences(
     id: string,

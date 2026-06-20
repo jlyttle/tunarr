@@ -1,6 +1,6 @@
 import { isNonEmptyString, seq } from '@tunarr/shared/util';
-import { ChannelProgram } from '@tunarr/types';
-import { inject, injectable, interfaces } from 'inversify';
+import { CondensedChannelProgram } from '@tunarr/types';
+import { inject, injectable } from 'inversify';
 import { sum } from 'lodash-es';
 import { match, P } from 'ts-pattern';
 import { LineupItem } from '../db/derived_types/Lineup.ts';
@@ -8,6 +8,8 @@ import { IChannelDB } from '../db/interfaces/IChannelDB.ts';
 import { IWorkerPool } from '../interfaces/IWorkerPool.ts';
 import { TVGuideService } from '../services/TvGuideService.ts';
 import { KEYS } from '../types/inject.ts';
+import { Nullable } from '../types/util.ts';
+import { InjectLogger } from '../util/inject.ts';
 import { Logger } from '../util/logging/LoggerFactory.ts';
 
 type Request = {
@@ -16,11 +18,12 @@ type Request = {
 
 @injectable()
 export class RegenerateChannelLineupCommand {
+  @InjectLogger() declare private readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.Logger) private logger: Logger,
     @inject(KEYS.ChannelDB) private channelDB: IChannelDB,
     @inject(KEYS.WorkerPoolFactory)
-    private workerPoolProvider: interfaces.AutoFactory<IWorkerPool>,
+    private workerPoolProvider: () => IWorkerPool,
     @inject(TVGuideService) private tvGuideService: TVGuideService,
   ) {}
 
@@ -44,7 +47,7 @@ export class RegenerateChannelLineupCommand {
           },
         });
 
-        const lineupItems = seq.collect(
+        const lineupItems = seq.collect<CondensedChannelProgram, LineupItem>(
           result.lineup,
           channelProgramToLineupItem,
         );
@@ -56,7 +59,7 @@ export class RegenerateChannelLineupCommand {
         });
 
         // Regenerate schedule at the new start time.
-        await this.channelDB.replaceChannelPrograms(channelId, programIds);
+        this.channelDB.replaceChannelPrograms(channelId, programIds);
         await this.channelDB.saveLineup(channelId, { items: lineupItems });
         await this.channelDB.updateChannelDuration(
           channelId,
@@ -85,7 +88,7 @@ export class RegenerateChannelLineupCommand {
         });
 
         // Regenerate schedule at the new start time.
-        await this.channelDB.replaceChannelPrograms(channelId, programIds);
+        this.channelDB.replaceChannelPrograms(channelId, programIds);
         await this.channelDB.saveLineup(channelId, { items: lineupItems });
         await this.channelDB.updateChannelDuration(
           channelId,
@@ -98,13 +101,16 @@ export class RegenerateChannelLineupCommand {
   }
 }
 
-function channelProgramToLineupItem(p: ChannelProgram) {
+function channelProgramToLineupItem(
+  p: CondensedChannelProgram,
+): Nullable<LineupItem> {
   return match(p)
     .returnType<LineupItem | null>()
     .with({ type: 'content', id: P.when(isNonEmptyString) }, (program) => ({
       type: 'content',
       id: program.id,
       durationMs: program.duration,
+      startOffsetMs: program.startOffsetMs,
     }))
     .with({ type: 'custom' }, (program) => ({
       type: 'content', // Custom program
@@ -127,6 +133,7 @@ function channelProgramToLineupItem(p: ChannelProgram) {
     .with({ type: 'flex' }, (program) => ({
       type: 'offline',
       durationMs: program.duration,
+      fillerConfig: program.fillerConfig,
     }))
     .otherwise(() => null);
 }

@@ -21,13 +21,6 @@ export const PixelFormats = {
   CUDA: 'cuda',
 } as const;
 
-export const ValidHardwarePixelFormats = {
-  // TODO: Should we support others?
-  NV12: 'nv12',
-  P010LE: 'p010le',
-  P016LE: 'p016',
-} as const;
-
 export type ValidPixelFormatName =
   (typeof PixelFormats)[keyof typeof PixelFormats];
 
@@ -51,9 +44,9 @@ export interface PixelFormat extends Equatable<PixelFormat> {
   isUnknown(): boolean;
 }
 
-export abstract class BasePixelFormat implements PixelFormat {
-  name: ValidPixelFormatName;
-  bitDepth: number;
+abstract class BasePixelFormat implements PixelFormat {
+  abstract name: ValidPixelFormatName;
+  abstract bitDepth: number;
 
   abstract toHardwareFormat(): Maybe<PixelFormat>;
   abstract toSoftwareFormat(): Maybe<PixelFormat>;
@@ -154,7 +147,7 @@ export class PixelFormatYuv420P10Le extends SoftwarePixelFormat {
   }
 }
 
-export class PixelFormatYuv444P16Le extends SoftwarePixelFormat {
+class PixelFormatYuv444P16Le extends SoftwarePixelFormat {
   readonly name = PixelFormats.YUV444P16LE;
   readonly bitDepth: number = 10;
 }
@@ -169,6 +162,9 @@ export class PixelFormatNv12 extends HardwarePixelFormat {
 
 // Special-case frames for VA-API
 export class PixelFormatVaapi extends HardwarePixelFormat {
+  readonly name: ValidPixelFormatName;
+  readonly bitDepth: number;
+
   constructor(readonly underlying: PixelFormat) {
     super(underlying);
     this.name = this.underlying.name;
@@ -179,6 +175,9 @@ export class PixelFormatVaapi extends HardwarePixelFormat {
 // Special-case format for CUDA. Represnts "some" form of
 // pixel format that is optimized for GPU transcoding (e.g. nv12 or p010)
 export class PixelFormatCuda extends HardwarePixelFormat {
+  readonly name: ValidPixelFormatName;
+  readonly bitDepth: number;
+
   constructor(readonly underlying: PixelFormat) {
     super(underlying);
     this.name = this.underlying.name;

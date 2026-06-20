@@ -11,7 +11,7 @@ import {
   type SlotSchedulerProgram,
 } from './slotSchedulerUtil.ts';
 
-export abstract class ShuffleProgramIterator<
+abstract class ShuffleProgramIterator<
   ProgramT extends CondensedChannelProgram,
 > extends IndexBasedProgramIterator<ProgramT> {
   constructor(
@@ -44,7 +44,6 @@ export class ContentProgramShuffleIterator extends ShuffleProgramIterator<Conden
     return {
       type: 'content',
       duration: program.duration,
-      persisted: true,
       id: program.uuid,
     };
   }
@@ -84,7 +83,6 @@ export class CustomProgramShuffleIterator extends ShuffleProgramIterator<Condens
       duration: program.duration,
       id: program.uuid,
       index: this.indexById[program.uuid]!,
-      persisted: true,
       type: 'custom',
     };
   }

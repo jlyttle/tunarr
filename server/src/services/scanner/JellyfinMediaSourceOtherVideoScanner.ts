@@ -1,5 +1,5 @@
 import { MediaSourceType } from '@/db/schema/base.js';
-import { inject, injectable, interfaces } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ProgramDaoMinter } from '../../db/converters/ProgramMinter.ts';
 import { IProgramDB } from '../../db/interfaces/IProgramDB.ts';
 import { MediaSourceDB } from '../../db/mediaSourceDB.ts';
@@ -13,6 +13,7 @@ import { KEYS } from '../../types/inject.ts';
 import type { JellyfinT } from '../../types/internal.ts';
 import type { JellyfinOtherVideo } from '../../types/Media.ts';
 import { Result } from '../../types/result.ts';
+import { InjectLogger } from '../../util/inject.ts';
 import { Logger } from '../../util/logging/LoggerFactory.ts';
 import { MeilisearchService } from '../MeilisearchService.ts';
 import { JellyfinScanUtil } from './JellyfinScanUtil.ts';
@@ -29,8 +30,9 @@ export class JellyfinMediaSourceOtherVideoScanner extends MediaSourceOtherVideoS
   readonly type = 'other_videos';
   readonly mediaSourceType = MediaSourceType.Jellyfin;
 
+  @InjectLogger() declare protected readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.Logger) logger: Logger,
     @inject(MediaSourceDB) mediaSourceDB: MediaSourceDB,
     @inject(KEYS.ProgramDB) programDB: IProgramDB,
     @inject(MeilisearchService) searchService: MeilisearchService,
@@ -39,12 +41,11 @@ export class JellyfinMediaSourceOtherVideoScanner extends MediaSourceOtherVideoS
     @inject(MediaSourceProgressService)
     mediaSourceProgressService: MediaSourceProgressService,
     @inject(KEYS.ProgramDaoMinterFactory)
-    programMinterFactory: interfaces.AutoFactory<ProgramDaoMinter>,
+    programMinterFactory: () => ProgramDaoMinter,
     @inject(ExternalSubtitleDownloader)
     externalSubtitleDownloader: ExternalSubtitleDownloader,
   ) {
     super(
-      logger,
       mediaSourceDB,
       programDB,
       searchService,
@@ -69,13 +70,12 @@ export class JellyfinMediaSourceOtherVideoScanner extends MediaSourceOtherVideoS
     );
   }
 
-  protected getLibrarySize(
+  protected async getLibrarySize(
     libraryKey: string,
     context: ScanContext<JellyfinApiClient>,
   ): Promise<number> {
-    return context.apiClient
-      .getChildItemCount(libraryKey, 'Video')
-      .then((_) => _.getOrThrow());
+    const _ = await context.apiClient.getChildItemCount(libraryKey, 'Video');
+    return _.getOrThrow();
   }
 
   protected async scanVideo(
@@ -97,6 +97,30 @@ export class JellyfinMediaSourceOtherVideoScanner extends MediaSourceOtherVideoS
         return Result.failure(
           WrappedError.forMessage(
             `Expected item type to be other_video for ID ${incomingVideo.externalId} but got ${item.type}`,
+          ),
+        );
+      }
+
+      return Result.success(item);
+    });
+  }
+
+  protected async scanVideoById(
+    context: ScanContext<JellyfinApiClient>,
+    externalKey: string,
+  ): Promise<Result<JellyfinOtherVideo>> {
+    const convertedItem = await context.apiClient.getItem(externalKey, 'Video');
+    return convertedItem.flatMap((item) => {
+      if (!item) {
+        return Result.failure(
+          WrappedError.forMessage(
+            `Could not find Jellyfin item id ${externalKey}`,
+          ),
+        );
+      } else if (item.type !== 'other_video') {
+        return Result.failure(
+          WrappedError.forMessage(
+            `Expected item type to be other_video for ID ${externalKey} but got ${item.type}`,
           ),
         );
       }

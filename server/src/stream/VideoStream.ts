@@ -15,9 +15,11 @@ import { ChannelStreamMode } from '@tunarr/types';
 import { inject, injectable } from 'inversify';
 import { isNil, once } from 'lodash-es';
 import { PassThrough, Readable } from 'node:stream';
+import type { StreamEncoding } from '../ffmpeg/types.ts';
+import { InjectLogger } from '../util/inject.ts';
 import { type Logger } from '../util/logging/LoggerFactory.ts';
 import { PlayerContext } from './PlayerStreamContext.ts';
-import { ProgramStream } from './ProgramStream.js';
+import { ProgramStream } from './ProgramStream.ts';
 import {
   StreamProgramCalculator,
   StreamProgramCalculatorError,
@@ -43,6 +45,7 @@ type StartVideoStreamRequest = {
   audioOnly: boolean;
   streamMode: ChannelStreamMode;
   sessionToken?: string;
+  encoding?: StreamEncoding;
 };
 
 /**
@@ -51,8 +54,9 @@ type StartVideoStreamRequest = {
  */
 @injectable()
 export class VideoStream {
+  @InjectLogger() declare private readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.Logger) private logger: Logger,
     @inject(StreamProgramCalculator)
     private calculator: StreamProgramCalculator,
     @inject(KEYS.ChannelDB) private channelDB: IChannelDB,
@@ -68,6 +72,7 @@ export class VideoStream {
       audioOnly,
       streamMode,
       sessionToken,
+      encoding,
     }: StartVideoStreamRequest,
     startTimestamp: number,
     allowSkip: boolean,
@@ -133,10 +138,13 @@ export class VideoStream {
             result.lineupItem,
             result.channelContext,
             result.sourceChannel,
-            audioOnly,
-            true,
             channel.transcodeConfig,
-            streamMode,
+            {
+              audioOnly,
+              realtime: true,
+              streamMode,
+              encodingMode: encoding ?? { mode: 'transcode' },
+            },
           );
 
           let outputFormat: OutputFormat = MpegTsOutputFormat;

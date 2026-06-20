@@ -2,16 +2,19 @@ import type { ISettingsDB } from '@/db/interfaces/ISettingsDB.js';
 import type { ChannelOrmWithTranscodeConfig } from '@/db/schema/derivedTypes.js';
 import type { FfmpegTranscodeSession } from '@/ffmpeg/FfmpegTrancodeSession.js';
 import { GetLastPtsDurationTask } from '@/ffmpeg/GetLastPtsDuration.js';
-import type { HlsOptions, OutputFormat } from '@/ffmpeg/builder/constants.js';
+import type { HlsOptions } from '@/ffmpeg/builder/constants.js';
 import {
   HlsDirectOutputFormat,
   HlsOutputFormat,
 } from '@/ffmpeg/builder/constants.js';
 import type { OnDemandChannelService } from '@/services/OnDemandChannelService.js';
 import { PlayerContext } from '@/stream/PlayerStreamContext.js';
-import type { ProgramStream } from '@/stream/ProgramStream.js';
 import type { StreamProgramCalculator } from '@/stream/StreamProgramCalculator.js';
 import type { HlsSlowerSession } from '@/stream/hls/HlsSlowerSession.js';
+import type {
+  AudioRenditionInfo,
+  SubtitleRenditionInfo,
+} from '@/stream/types.js';
 import { Result } from '@/types/result.js';
 import type { Maybe } from '@/types/util.js';
 import { fileExists } from '@/util/fsUtil.js';
@@ -19,17 +22,16 @@ import { wait } from '@/util/index.js';
 import { seq } from '@tunarr/shared/util';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
-import type { interfaces } from 'inversify';
 import { filter, isEmpty, last, maxBy, sortBy } from 'lodash-es';
 import fs from 'node:fs/promises';
 import path, { basename, dirname, extname } from 'node:path';
 import type { DeepRequired } from 'ts-essentials';
+import type { ProgramStreamFactory } from '../ProgramStreamFactory.ts';
 import type { BaseHlsSessionOptions } from './BaseHlsSession.js';
 import { BaseHlsSession } from './BaseHlsSession.js';
-import { createHlsMasterPlaylist } from './HlsMasterPlaylist.ts';
+import { HlsMasterPlaylistMutator } from './HlsMasterPlaylistMutator.js';
 import type { HlsPlaylistFilterOptions } from './HlsPlaylistMutator.js';
 import { HlsPlaylistMutator } from './HlsPlaylistMutator.js';
-import { HlsSubtitleRenditionManager } from './HlsSubtitleRenditionManager.ts';
 
 export type HlsSessionProvider = (
   channel: ChannelOrmWithTranscodeConfig,
@@ -50,13 +52,14 @@ export interface HlsSessionOptions extends BaseHlsSessionOptions {
  * endpoint and outputs an HLS format + segments
  */
 export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
-  #playlistStart: Dayjs;
+  #playlistStart?: Dayjs;
   #hlsPlaylistMutator: HlsPlaylistMutator = new HlsPlaylistMutator();
   #currentSession: Maybe<FfmpegTranscodeSession>;
   #lastDelete: Dayjs = dayjs().subtract(1, 'year');
   #isFirstTranscode = true;
   #lastDiscontinuitySequence: number | undefined;
-  #subtitleRenditionManager: Maybe<HlsSubtitleRenditionManager>;
+  #currentSubtitleRendition: SubtitleRenditionInfo | undefined;
+  #currentAudioRenditions: AudioRenditionInfo[] = [];
 
   constructor(
     channel: ChannelOrmWithTranscodeConfig,
@@ -64,10 +67,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     private programCalculator: StreamProgramCalculator,
     private settingsDB: ISettingsDB,
     private onDemandService: OnDemandChannelService,
-    private programStreamFactory: interfaces.SimpleFactory<
-      ProgramStream,
-      [PlayerContext, OutputFormat]
-    >,
+    private programStreamFactory: ProgramStreamFactory,
   ) {
     super(channel, options);
   }
@@ -76,20 +76,39 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     return this.sessionOptions.streamMode;
   }
 
-  public get hasSubtitleRenditions(): boolean {
-    return this.#subtitleRenditionManager?.hasRenditions ?? false;
-  }
-
-  public createMasterPlaylist(videoPlaylistUri: string) {
-    const rendition = this.#subtitleRenditionManager?.rendition;
-    return createHlsMasterPlaylist({
-      videoPlaylistUri,
-      subtitleRenditions: rendition ? [rendition] : [],
-    });
-  }
-
   async getPlaylist() {
     return this.readPlaylist();
+  }
+
+  async getMasterPlaylist(): Promise<Result<string | undefined>> {
+    return Result.attemptAsync(async () => {
+      if (!(await fileExists(this._masterPlaylistPath))) {
+        return undefined;
+      }
+      const content = await fs.readFile(this._masterPlaylistPath, 'utf-8');
+      const rendition = this.#currentSubtitleRendition;
+      const hlsOptions = this.getHlsOptions();
+      const lines = HlsMasterPlaylistMutator.rewriteVariantPlaylistUrls(
+        content,
+        rendition,
+        hlsOptions,
+      );
+      if (rendition) {
+        HlsMasterPlaylistMutator.injectSubtitleMediaTag(
+          lines,
+          rendition,
+          hlsOptions,
+        );
+      }
+      if (this.#currentAudioRenditions.length > 0) {
+        HlsMasterPlaylistMutator.injectAudioMediaTags(
+          lines,
+          this.#currentAudioRenditions,
+          hlsOptions,
+        );
+      }
+      return lines.join('\n');
+    });
   }
 
   async trimPlaylist(filterOpts?: HlsPlaylistFilterOptions) {
@@ -97,13 +116,14 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
       type: 'before_segment_number',
       segmentNumber: this.minSegmentRequested,
       segmentsToKeepBefore: 10,
+      // segmentFloor: this.#highestDeletedBelow,
     };
     return Result.attemptAsync(async () => {
       return await this.lock.runExclusive(async () => {
         const playlistLines = await this.readPlaylist();
         if (playlistLines) {
           const trimResult = this.#hlsPlaylistMutator.trimPlaylist(
-            this.#playlistStart,
+            this.#playlistStart!,
             filterOpts,
             playlistLines,
             {
@@ -145,10 +165,6 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     }
 
     await this.initDirectories();
-    this.#subtitleRenditionManager = new HlsSubtitleRenditionManager(
-      this.workingDirectory,
-      this.getHlsOptions().streamBaseUrl,
-    );
 
     this.state = 'started';
     this.#playlistStart = this.transcodedUntil = dayjs();
@@ -178,12 +194,15 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
       }
     }
 
-    this.logger.debug(
-      'HLS worker ended main loop with state = %s. Scheduling cleanup',
-      this.state,
-    );
+    this.logger.debug('HLS worker ended main loop with state = %s', this.state);
 
-    this.scheduleCleanup();
+    // Only schedule cleanup if the session wasn't already explicitly stopped
+    // (e.g. via endSession). If the session is already stopped, its cleanup
+    // has been handled and scheduling another timer would risk deleting a
+    // replacement session that now occupies the same map key.
+    if (this.state !== 'stopped') {
+      this.scheduleCleanup();
+    }
   }
 
   protected async stopInternal(): Promise<void> {
@@ -208,7 +227,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
       channelId: this.channel.uuid,
       startTime: await this.onDemandService.getLiveTimestamp(
         this.channel.uuid,
-        +this.transcodedUntil,
+        +(this.transcodedUntil ?? dayjs()),
       ),
     });
 
@@ -221,13 +240,15 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
         result.lineupItem,
         result.channelContext,
         result.sourceChannel,
-        false,
-        realtime,
         this.channel.transcodeConfig,
-        this.sessionType,
+        {
+          audioOnly: false,
+          realtime,
+          streamMode: this.sessionType,
+        },
       );
 
-      let programStream = this.getProgramStream(context);
+      let programStream = this.getProgramStream(context, ptsOffset);
 
       programStream.on('error', () => {
         this.state = 'error';
@@ -237,12 +258,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
         this.emit('error', this.error);
       });
 
-      let transcodeSessionResult = await programStream.setup({
-        ptsOffset,
-        onHlsSubtitle: (subtitle) =>
-          this.#subtitleRenditionManager?.register(subtitle) ??
-          Promise.resolve(),
-      });
+      let transcodeSessionResult = await programStream.setup();
 
       if (transcodeSessionResult.isFailure()) {
         this.logger.error(
@@ -260,6 +276,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
             this.channel.transcodeConfig,
             this.sessionType,
           ),
+          ptsOffset,
         );
 
         transcodeSessionResult = await programStream.setup();
@@ -272,17 +289,19 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
       }
 
       transcodeSessionResult.forEach((transcodeSession) => {
-        this.transcodedUntil = this.transcodedUntil.add(
+        this.transcodedUntil = (this.transcodedUntil ?? dayjs()).add(
           transcodeSession.streamDuration,
         );
         this.#currentSession = transcodeSession;
+        this.#currentSubtitleRendition = programStream.renditions?.subtitle;
+        this.#currentAudioRenditions = programStream.renditions?.audio ?? [];
       });
 
       if (this.sessionOptions.streamMode === 'hls') {
         // await this.trimPlaylistAndDeleteSegments();
       }
       await programStream.start();
-      return programStream.transcodeSession.wait();
+      return programStream.transcodeSession!.wait();
     });
 
     if (transcodeResult.isFailure()) {
@@ -295,10 +314,17 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     this.logger.debug('Stream ended.');
   }
 
+  protected override getAdditionalRequiredFiles(): string[] {
+    return this.#currentSubtitleRendition
+      ? [this.getHlsOptions().subtitleStreamNameFormat]
+      : [];
+  }
+
   protected getHlsOptions(): DeepRequired<HlsOptions> {
     return {
       hlsDeleteThreshold: 3,
       streamNameFormat: 'stream.m3u8',
+      subtitleStreamNameFormat: 'subs.m3u8',
       segmentNameFormat: BaseHlsSession.SegmentNameFormat,
       segmentBaseDirectory: dirname(this.workingDirectory),
       streamBasePath: basename(this.workingDirectory),
@@ -310,7 +336,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     };
   }
 
-  private getProgramStream(context: PlayerContext) {
+  private getProgramStream(context: PlayerContext, ptsOffset: Maybe<number>) {
     const hlsOptions = this.getHlsOptions();
 
     const outputFormat =
@@ -318,7 +344,10 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
         ? HlsDirectOutputFormat(hlsOptions)
         : HlsOutputFormat(hlsOptions);
 
-    return this.programStreamFactory(context, outputFormat);
+    return this.programStreamFactory(context, outputFormat, {
+      ptsOffset,
+      isFirstTranscode: this.#isFirstTranscode,
+    });
   }
 
   private async getPtsOffset() {
@@ -398,7 +427,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
       seq.collect(
         filter(workingDirectoryFiles, (f) => {
           const ext = extname(f);
-          return ext === '.ts' || ext === '.mp4';
+          return ext === '.ts' || ext === '.mp4' || ext === '.vtt';
         }),
         (file) => {
           const matches = file.match(/[A-z/]+(\d+)\.[ts|mp4]/);

@@ -1,11 +1,10 @@
-import { ProgramExternalIdType } from '@/db/custom_types/ProgramExternalIdType.js';
 import type { NewSingleOrMultiProgramGroupingExternalId } from '@/db/schema/ProgramGroupingExternalId.js';
 import { isNonEmptyString } from '@/util/index.js';
 import { seq } from '@tunarr/shared/util';
 import {
   Actor,
-  tag,
-  type ContentProgram,
+  EpisodeWithHierarchy,
+  MusicTrackWithHierarchy,
   type Identifier,
   type Season,
   type Show,
@@ -16,8 +15,6 @@ import {
 } from '@tunarr/types/schemas';
 import dayjs from 'dayjs';
 import { injectable } from 'inversify';
-import { first } from 'lodash-es';
-import type { MarkRequired } from 'ts-essentials';
 import { v4 } from 'uuid';
 import {
   MediaSourceMusicAlbum,
@@ -25,151 +22,59 @@ import {
 } from '../../types/Media.ts';
 import type { Nilable, Nullable } from '../../types/util.ts';
 import { NewArtwork } from '../schema/Artwork.ts';
-import { MediaSourceId, MediaSourceName } from '../schema/base.js';
 import { NewCredit } from '../schema/Credit.ts';
 import {
   NewCreditWithArtwork,
   NewProgramGroupingWithRelations,
 } from '../schema/derivedTypes.js';
 import { MediaSourceOrm } from '../schema/MediaSource.ts';
-import { MediaSourceLibraryOrm } from '../schema/MediaSourceLibrary.ts';
-import {
-  ProgramGroupingType,
-  type NewProgramGrouping,
-} from '../schema/ProgramGrouping.ts';
+import { MediaSourceLibrary } from '../schema/MediaSourceLibrary.ts';
+import { ProgramGroupingType } from '../schema/ProgramGrouping.ts';
 import { CommonDaoMinter } from './CommonDaoMinter.ts';
 
 @injectable()
 export class ProgramGroupingMinter {
   constructor() {}
 
-  static mintGroupingExternalIds(
-    program: ContentProgram,
-    groupingId: string,
-    externalSourceId: MediaSourceName,
-    mediaSourceId: MediaSourceId,
-    relationType: 'parent' | 'grandparent',
-  ): NewSingleOrMultiProgramGroupingExternalId[] {
-    if (program.subtype === 'movie') {
-      return [];
+  mintGrandparentGrouping(
+    item: EpisodeWithHierarchy | MusicTrackWithHierarchy,
+    mediaSource: MediaSourceOrm,
+    mediaSourceLibrary: MediaSourceLibrary,
+  ): Nullable<NewProgramGroupingWithRelations> {
+    if (item.type === 'episode') {
+      return this.mintForMediaSourceShow(
+        mediaSource,
+        mediaSourceLibrary,
+        item.show ?? item.season.show,
+      );
+    } else if (item.type === 'track') {
+      return this.mintForMediaSourceArtist(
+        mediaSource,
+        mediaSourceLibrary,
+        item.artist ?? item.album.artist,
+      );
     }
 
-    const now = +dayjs();
-    const parentExternalIds: NewSingleOrMultiProgramGroupingExternalId[] = [];
-
-    const ratingKey =
-      relationType === 'grandparent'
-        ? program.grandparent?.externalKey
-        : program.parent?.externalKey;
-    if (isNonEmptyString(ratingKey)) {
-      parentExternalIds.push({
-        type: 'multi',
-        uuid: v4(),
-        createdAt: now,
-        updatedAt: now,
-        externalFilePath: null,
-        externalKey: ratingKey,
-        sourceType: ProgramExternalIdType.PLEX,
-        externalSourceId,
-        mediaSourceId,
-        groupUuid: groupingId,
-      });
-    }
-
-    const guid = first(
-      relationType === 'grandparent'
-        ? program.grandparent?.guids
-        : program.parent?.guids,
-    );
-    if (isNonEmptyString(guid)) {
-      parentExternalIds.push({
-        type: 'single',
-        uuid: v4(),
-        createdAt: now,
-        updatedAt: now,
-        externalFilePath: null,
-        externalKey: guid,
-        sourceType: ProgramExternalIdType.PLEX_GUID,
-        groupUuid: groupingId,
-      });
-    }
-
-    return parentExternalIds;
+    return null;
   }
 
-  static mintGrandparentGrouping(
-    item: MarkRequired<ContentProgram, 'grandparent'>,
-  ): Nullable<NewProgramGrouping> {
-    if (item.subtype === 'movie') {
-      return null;
+  mintParentGrouping(
+    item: EpisodeWithHierarchy | MusicTrackWithHierarchy,
+    mediaSource: MediaSourceOrm,
+    mediaSourceLibrary: MediaSourceLibrary,
+  ): Nullable<NewProgramGroupingWithRelations> {
+    if (item.type === 'episode') {
+      return this.mintSeason(mediaSource, mediaSourceLibrary, item.season);
+    } else if (item.type === 'track') {
+      return this.mintMusicAlbum(mediaSource, mediaSourceLibrary, item.album);
     }
 
-    if (!item.canonicalId || !item.libraryId || !item.grandparent.externalKey) {
-      return null;
-    }
-
-    const now = +dayjs();
-    return {
-      uuid: v4(),
-      type:
-        item.subtype === 'episode'
-          ? ProgramGroupingType.Show
-          : ProgramGroupingType.Artist,
-      createdAt: now,
-      updatedAt: now,
-      index: null,
-      title: item.grandparent.title ?? '',
-      summary: item.grandparent.summary,
-      icon: null,
-      artistUuid: null,
-      showUuid: null,
-      year: item.grandparent.year,
-      canonicalId: item.canonicalId,
-      libraryId: item.libraryId,
-      sourceType: item.externalSourceType,
-      mediaSourceId: tag(item.externalSourceId),
-      externalKey: item.grandparent.externalKey,
-    };
-  }
-
-  static mintParentGrouping(
-    item: MarkRequired<ContentProgram, 'parent'>,
-  ): Nullable<NewProgramGrouping> {
-    if (item.subtype === 'movie') {
-      return null;
-    }
-
-    if (!item.canonicalId || !item.libraryId || !item.parent.externalKey) {
-      return null;
-    }
-
-    const now = +dayjs();
-    return {
-      uuid: v4(),
-      type:
-        item.subtype === 'episode'
-          ? ProgramGroupingType.Season
-          : ProgramGroupingType.Album,
-      createdAt: now,
-      updatedAt: now,
-      index: item.parent.index,
-      title: item.parent.title ?? '',
-      summary: item.parent.summary,
-      icon: null,
-      artistUuid: null,
-      showUuid: null,
-      year: item.parent.year,
-      canonicalId: item.canonicalId,
-      libraryId: item.libraryId,
-      sourceType: item.externalSourceType,
-      mediaSourceId: tag(item.externalSourceId),
-      externalKey: item.parent.externalKey,
-    } satisfies NewProgramGrouping;
+    return null;
   }
 
   mintForMediaSourceShow(
     mediaSource: MediaSourceOrm,
-    mediaSourceLibrary: MediaSourceLibraryOrm,
+    mediaSourceLibrary: MediaSourceLibrary,
     show: Show,
   ): NewProgramGroupingWithRelations<'show'> {
     const now = dayjs();
@@ -268,7 +173,7 @@ export class ProgramGroupingMinter {
 
   mintForMediaSourceArtist(
     mediaSource: MediaSourceOrm,
-    mediaSourceLibrary: MediaSourceLibraryOrm,
+    mediaSourceLibrary: MediaSourceLibrary,
     artist: MediaSourceMusicArtist,
   ): NewProgramGroupingWithRelations<'artist'> {
     const now = +dayjs();
@@ -323,7 +228,7 @@ export class ProgramGroupingMinter {
 
   mintSeason(
     mediaSource: MediaSourceOrm,
-    mediaSourceLibrary: MediaSourceLibraryOrm,
+    mediaSourceLibrary: MediaSourceLibrary,
     season: Season,
   ): NewProgramGroupingWithRelations<'season'> {
     const now = +dayjs();
@@ -386,7 +291,7 @@ export class ProgramGroupingMinter {
 
   mintMusicAlbum(
     mediaSource: MediaSourceOrm,
-    mediaSourceLibrary: MediaSourceLibraryOrm,
+    mediaSourceLibrary: MediaSourceLibrary,
     album: MediaSourceMusicAlbum,
   ): NewProgramGroupingWithRelations<'album'> {
     const now = +dayjs();
@@ -485,7 +390,7 @@ export class ProgramGroupingMinter {
           uuid: v4(),
           createdAt: now,
           updatedAt: now,
-          externalSourceId: mediaSource.name, // legacy
+          // externalSourceId: mediaSource.name, // legacy
           mediaSourceId: mediaSource.uuid, // new
         } satisfies NewSingleOrMultiProgramGroupingExternalId;
       }

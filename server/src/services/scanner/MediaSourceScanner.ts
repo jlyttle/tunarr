@@ -1,4 +1,5 @@
-import type { MediaSourceLibraryOrm } from '@/db/schema/MediaSourceLibrary.js';
+import type { MediaSourceLibrary } from '@/db/schema/MediaSourceLibrary.js';
+import { InjectLogger } from '@/util/inject.js';
 import { isNonEmptyString } from '@tunarr/shared/util';
 import dayjs from 'dayjs';
 import { isEmpty } from 'lodash-es';
@@ -19,17 +20,27 @@ import { devAssert } from '../../util/debug.ts';
 import type { Logger } from '../../util/logging/LoggerFactory.ts';
 
 export type ScanRequest = {
-  library: MediaSourceLibraryOrm;
+  library: MediaSourceLibrary;
   force?: boolean;
   pathFilter?: string;
 };
 
+export type ScanSingleRequest = {
+  library: MediaSourceLibrary;
+  externalId: string;
+  force?: boolean;
+};
+
 export type ScanContext<ApiClientTypeT> = {
-  library: MediaSourceLibraryOrm;
+  library: MediaSourceLibrary;
   mediaSource: MediaSourceOrm;
   apiClient: ApiClientTypeT;
   force: boolean;
   pathFilter?: string;
+
+  // internal state
+  scannedEntities: number;
+  totalEntities: number;
 };
 
 export type RunState =
@@ -75,8 +86,9 @@ export abstract class MediaSourceScanner<
   abstract readonly type: MediaLibraryTypeT;
   abstract readonly mediaSourceType: MediaSourceTypeT;
 
+  @InjectLogger() declare protected readonly logger: Logger;
+
   constructor(
-    protected logger: Logger,
     protected mediaSourceDB: MediaSourceDB,
     protected externalSubtitleDownloader: ExternalSubtitleDownloader,
   ) {
@@ -118,6 +130,8 @@ export abstract class MediaSourceScanner<
         force: force ?? false,
         apiClient: await this.getApiClient(mediaSource),
         pathFilter,
+        scannedEntities: 0,
+        totalEntities: 0,
       });
 
       await this.mediaSourceDB.setLibraryLastScannedTime(library.uuid, dayjs());
@@ -125,6 +139,8 @@ export abstract class MediaSourceScanner<
       this.#state.delete(library.uuid);
     }
   }
+
+  abstract scanSingle(req: ScanSingleRequest): Promise<Result<void>>;
 
   cancel(libraryId: string) {
     this.logger.info('Request to cancel scan for library %s', libraryId);
@@ -192,7 +208,7 @@ export abstract class MediaSourceScanner<
           'Error while locating / downloading external subtitles for item: %j',
           program,
         );
-        return;
+        continue;
       }
 
       const fullPath = fullPathResult.get();
@@ -205,8 +221,6 @@ export abstract class MediaSourceScanner<
         );
         stream.path = fullPath;
       }
-
-      return;
     }
   }
 }

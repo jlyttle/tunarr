@@ -4,6 +4,7 @@ import type { NonEmptyArray } from 'ts-essentials';
 import type { ContentBackedStreamLineupItem } from '../db/derived_types/StreamLineup.ts';
 import type { ChannelSubtitlePreferences } from '../db/schema/SubtitlePreferences.ts';
 import { globalOptions } from '../globals.ts';
+import { LanguageService } from '../services/LanguageService.ts';
 import type { SubtitleStreamDetails } from '../stream/types.ts';
 import { isImageBasedSubtitle } from '../stream/util.ts';
 import type { Maybe } from '../types/util.ts';
@@ -12,13 +13,17 @@ import {
   SubtitlesCacheFolderName,
 } from '../util/constants.ts';
 import { fileExists } from '../util/fsUtil.ts';
+import type { Logger } from '../util/logging/LoggerFactory.ts';
 import { LoggerFactory } from '../util/logging/LoggerFactory.ts';
 import { getSubtitleCacheFilePath } from '../util/subtitles.ts';
 
 export class SubtitleStreamPicker {
-  private static logger = LoggerFactory.child({
-    className: SubtitleStreamPicker.name,
-  });
+  private static _logger?: Logger;
+  private static get logger() {
+    return (this._logger ??= LoggerFactory.child({
+      className: SubtitleStreamPicker.name,
+    }));
+  }
 
   private static getCacheFolder() {
     // TODO: Fix, inject?
@@ -33,20 +38,30 @@ export class SubtitleStreamPicker {
     subtitlePreferences: ChannelSubtitlePreferences[],
     lineupItem: ContentBackedStreamLineupItem,
     subtitleStreams: NonEmptyArray<SubtitleStreamDetails>,
+    opts: { preferTextBased?: boolean } = {},
   ): Promise<Maybe<SubtitleStreamDetails>> {
+    const orderedStreams = opts.preferTextBased
+      ? (orderBy(
+          subtitleStreams,
+          (s) => isImageBasedSubtitle(s.codec),
+          'desc',
+        ) as NonEmptyArray<SubtitleStreamDetails>)
+      : subtitleStreams;
     if (subtitlePreferences.length === 0) {
       this.logger.debug(
         'No subtitle preferences for channel. Attempting to use default stream.',
       );
-      let foundStream = subtitleStreams.find((stream) => stream.default);
-      if (!foundStream) {
+      const defaultStream = orderedStreams.find((stream) => stream.default);
+      const defaultOrFirstStream = defaultStream ?? orderedStreams[0];
+      if (!defaultStream) {
         this.logger.debug('Could not find default subtitle stream');
-        return;
       }
 
+      let foundStream: Maybe<SubtitleStreamDetails> = defaultOrFirstStream;
       if (
-        !isImageBasedSubtitle(foundStream.codec) &&
-        foundStream.type === 'embedded'
+        !opts.preferTextBased &&
+        !isImageBasedSubtitle(defaultOrFirstStream.codec) &&
+        defaultOrFirstStream.type === 'embedded'
       ) {
         foundStream = await this.getSubtitleDetailsWithExtractedPath(
           lineupItem,
@@ -72,9 +87,12 @@ export class SubtitleStreamPicker {
       }
 
       // Try to find a match
-      for (const stream of subtitleStreams) {
-        // TODO: map a present 2 letter code to its 3 letter code and check that.
-        if (stream.languageCodeISO6392 !== pref.languageCode) {
+      for (const stream of orderedStreams) {
+        if (
+          stream.languageCodeISO6392 &&
+          LanguageService.getAlpha3TCode(stream.languageCodeISO6392) !==
+            pref.languageCode
+        ) {
           this.logger.debug(
             'Skipping subtitle index %d, not a language match',
             stream.index ?? -1,
@@ -117,6 +135,9 @@ export class SubtitleStreamPicker {
         // TODO: check if embedded text based are extracted and continue searching
         // for a fallback if they are not.
         if (!isImageBasedSubtitle(stream.codec) && stream.type === 'embedded') {
+          if (opts.preferTextBased) {
+            return stream;
+          }
           const streamWithUpdatedPath =
             await this.getSubtitleDetailsWithExtractedPath(lineupItem, stream);
           if (streamWithUpdatedPath) {
@@ -136,7 +157,7 @@ export class SubtitleStreamPicker {
   static async getSubtitleDetailsWithExtractedPath(
     lineupItem: ContentBackedStreamLineupItem,
     stream: SubtitleStreamDetails,
-  ) {
+  ): Promise<Maybe<SubtitleStreamDetails>> {
     const cacheFolder = this.getCacheFolder();
     const filePath = getSubtitleCacheFilePath(
       {
@@ -168,7 +189,9 @@ export class SubtitleStreamPicker {
 
     return {
       ...stream,
+      type: 'external',
+      index: 0,
       path: fullPath,
-    };
+    } satisfies SubtitleStreamDetails;
   }
 }

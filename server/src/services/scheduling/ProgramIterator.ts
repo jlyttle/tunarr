@@ -21,9 +21,8 @@ export interface ProgramIterator<
   reset(): void;
 }
 
-export abstract class BaseProgramIterator<
-  ProgramT extends CondensedChannelProgram,
-> implements ProgramIterator<ProgramT>
+abstract class BaseProgramIterator<ProgramT extends CondensedChannelProgram>
+  implements ProgramIterator<ProgramT>
 {
   protected mintCache = new Map<string, ProgramT>();
 
@@ -60,6 +59,142 @@ export abstract class IndexBasedProgramIterator<
 
   reset(): void {
     this.position = 0;
+  }
+}
+
+export class RerunProgramIterator<
+  ProgramT extends CondensedChannelProgram = CondensedChannelProgram,
+> implements ProgramIterator<ProgramT>
+{
+  #consumedCount = 0;
+
+  constructor(
+    private inner: ProgramIterator<ProgramT>,
+    private groupSize: number,
+  ) {}
+
+  current(state: IterationState): ProgramT | null {
+    return this.inner.current(state);
+  }
+
+  next(): void {
+    this.#consumedCount++;
+    if (this.#consumedCount >= this.groupSize) {
+      this.inner.next();
+      this.#consumedCount = 0;
+    }
+  }
+
+  reset(): void {
+    this.#consumedCount = 0;
+    this.inner.reset();
+  }
+}
+
+// Dummy state used when calling current() from next() for recording.
+// Safe because content iterators (IndexBasedProgramIterator) ignore the state
+// param. Only FlexProgramIterator and WeightedFillerProgramIterator use it,
+// and neither appears as the main iterator in a linked group.
+const DummyIterationState: IterationState = {
+  slotDuration: 0,
+  timeCursor: 0,
+};
+
+/**
+ * Wraps a base iterator for "continue" slots in a mixed-mode group.
+ * Delegates current()/next() to the inner iterator while recording each
+ * consumed program into a per-period buffer that ReplayProgramIterator
+ * reads from.
+ */
+export class RecordingProgramIterator<
+  ProgramT extends CondensedChannelProgram = CondensedChannelProgram,
+> implements ProgramIterator<ProgramT>
+{
+  #periodBuffer: ProgramT[] = [];
+
+  constructor(private inner: ProgramIterator<ProgramT>) {}
+
+  current(state: IterationState): ProgramT | null {
+    return this.inner.current(state);
+  }
+
+  next(): void {
+    const curr = this.inner.current(DummyIterationState);
+    if (curr !== null) {
+      this.#periodBuffer.push(curr);
+    }
+    this.inner.next();
+  }
+
+  reset(): void {
+    this.#periodBuffer = [];
+    this.inner.reset();
+  }
+
+  resetPeriod(): void {
+    this.#periodBuffer = [];
+  }
+
+  get periodBuffer(): readonly ProgramT[] {
+    return this.#periodBuffer;
+  }
+}
+
+/**
+ * Used by "rerun" slots in a mixed-mode group. Replays programs from the
+ * RecordingProgramIterator's buffer using its own cursor.
+ *
+ * When the buffer is exhausted:
+ * - overflowMode 'flex': returns null (caller fills with flex)
+ * - overflowMode 'continue': delegates to the recording iterator,
+ *   advancing the shared base iterator
+ */
+export class ReplayProgramIterator<
+  ProgramT extends CondensedChannelProgram = CondensedChannelProgram,
+> implements ProgramIterator<ProgramT>
+{
+  #replayCursor = 0;
+  #overflowed = false;
+
+  constructor(
+    private recorder: RecordingProgramIterator<ProgramT>,
+    private overflowMode: 'flex' | 'continue' = 'flex',
+  ) {}
+
+  current(state: IterationState): ProgramT | null {
+    const buffer = this.recorder.periodBuffer;
+    if (this.#replayCursor < buffer.length) {
+      return buffer[this.#replayCursor] ?? null;
+    }
+
+    if (this.overflowMode === 'continue') {
+      this.#overflowed = true;
+      return this.recorder.current(state);
+    }
+
+    return null;
+  }
+
+  next(): void {
+    const buffer = this.recorder.periodBuffer;
+    if (this.#replayCursor < buffer.length) {
+      this.#replayCursor++;
+      return;
+    }
+
+    if (this.overflowMode === 'continue' && this.#overflowed) {
+      this.recorder.next();
+    }
+  }
+
+  reset(): void {
+    this.#replayCursor = 0;
+    this.#overflowed = false;
+  }
+
+  resetPeriod(): void {
+    this.#replayCursor = 0;
+    this.#overflowed = false;
   }
 }
 

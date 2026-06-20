@@ -1,10 +1,10 @@
 import type { RandomSlotForm } from '@/model/SlotModels.ts';
+import { t } from '@lingui/core/macro';
 import { useMutation } from '@tanstack/react-query';
 import type { ChannelProgram } from '@tunarr/types';
 import dayjs from 'dayjs';
 import { isError } from 'lodash-es';
 import { useSnackbar } from 'notistack';
-import pluralize from 'pluralize';
 import { useCallback, useMemo } from 'react';
 import {
   postApiChannelsByChannelIdScheduleSlots,
@@ -67,12 +67,8 @@ export const useScheduleSlots = () => {
 
   const showPerfSnackbar = useCallback(
     (maxDays: number, duration: number, numShows: number) => {
-      const message = `Calculated ${dayjs
-        .duration(maxDays, 'days')
-        .humanize()} (${numShows} ${pluralize(
-        'program',
-        numShows,
-      )}) of programming in ${duration}ms`;
+      const humanizedDuration = dayjs.duration(maxDays, 'days').humanize();
+      const message = t`Calculated ${humanizedDuration} (${numShows} programs) of programming in ${duration}ms`;
       snackbar.enqueueSnackbar(message, {
         variant: 'info',
       });
@@ -123,7 +119,7 @@ export const useScheduleSlots = () => {
           })
           .catch((e) => {
             snackbar.enqueueSnackbar(
-              'There was an error generating time slots. Check the browser console log for more information',
+              t`There was an error generating time slots. Check the browser console log for more information`,
               {
                 variant: 'error',
               },
@@ -156,10 +152,8 @@ export const useScheduleSlots = () => {
 
   return useMemo(
     () => ({
-      scheduleTimeSlots: (timeForm: TimeSlotForm) =>
-        scheduleFunc({ type: 'time', ...timeForm }),
-      scheduleSlots: (randomForm: RandomSlotForm) =>
-        scheduleFunc({ type: 'random', ...randomForm }),
+      scheduleTimeSlots: scheduleFunc,
+      scheduleSlots: scheduleFunc,
     }),
     [scheduleFunc],
   );

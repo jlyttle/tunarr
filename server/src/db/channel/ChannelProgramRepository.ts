@@ -4,18 +4,16 @@ import type { ContentProgramType } from '@tunarr/types/schemas';
 import { and, asc, count, countDistinct, eq, isNotNull } from 'drizzle-orm';
 import { inject, injectable } from 'inversify';
 import type { Kysely } from 'kysely';
-import { chunk, flatten, groupBy, omit, sum, uniq } from 'lodash-es';
+import { chunk, flatten, groupBy, sum, uniq } from 'lodash-es';
 import type { MarkRequired } from 'ts-essentials';
 import {
   createManyRelationAgg,
   mapRawJsonRelationResult,
 } from '../../util/drizzleUtil.ts';
 import type { PageParams } from '../interfaces/IChannelDB.ts';
-import { withFallbackPrograms, withPrograms } from '../programQueryHelpers.ts';
 import { Artwork } from '../schema/Artwork.ts';
 import { ChannelOrm } from '../schema/Channel.ts';
 import { ChannelPrograms } from '../schema/ChannelPrograms.ts';
-import type { ProgramDao } from '../schema/Program.ts';
 import { Program, ProgramType } from '../schema/Program.ts';
 import type { ProgramExternalId } from '../schema/ProgramExternalId.ts';
 import {
@@ -25,9 +23,7 @@ import {
 import { ProgramGroupingExternalIdOrm } from '../schema/ProgramGroupingExternalId.ts';
 import type { DB } from '../schema/db.ts';
 import type {
-  ChannelOrmWithPrograms,
   ChannelOrmWithRelations,
-  ChannelWithPrograms,
   MusicAlbumOrm,
   MusicArtistOrm,
   MusicArtistWithExternalIds,
@@ -56,10 +52,10 @@ export class ChannelProgramRepository {
           with: {
             program: {
               with: {
-                show: true,
-                season: true,
-                artist: true,
-                album: true,
+                show: { with: { externalIds: true } },
+                season: { with: { externalIds: true } },
+                artist: { with: { externalIds: true } },
+                album: { with: { externalIds: true } },
                 externalIds: true,
               },
             },
@@ -82,54 +78,6 @@ export class ChannelProgramRepository {
     }
 
     return;
-  }
-
-  async getChannelAndProgramsOld(
-    uuid: string,
-  ): Promise<ChannelWithPrograms | undefined> {
-    return this.db
-      .selectFrom('channel')
-      .selectAll(['channel'])
-      .where('channel.uuid', '=', uuid)
-      .leftJoin(
-        'channelPrograms',
-        'channel.uuid',
-        'channelPrograms.channelUuid',
-      )
-      .select((eb) =>
-        withPrograms(eb, {
-          joins: {
-            customShows: true,
-            tvShow: [
-              'programGrouping.uuid',
-              'programGrouping.title',
-              'programGrouping.summary',
-              'programGrouping.type',
-            ],
-            tvSeason: [
-              'programGrouping.uuid',
-              'programGrouping.title',
-              'programGrouping.summary',
-              'programGrouping.type',
-            ],
-            trackArtist: [
-              'programGrouping.uuid',
-              'programGrouping.title',
-              'programGrouping.summary',
-              'programGrouping.type',
-            ],
-            trackAlbum: [
-              'programGrouping.uuid',
-              'programGrouping.title',
-              'programGrouping.summary',
-              'programGrouping.type',
-            ],
-          },
-        }),
-      )
-      .groupBy('channel.uuid')
-      .orderBy('channel.number asc')
-      .executeTakeFirst();
   }
 
   async getChannelTvShows(
@@ -372,10 +320,10 @@ export class ChannelProgramRepository {
           where: (fields, { inArray }) => inArray(fields.uuid, idChunk),
           with: {
             externalIds: true,
-            album: true,
-            artist: true,
-            season: true,
-            show: true,
+            album: { with: { externalIds: true } },
+            artist: { with: { externalIds: true } },
+            season: { with: { externalIds: true } },
+            show: { with: { externalIds: true } },
             artwork: true,
             subtitles: true,
             credits: true,
@@ -408,29 +356,31 @@ export class ChannelProgramRepository {
       .execute();
   }
 
-  async getChannelFallbackPrograms(uuid: string): Promise<ProgramDao[]> {
-    const result = await this.db
-      .selectFrom('channelFallback')
-      .where('channelFallback.channelUuid', '=', uuid)
-      .select(withFallbackPrograms)
-      .groupBy('channelFallback.channelUuid')
-      .executeTakeFirst();
-    return result?.programs ?? [];
+  async getChannelFallbackPrograms(uuid: string) {
+    const result = await this.drizzleDB.query.channelFallback.findFirst({
+      where: (fields, { eq }) => eq(fields.channelUuid, uuid),
+      with: {
+        program: {
+          with: {
+            externalIds: true,
+          },
+        },
+      },
+    });
+
+    return result?.program;
   }
 
-  async replaceChannelPrograms(
-    channelId: string,
-    programIds: string[],
-  ): Promise<void> {
+  replaceChannelPrograms(channelId: string, programIds: string[]): void {
     const uniqueIds = uniq(programIds);
-    await this.drizzleDB.transaction(async (tx) => {
-      await tx
-        .delete(ChannelPrograms)
-        .where(eq(ChannelPrograms.channelUuid, channelId));
+    this.drizzleDB.transaction((tx) => {
+      tx.delete(ChannelPrograms)
+        .where(eq(ChannelPrograms.channelUuid, channelId))
+        .run();
       for (const c of chunk(uniqueIds, 250)) {
-        await tx
-          .insert(ChannelPrograms)
-          .values(c.map((id) => ({ channelUuid: channelId, programUuid: id })));
+        tx.insert(ChannelPrograms)
+          .values(c.map((id) => ({ channelUuid: channelId, programUuid: id })))
+          .run();
       }
     });
   }
@@ -444,36 +394,5 @@ export class ChannelProgramRepository {
         },
       })
       .then((result) => result.map((row) => row.channel));
-  }
-
-  async getAllChannelsAndPrograms(): Promise<ChannelOrmWithPrograms[]> {
-    return await this.drizzleDB.query.channels
-      .findMany({
-        with: {
-          channelPrograms: {
-            with: {
-              program: {
-                with: {
-                  album: true,
-                  artist: true,
-                  show: true,
-                  season: true,
-                  externalIds: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: (fields, { asc }) => asc(fields.number),
-      })
-      .then((result) => {
-        return result.map((channel) => {
-          const withoutJoinTable = omit(channel, 'channelPrograms');
-          return {
-            ...withoutJoinTable,
-            programs: channel.channelPrograms.map((cp) => cp.program),
-          } satisfies ChannelOrmWithPrograms;
-        });
-      });
   }
 }

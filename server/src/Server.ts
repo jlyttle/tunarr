@@ -47,18 +47,20 @@ import { ServerContext, ServerRequestContext } from './ServerContext.js';
 import { Result } from './types/result.ts';
 import { getBooleanEnvVar, TUNARR_ENV_VARS } from './util/env.ts';
 import { filename, isDev, run, timeoutPromise } from './util/index.js';
+import { InjectLogger } from './util/inject.js';
 import { type Logger } from './util/logging/LoggerFactory.js';
 
 const currentDirectory = dirname(filename(import.meta.url));
 
 @injectable()
 export class Server {
-  private app: ServerType;
+  @InjectLogger() declare private readonly logger: Logger;
+
+  private app!: ServerType;
 
   constructor(
     @inject(KEYS.ServerOptions) private serverOptions: ServerOptions,
     @inject(ServerContext) private serverContext: ServerContext,
-    @inject(KEYS.Logger) private logger: Logger,
   ) {}
 
   async configureServer() {
@@ -194,7 +196,10 @@ export class Server {
       })
       .register(fastifyMultipart)
       .addHook('onRequest', (_req, _res, done) => {
-        ServerRequestContext.create(container.get(ServerContext), done);
+        ServerRequestContext.create(
+          container.get(ServerContext),
+          done as (...args: unknown[]) => unknown,
+        );
       })
       .register(
         fp((f, _, done) => {
@@ -559,7 +564,11 @@ export class Server {
     );
     const transcodeDirs = await glob(path.join(`${baseStreamsDir}/*`));
     await Promise.all(
-      transcodeDirs.map((dir) => Result.attemptAsync(() => fs.rmdir(dir))),
+      transcodeDirs.map((dir) =>
+        Result.attemptAsync(() =>
+          fs.rm(dir, { recursive: true, force: true, maxRetries: 2 }),
+        ),
+      ),
     );
 
     if (getBooleanEnvVar(TUNARR_ENV_VARS.USE_WORKER_POOL_ENV_VAR, false)) {

@@ -14,7 +14,9 @@ import type { MarkNotNilable } from '../../types/util.ts';
 import { Artwork } from './Artwork.ts';
 import type { MediaSourceName } from './base.ts';
 import { MediaSourceTypes, ProgramStates, type MediaSourceId } from './base.ts';
+import { ChannelPrograms } from './ChannelPrograms.ts';
 import { Credit } from './Credit.ts';
+import { FillerShowContent } from './FillerShowContent.ts';
 import { EntityGenre } from './Genre.ts';
 import { type KyselifyBetter } from './KyselifyBetter.ts';
 import { LocalMediaFolder } from './LocalMediaFolder.ts';
@@ -26,6 +28,7 @@ import { ProgramGrouping } from './ProgramGrouping.ts';
 import { ProgramPlayHistory } from './ProgramPlayHistory.ts';
 import { ProgramSubtitles } from './ProgramSubtitles.ts';
 import { ProgramVersion } from './ProgramVersion.ts';
+import { StreamSelectionProfile } from './StreamSelectionProfile.ts';
 import { StudioEntity } from './Studio.ts';
 import { TagRelations } from './Tag.ts';
 
@@ -93,6 +96,10 @@ export const Program = sqliteTable(
     type: text({ enum: ProgramTypes }).notNull(),
     year: integer(),
     state: text({ enum: ProgramStates }).notNull().default('ok'),
+    streamSelectionProfileId: text().references(
+      () => StreamSelectionProfile.uuid,
+      { onDelete: 'set null' },
+    ),
   },
   (table) => [
     index('program_season_uuid_index').on(table.seasonUuid),
@@ -168,6 +175,8 @@ export const ProgramRelations = relations(Program, ({ many, one }) => ({
   studios: many(StudioEntity),
   tags: many(TagRelations),
   playHistory: many(ProgramPlayHistory),
+  channelProgram: many(ChannelPrograms),
+  fillerPrograms: many(FillerShowContent),
 }));
 
 export type ProgramTable = KyselifyBetter<typeof Program>;

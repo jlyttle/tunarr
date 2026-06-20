@@ -23,10 +23,11 @@ import type {
 } from '../../types/Media.ts';
 import { Result } from '../../types/result.ts';
 import type { Maybe } from '../../types/util.ts';
-import type { Logger } from '../../util/logging/LoggerFactory.ts';
+
+import { devAssert } from '../../util/debug.ts';
 import type { MeilisearchService } from '../MeilisearchService.ts';
 import type { MediaSourceProgressService } from './MediaSourceProgressService.ts';
-import type { ScanContext } from './MediaSourceScanner.ts';
+import type { ScanContext, ScanSingleRequest } from './MediaSourceScanner.ts';
 import { MediaSourceScanner } from './MediaSourceScanner.ts';
 
 export type GenericMediaSourceTvShowLibraryScanner<
@@ -54,7 +55,6 @@ export abstract class MediaSourceTvShowLibraryScanner<
   readonly type = 'shows' as const;
 
   constructor(
-    logger: Logger,
     mediaSourceDB: MediaSourceDB,
     protected programDB: IProgramDB,
     protected programGroupingMinter: ProgramGroupingMinter,
@@ -64,7 +64,69 @@ export abstract class MediaSourceTvShowLibraryScanner<
     private getProgramGroupingByIdCommand: GetProgramGroupingById,
     protected externalSubtitleDownloader: ExternalSubtitleDownloader,
   ) {
-    super(logger, mediaSourceDB, externalSubtitleDownloader);
+    super(mediaSourceDB, externalSubtitleDownloader);
+  }
+
+  async scanSingle({
+    library,
+    force,
+    externalId,
+  }: ScanSingleRequest): Promise<Result<void>> {
+    const mediaSource = await this.mediaSourceDB.getById(library.mediaSourceId);
+
+    if (!mediaSource) {
+      throw new Error(`Media source ${library.mediaSourceId} not found.`);
+    }
+
+    devAssert(mediaSource.type === this.mediaSourceType);
+
+    this.logger.info(
+      'Scanning %s library for single item (ID = %s, name = %s, item = %s, force = %s)',
+      mediaSource.type,
+      library.uuid,
+      library.name,
+      externalId,
+      force,
+    );
+
+    const client = await this.getApiClient(mediaSource);
+    const ctx: ScanContext<ApiClientTypeT> = {
+      library,
+      mediaSource,
+      force: force ?? false,
+      apiClient: client,
+      scannedEntities: 0,
+      totalEntities: 1,
+    };
+
+    const incomingShow = await this.getFullTvShowMetadata(externalId, ctx);
+
+    if (incomingShow.isFailure()) {
+      return incomingShow.recast();
+    }
+
+    const existingShow = await this.programDB.getProgramGroupingByExternalId({
+      sourceType: this.mediaSourceType,
+      externalSourceId: mediaSource.uuid,
+      externalKey: externalId,
+    });
+
+    let lookupResult: Maybe<ProgramGroupingCanonicalIdLookupResult>;
+    if (
+      existingShow?.type === 'show' &&
+      isNonEmptyString(existingShow.libraryId)
+    ) {
+      lookupResult = {
+        canonicalId: existingShow.canonicalId,
+        externalKey: externalId,
+        libraryId: existingShow.libraryId,
+        uuid: existingShow.uuid,
+      };
+    }
+
+    return (await this.scanShow(incomingShow.get(), lookupResult, ctx)).map(
+      () => void 0,
+    );
   }
 
   protected async scanInternal(
@@ -81,7 +143,10 @@ export abstract class MediaSourceTvShowLibraryScanner<
       );
     const seenShows = new Set<string>();
 
-    const totalSize = await this.getLibrarySize(library.externalKey, context);
+    context.totalEntities = await this.getLibrarySize(
+      library.externalKey,
+      context,
+    );
 
     for await (const show of this.getTvShowLibraryContents(
       library.externalKey,
@@ -91,7 +156,8 @@ export abstract class MediaSourceTvShowLibraryScanner<
         return;
       }
 
-      const processedAmount = round(seenShows.size / totalSize, 2) * 100.0;
+      const processedAmount =
+        round(context.scannedEntities / context.totalEntities, 2) * 100.0;
       if (isNonEmptyString(pathFilter) && show.externalId !== pathFilter) {
         this.mediaSourceProgressService.scanProgress(
           library.uuid,
@@ -105,6 +171,7 @@ export abstract class MediaSourceTvShowLibraryScanner<
       const existingShow = existingShowsByExternalId[show.externalId];
 
       const showResult = await this.scanShow(show, existingShow, context);
+      context.scannedEntities++;
 
       this.mediaSourceProgressService.scanProgress(
         library.uuid,
@@ -116,13 +183,19 @@ export abstract class MediaSourceTvShowLibraryScanner<
         continue;
       }
 
+      const scannedShow = showResult.get()!;
+
       const scanSeasonsResult = await this.scanSeasons(
         showResult.get()!,
         context,
       );
 
       if (scanSeasonsResult.isFailure()) {
-        this.logger.warn(scanSeasonsResult.error);
+        this.logger.warn(
+          scanSeasonsResult.error,
+          'Error scanning seasons for show: %s',
+          scannedShow.title,
+        );
       }
     }
 
@@ -238,6 +311,7 @@ export abstract class MediaSourceTvShowLibraryScanner<
     const persistedShow: ShowT & HasMediaSourceAndLibraryId = {
       ...show,
       uuid: upsertedShow.uuid,
+      createdAt: upsertedShow.createdAt,
       mediaSourceId: mediaSource.uuid,
       libraryId: library.uuid,
     };
@@ -273,19 +347,26 @@ export abstract class MediaSourceTvShowLibraryScanner<
         );
       const seenSeasons = new Set<string>();
 
-      // TODO: Add seen ids
       for await (const season of this.getTvShowSeasons(show, scanContext)) {
         if (this.state(library.uuid) === 'canceled') {
           return;
         }
 
         seenSeasons.add(season.externalId);
+        scanContext.totalEntities++;
 
         const persistedSeason = await this.updateSeason(
           season,
           show,
           existingSeasons[season.externalId],
           scanContext,
+        );
+
+        scanContext.scannedEntities++;
+        this.mediaSourceProgressService.scanProgress(
+          scanContext.library.uuid,
+          round(scanContext.scannedEntities / scanContext.totalEntities, 2) *
+            100.0,
         );
 
         if (persistedSeason.isFailure()) {
@@ -518,7 +599,11 @@ export abstract class MediaSourceTvShowLibraryScanner<
           this.logger.trace('Upserted episode ID %s', upsertResult!.uuid);
 
           await this.searchService.indexEpisodes([
-            { ...episodeWithJoins, uuid: upsertResult!.uuid },
+            {
+              ...episodeWithJoins,
+              uuid: upsertResult!.uuid,
+              createdAt: upsertResult!.createdAt,
+            },
           ]);
         } catch (e) {
           this.logger.warn(

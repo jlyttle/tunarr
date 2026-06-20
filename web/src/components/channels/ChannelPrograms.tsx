@@ -1,5 +1,6 @@
 import type { TabProps } from '@mui/material';
 import { Tab, Tabs, Typography } from '@mui/material';
+import { useLingui } from '@lingui/react/macro';
 import { seq } from '@tunarr/shared/util';
 import type { ContentProgram, ContentProgramParent } from '@tunarr/types';
 import {
@@ -8,6 +9,10 @@ import {
 } from '@tunarr/types/schemas';
 import { groupBy, isNil, keys, mapValues, omitBy, uniqBy } from 'lodash-es';
 import { useMemo, useState } from 'react';
+import {
+  extractProgramGrandparent,
+  extractProgramParent,
+} from '../../helpers/programUtil.ts';
 import { useChannelAndProgramming } from '../../hooks/useChannelLineup.ts';
 import { TabPanel } from '../TabPanel.tsx';
 import { ChannelProgramGrid } from './ChannelProgramGrid.tsx';
@@ -22,12 +27,15 @@ type ProgramTabProps = TabProps & {
   programType: ContentProgramType;
 };
 
-const ProgramTypeToLabel: Record<ContentProgramType, string> = {
-  episode: 'Shows',
-  movie: 'Movies',
-  music_video: 'Music Videos',
-  other_video: 'Other Videos',
-  track: 'Artists',
+const useProgramTypeToLabel = (): Record<ContentProgramType, string> => {
+  const { t } = useLingui();
+  return {
+    episode: t`Shows`,
+    movie: t`Movies`,
+    music_video: t`Music Videos`,
+    other_video: t`Other Videos`,
+    track: t`Artists`,
+  };
 };
 
 const ProgramTypeToGridType: Record<
@@ -47,6 +55,7 @@ const ProgramTypeTab = ({
   selected,
   ...rest
 }: ProgramTabProps) => {
+  const programTypeToLabel = useProgramTypeToLabel();
   return (
     <Tab
       {...rest}
@@ -56,7 +65,7 @@ const ProgramTypeTab = ({
             component="span"
             sx={{ verticalAlign: 'middle', fontSize: '0.875rem' }}
           >
-            {ProgramTypeToLabel[programType]}
+            {programTypeToLabel[programType]}
             <Typography
               component="span"
               sx={{
@@ -110,7 +119,7 @@ export const ChannelPrograms = ({ channelId }: Props) => {
           }),
           (p) => p.id,
         ),
-        (p) => p.subtype,
+        ({ program }) => program.type,
       ),
     [lineup, programs],
   ) as Record<ContentProgramType, ContentProgram[]>;
@@ -119,14 +128,20 @@ export const ChannelPrograms = ({ channelId }: Props) => {
   const [epsByShow] = useMemo(() => {
     const epsByProgram = mapValues(
       omitBy(
-        groupBy(programsByType['episode'], (ep) => ep.grandparent?.id),
+        groupBy(
+          programsByType['episode'],
+          ({ program }) => extractProgramGrandparent(program)?.uuid,
+        ),
         isNil,
       ),
       (p) => p.length,
     );
     const epsBySeason = mapValues(
       omitBy(
-        groupBy(programsByType['episode'], (ep) => ep.parent?.id),
+        groupBy(
+          programsByType['episode'],
+          ({ program }) => extractProgramParent(program)?.uuid,
+        ),
         isNil,
       ),
       (p) => p.length,
@@ -137,14 +152,20 @@ export const ChannelPrograms = ({ channelId }: Props) => {
   const [tracksByArtist] = useMemo(() => {
     const epsByProgram = mapValues(
       omitBy(
-        groupBy(programsByType['track'], (ep) => ep.grandparent?.id),
+        groupBy(
+          programsByType['track'],
+          ({ program }) => extractProgramGrandparent(program)?.uuid,
+        ),
         isNil,
       ),
       (p) => p.length,
     );
     const epsBySeason = mapValues(
       omitBy(
-        groupBy(programsByType['track'], (ep) => ep.parent?.id),
+        groupBy(
+          programsByType['track'],
+          ({ program }) => extractProgramParent(program)?.uuid,
+        ),
         isNil,
       ),
       (p) => p.length,

@@ -1,67 +1,80 @@
-import type { IProgramDB } from '@/db/interfaces/IProgramDB.js';
 import { KEYS } from '@/types/inject.js';
-import { isNonEmptyString, programExternalIdString } from '@/util/index.js';
-import { seq } from '@tunarr/shared/util';
-import { ContentProgram } from '@tunarr/types';
 import {
   CreateFillerListRequest,
   UpdateFillerListRequest,
 } from '@tunarr/types/api';
 import dayjs from 'dayjs';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { inject, injectable } from 'inversify';
-import { CaseWhenBuilder, Kysely } from 'kysely';
-import { jsonArrayFrom, jsonBuildObject } from 'kysely/helpers/sqlite';
+import { Kysely } from 'kysely';
+import { jsonArrayFrom } from 'kysely/helpers/sqlite';
 import {
   chunk,
-  filter,
   find,
   forEach,
   groupBy,
+  head,
   isEmpty,
   isNil,
   isUndefined,
   map,
   mapValues,
   omitBy,
-  reduce,
   reject,
   round,
+  tail,
   uniq,
   values,
 } from 'lodash-es';
-import { MarkRequired } from 'ts-essentials';
 import { v4 } from 'uuid';
 import { Maybe, Nilable } from '../types/util.ts';
-import { ProgramConverter } from './converters/ProgramConverter.ts';
+import { caseWhen } from './DrizzleSqlCaseWhen.ts';
 import {
   FillerShowWithContent,
   IFillerListDB,
 } from './interfaces/IFillerListDB.ts';
 import { createPendingProgramIndexMap } from './programHelpers.ts';
-import { withFillerPrograms } from './programQueryHelpers.ts';
 import { ChannelFillerShow } from './schema/ChannelFillerShow.ts';
-import type { FillerShow, NewFillerShow } from './schema/FillerShow.ts';
-import type { NewFillerShowContent } from './schema/FillerShowContent.ts';
+import { FillerShow, NewFillerShow } from './schema/FillerShow.ts';
+import {
+  FillerShowContent,
+  type NewFillerShowContent,
+} from './schema/FillerShowContent.ts';
 import { DB } from './schema/db.ts';
-import type { ChannelFillerShowWithContent } from './schema/derivedTypes.ts';
+import type {
+  ChannelFillerShowWithContent,
+  ProgramOrmWithExternalIds,
+} from './schema/derivedTypes.ts';
 import { DrizzleDBAccess } from './schema/index.ts';
 
 @injectable()
 export class FillerDB implements IFillerListDB {
   constructor(
-    @inject(KEYS.ProgramDB) private programDB: IProgramDB,
-    @inject(ProgramConverter) private programConverter: ProgramConverter,
     @inject(KEYS.Database) private db: Kysely<DB>,
     @inject(KEYS.DrizzleDB) private drizzle: DrizzleDBAccess,
   ) {}
 
-  getFiller(id: string): Promise<Maybe<FillerShowWithContent>> {
-    return this.db
-      .selectFrom('fillerShow')
-      .where('uuid', '=', id)
-      .selectAll()
-      .select((eb) => withFillerPrograms(eb, { fields: ['program.uuid'] }))
-      .executeTakeFirst();
+  async getFiller(id: string): Promise<Maybe<FillerShowWithContent>> {
+    const result = await this.drizzle.query.fillerShows.findFirst({
+      where: (fields, { eq }) => eq(fields.uuid, id),
+      with: {
+        fillerShowContent: {
+          with: {
+            program: true,
+          },
+        },
+      },
+    });
+
+    if (!result) return;
+
+    return {
+      ...result,
+      fillerContent: result.fillerShowContent.map((content, idx) => ({
+        ...content.program,
+        index: idx,
+      })),
+    } satisfies FillerShowWithContent;
   }
 
   async getFillerListsByIds(
@@ -101,47 +114,24 @@ export class FillerDB implements IFillerListDB {
         updateRequest.programs,
       );
 
-      const persisted = filter(
-        updateRequest.programs,
-        (p) => p.persisted && isNonEmptyString(p.id),
-      );
-
-      const upsertedPrograms = await this.programDB.upsertContentPrograms(
-        updateRequest.programs,
-      );
-
       const persistedFillerShowContent = map(
-        persisted,
+        updateRequest.programs,
         (p) =>
           ({
             fillerShowUuid: filler.uuid,
-            programUuid: p.id!,
-            index: programIndexById[p.id!]!,
-          }) satisfies NewFillerShowContent,
-      );
-      const newFillerShowContent = map(
-        upsertedPrograms,
-        (p) =>
-          ({
-            fillerShowUuid: filler.uuid,
-            programUuid: p.uuid,
-            index: programIndexById[programExternalIdString(p)]!,
+            programUuid: p.id,
+            index: programIndexById[p.id]!,
           }) satisfies NewFillerShowContent,
       );
 
-      await this.db.transaction().execute(async (tx) => {
-        await tx
-          .deleteFrom('fillerShowContent')
-          .where('fillerShowContent.fillerShowUuid', '=', filler.uuid)
-          .execute();
-        await Promise.all(
-          chunk(
-            [...persistedFillerShowContent, ...newFillerShowContent],
-            1_000,
-          ).map((fsc) =>
-            tx.insertInto('fillerShowContent').values(fsc).execute(),
-          ),
-        );
+      this.drizzle.transaction((tx) => {
+        tx.delete(FillerShowContent)
+          .where(eq(FillerShowContent.fillerShowUuid, filler.uuid))
+          .run();
+
+        for (const fsc of chunk(persistedFillerShowContent, 1_000)) {
+          tx.insert(FillerShowContent).values(fsc).run();
+        }
       });
     }
 
@@ -169,38 +159,20 @@ export class FillerDB implements IFillerListDB {
       createRequest.programs,
     );
 
-    const persisted = filter(createRequest.programs, (p) => p.persisted);
-
-    const upsertedPrograms = await this.programDB.upsertContentPrograms(
-      createRequest.programs,
-    );
-
     await this.db.insertInto('fillerShow').values(filler).execute();
 
     const persistedFillerShowContent = map(
-      persisted,
+      createRequest.programs,
       (p) =>
         ({
           fillerShowUuid: filler.uuid,
-          programUuid: p.id!,
-          index: programIndexById[p.id!]!,
-        }) satisfies NewFillerShowContent,
-    );
-    const newFillerShowContent = map(
-      upsertedPrograms,
-      (p) =>
-        ({
-          fillerShowUuid: filler.uuid,
-          programUuid: p.uuid,
-          index: programIndexById[programExternalIdString(p)]!,
+          programUuid: p.id,
+          index: programIndexById[p.id]!,
         }) satisfies NewFillerShowContent,
     );
 
     await Promise.all(
-      chunk(
-        [...persistedFillerShowContent, ...newFillerShowContent],
-        1_000,
-      ).map((fsc) =>
+      chunk(persistedFillerShowContent, 1_000).map((fsc) =>
         this.db.insertInto('fillerShowContent').values(fsc).execute(),
       ),
     );
@@ -220,23 +192,24 @@ export class FillerDB implements IFillerListDB {
       .execute();
   }
 
-  async deleteFiller(id: string): Promise<void> {
-    await this.db.transaction().execute(async (tx) => {
-      const relevantChannelFillers = await tx
-        .selectFrom('channelFillerShow')
-        .selectAll()
-        .where('fillerShowUuid', '=', id)
-        .execute();
+  deleteFiller(id: string): void {
+    this.drizzle.transaction((tx) => {
+      const relevantChannelFillers = tx
+        .select()
+        .from(ChannelFillerShow)
+        .where(eq(ChannelFillerShow.fillerShowUuid, id))
+        .all();
 
-      const allRelevantChannelFillers = await tx
-        .selectFrom('channelFillerShow')
-        .selectAll()
+      const allRelevantChannelFillers = tx
+        .select()
+        .from(ChannelFillerShow)
         .where(
-          'channelFillerShow.channelUuid',
-          'in',
-          uniq(map(relevantChannelFillers, (cf) => cf.channelUuid)),
+          inArray(
+            ChannelFillerShow.channelUuid,
+            uniq(map(relevantChannelFillers, (cf) => cf.channelUuid)),
+          ),
         )
-        .execute();
+        .all();
 
       const fillersByChannel = groupBy(
         allRelevantChannelFillers,
@@ -261,10 +234,9 @@ export class FillerDB implements IFillerListDB {
         });
       });
 
-      await tx
-        .deleteFrom('channelFillerShow')
-        .where('channelFillerShow.fillerShowUuid', '=', id)
-        .execute();
+      tx.delete(ChannelFillerShow)
+        .where(eq(ChannelFillerShow.fillerShowUuid, id))
+        .run();
 
       const reminaingChannelFillers = omitBy<ChannelFillerShow[]>(
         mapValues(fillersByChannel, (cfs) =>
@@ -273,55 +245,38 @@ export class FillerDB implements IFillerListDB {
         isEmpty,
       );
 
-      if (!isEmpty(fillersByChannel) && !isEmpty(reminaingChannelFillers)) {
-        await tx
-          .updateTable('channelFillerShow')
-          .set(({ eb }) => {
-            const weight = reduce(
-              reminaingChannelFillers,
-              (builder, channelFillers) => {
-                return reduce(
-                  channelFillers,
-                  (caseBuilder, channelFiller) =>
-                    caseBuilder
-                      .when(
-                        eb.and([
-                          eb(
-                            'channelFillerShow.fillerShowUuid',
-                            '=',
-                            channelFiller.fillerShowUuid,
-                          ),
-                          eb(
-                            'channelFillerShow.channelUuid',
-                            '=',
-                            channelFiller.channelUuid,
-                          ),
-                        ]),
-                      )
-                      .then(channelFiller.weight),
-                  builder,
-                );
-              },
-              eb.case() as unknown as CaseWhenBuilder<
-                DB,
-                'channelFillerShow',
-                unknown,
-                number
-              >,
-            )
-              .else(eb.ref('channelFillerShow.weight'))
-              .end();
-            return { weight };
-          })
-          .execute();
+      const allRemainingFillers = Object.values(reminaingChannelFillers).flat();
+      if (!isEmpty(fillersByChannel) && !isEmpty(allRemainingFillers)) {
+        const firstFiller = head(allRemainingFillers)!;
+        const rest = tail(allRemainingFillers);
+        const baseCase = caseWhen(
+          and(
+            eq(ChannelFillerShow.fillerShowUuid, firstFiller.fillerShowUuid),
+            eq(ChannelFillerShow.channelUuid, firstFiller.channelUuid),
+          )!,
+          sql`${firstFiller.weight}`,
+        );
+        const cases = rest
+          .reduce(
+            (caseBuilder, channelFiller) =>
+              caseBuilder.when(
+                and(
+                  eq(
+                    ChannelFillerShow.fillerShowUuid,
+                    channelFiller.fillerShowUuid,
+                  ),
+                  eq(ChannelFillerShow.channelUuid, channelFiller.channelUuid),
+                )!,
+                sql`${channelFiller.weight}`,
+              ),
+            baseCase,
+          )
+          .else(ChannelFillerShow.weight);
+
+        tx.update(ChannelFillerShow).set({ weight: cases }).run();
       }
 
-      await tx
-        .deleteFrom('fillerShow')
-        .where('uuid', '=', id)
-        // TODO: Blocked on https://github.com/oven-sh/bun/issues/16909
-        // .limit(1)
-        .execute();
+      tx.delete(FillerShow).where(eq(FillerShow.uuid, id)).run();
     });
 
     return;
@@ -357,78 +312,74 @@ export class FillerDB implements IFillerListDB {
       .execute();
   }
 
-  async getFillerPrograms(
-    id: string,
-  ): Promise<MarkRequired<ContentProgram, 'id'>[]> {
-    const programs = await this.db
-      .selectFrom('fillerShow')
-      .where('fillerShow.uuid', '=', id)
-      .select((eb) =>
-        withFillerPrograms(eb, {
-          joins: {
-            trackAlbum: true,
-            trackArtist: true,
-            tvShow: true,
-            tvSeason: true,
-          },
-        }),
-      )
-      .executeTakeFirst();
-
-    return seq.collect(programs?.fillerContent, (program) =>
-      this.programConverter.programDaoToContentProgram(program, []),
-    );
-  }
-
-  async getFillerProgramsOrm(id: string) {
-    return await this.drizzle.query.fillerShowContent
-      .findMany({
+  async getFillerPrograms(id: string): Promise<ProgramOrmWithExternalIds[]> {
+    return (
+      await this.drizzle.query.fillerShowContent.findMany({
         where: (fields, { eq }) => eq(fields.fillerShowUuid, id),
         with: {
           program: {
             with: {
-              album: true,
-              artist: true,
-              show: true,
-              season: true,
+              album: {
+                with: {
+                  externalIds: true,
+                },
+              },
+              artist: {
+                with: {
+                  externalIds: true,
+                },
+              },
+              show: {
+                with: {
+                  externalIds: true,
+                },
+              },
+              season: {
+                with: {
+                  externalIds: true,
+                },
+              },
               externalIds: true,
             },
           },
         },
       })
-      .then((_) => _.map((fc) => fc.program));
+    ).map(({ program }) => program);
   }
 
   async getFillersFromChannel(
     channelId: string,
   ): Promise<ChannelFillerShowWithContent[]> {
-    return this.db
-      .selectFrom('channelFillerShow')
-      .where('channelFillerShow.channelUuid', '=', channelId)
-      .innerJoin(
-        'fillerShow',
-        'channelFillerShow.fillerShowUuid',
-        'fillerShow.uuid',
-      )
-      .select((eb) =>
-        // Build the JSON object manually so we don't have to deal with
-        // nulls down the line from a nested select query
-        jsonBuildObject({
-          uuid: eb.ref('fillerShow.uuid'),
-          name: eb.ref('fillerShow.name'),
-          createdAt: eb.ref('fillerShow.createdAt'),
-          updatedAt: eb.ref('fillerShow.updatedAt'),
-        }).as('fillerShow'),
-      )
-      .innerJoin(
-        'fillerShowContent',
-        'fillerShowContent.fillerShowUuid',
-        'fillerShow.uuid',
-      )
-      .selectAll(['channelFillerShow'])
-      .select(withFillerPrograms)
-      .groupBy('fillerShow.uuid')
-      .orderBy('fillerShowContent.index asc')
-      .execute();
+    const results = await this.drizzle.query.channelFillerShow.findMany({
+      where: (fields, { eq }) => eq(fields.channelUuid, channelId),
+      with: {
+        filler: {
+          with: {
+            fillerShowContent: {
+              with: {
+                program: {
+                  with: {
+                    externalIds: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return results.map((result) => {
+      return {
+        channelUuid: channelId,
+        cooldown: result.cooldown,
+        fillerContent: result.filler.fillerShowContent.map(
+          ({ program }) => program,
+        ),
+        fillerShow: result.filler,
+        fillerShowUuid: result.fillerShowUuid,
+        weight: result.weight,
+      } satisfies ChannelFillerShowWithContent;
+    });
   }
 }

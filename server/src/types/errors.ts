@@ -23,10 +23,6 @@ export abstract class WrappedError extends Error {
   }
 }
 
-export function isWrappedError(e: unknown): e is WrappedError {
-  return Object.getOwnPropertySymbols(e).includes(WrappedErrorTag);
-}
-
 export abstract class TypedError extends WrappedError {
   readonly type?: KnownErrorTypes = undefined;
   readonly httpCode: number = 500;
@@ -56,13 +52,27 @@ export abstract class TypedError extends WrappedError {
   }
 }
 
-export abstract class NotFoundError extends TypedError {
-  readonly httpCode: number = 404;
+abstract class TypedHttpError<
+  StatusT extends number = number,
+> extends TypedError {
+  readonly _!: StatusT;
+  readonly httpCode: StatusT;
+
+  constructor(httpCode: StatusT, message?: string, options?: ErrorOptions) {
+    super(message, options);
+    this.httpCode = httpCode;
+  }
 }
 
-export class GenericNotFoundError extends NotFoundError {
-  constructor(id: string, entityType: string = 'Item') {
-    super(`${entityType} with id ${id} not found`);
+export abstract class BadRequestError extends TypedHttpError<400> {
+  constructor(...params: ConstructorParameters<ErrorConstructor>) {
+    super(400, ...params);
+  }
+}
+
+abstract class NotFoundError extends TypedHttpError<404> {
+  constructor(message?: string, options?: ErrorOptions) {
+    super(404, message, options);
   }
 }
 
@@ -89,6 +99,10 @@ export class GenericError extends TypedError {
   readonly type = 'generic_error';
 }
 
-export class GenericBadRequestError extends TypedError {
-  readonly httpCode: number = 400;
+export class GenericBadRequestError extends BadRequestError {}
+
+export class GenericNotFoundError extends NotFoundError {
+  constructor(id: string, entity: string) {
+    super(`${entity} entity with id = ${id} not found`);
+  }
 }

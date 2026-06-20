@@ -12,11 +12,13 @@ import { getTunarrVersion } from '@/util/version.js';
 import { seq } from '@tunarr/shared/util';
 import type {
   Actor,
+  Collection,
   Director,
   Folder,
   Library,
   MediaArtwork,
   MediaChapter,
+  ProgramOrFolder,
   Writer,
 } from '@tunarr/types';
 import type { MediaSourceStatus, PagedResult } from '@tunarr/types/api';
@@ -59,10 +61,11 @@ import type { NonEmptyArray } from 'ts-essentials';
 import { match, P } from 'ts-pattern';
 import { v4 } from 'uuid';
 import type { ArtworkType } from '../../db/schema/Artwork.ts';
+import { MediaSourceType } from '../../db/schema/base.ts';
 import type { ProgramType } from '../../db/schema/Program.ts';
 import type { ProgramGroupingType } from '../../db/schema/ProgramGrouping.ts';
 import type { Canonicalizer } from '../../services/Canonicalizer.ts';
-import { extractIsAnamorphic } from '../../stream/jellyfin/JellyfinStreamDetails.ts';
+import { extractIsAnamorphic } from '../../stream/util.ts';
 import type {
   JellyfinEpisode as ApiJellyfinEpisode,
   JellyfinMovie as ApiJellyfinMovie,
@@ -596,6 +599,20 @@ export class JellyfinApiClient extends MediaSourceApiClient<JellyfinItemTypes> {
     );
   }
 
+  getMusicVideoLibraryContents(
+    parentId: string,
+    pageSize: number = 50,
+  ): AsyncIterable<JellyfinMusicVideo> {
+    return this.getChildContents(
+      parentId,
+      'MusicVideo',
+      (video) => this.jellyfinApiMusicVideoInjection(video),
+      [],
+      {},
+      pageSize,
+    );
+  }
+
   getTvShowLibraryContents(
     parentId: string,
     pageSize: number = 50,
@@ -721,6 +738,78 @@ export class JellyfinApiClient extends MediaSourceApiClient<JellyfinItemTypes> {
     );
   }
 
+  async *getAllLibraryCollections(
+    libraryId: string,
+    pageSize: number = 50,
+  ): AsyncGenerator<Collection> {
+    const library = this.options.mediaSource.libraries.find(
+      (lib) => lib.externalKey === libraryId,
+    );
+    if (!library) {
+      throw new Error(
+        `Could not find matching library in DB for key = ${libraryId}`,
+      );
+    }
+
+    const onItem = (item: ApiJellyfinItem) => {
+      if (item.Id && item.Name) {
+        return {
+          type: 'collection',
+          externalId: item.Id,
+          title: item.Name,
+          sourceType: MediaSourceType.Jellyfin,
+          childCount: item.ChildCount ?? undefined,
+          childType: undefined,
+          uuid: v4(),
+          mediaSourceId: this.options.mediaSource.uuid,
+          libraryId: library.uuid,
+        } satisfies Collection;
+      }
+      return;
+    };
+
+    for await (const item of this.getChildContents(
+      libraryId,
+      'BoxSet',
+      onItem,
+      [],
+      {},
+      pageSize,
+    )) {
+      if (item) yield item;
+    }
+  }
+
+  async *getCollectionItems(
+    collectionId: string,
+    pageSize: number = 50,
+  ): AsyncIterable<ProgramOrFolder> {
+    const childCountResult = await this.getChildItemCount(collectionId, null);
+    if (childCountResult.isFailure()) {
+      throw childCountResult.error;
+    }
+
+    const onItem = (item: ApiJellyfinItem) => {
+      return this.jelllyfinApiItemInjection(item);
+    };
+
+    yield* this.iterateChildren(
+      (page) =>
+        this.getRawItems(
+          collectionId,
+          null,
+          [],
+          {
+            offset: page * pageSize,
+            limit: pageSize,
+          },
+          {},
+        ),
+      childCountResult.get(),
+      onItem,
+    );
+  }
+
   private async *getChildContents<ItemTypeT extends JellyfinItemKind, OutType>(
     parentId: string,
     itemType: ItemTypeT,
@@ -749,6 +838,39 @@ export class JellyfinApiClient extends MediaSourceApiClient<JellyfinItemTypes> {
 
     const totalPages = Math.ceil(count.get() / pageSize);
 
+    const onItem = (item: ApiJellyfinItem) => {
+      if (isJellyfinType(item, itemType)) {
+        const convertedResult = Result.attempt(() => converter(item));
+        if (convertedResult.isFailure()) {
+          this.logger.error(
+            convertedResult.error,
+            'Failure converting Jellyfin item %s',
+            item.Id,
+          );
+          return null;
+        }
+        const converted = convertedResult.get();
+        if (converted) {
+          return converted;
+        }
+      }
+      return null;
+    };
+
+    for await (const item of this.iterateChildren(getter, totalPages, onItem)) {
+      if (item) yield item;
+    }
+
+    return;
+  }
+
+  private async *iterateChildren<OutType>(
+    getter: (
+      page: number,
+    ) => Promise<QueryResult<JellyfinLibraryItemsResponse>>,
+    totalPages: number,
+    onItem: (item: ApiJellyfinItem) => Nullable<OutType>,
+  ): AsyncIterable<OutType> {
     for (let page = 0; page <= totalPages; page++) {
       const chunkResult = await getter(page);
 
@@ -757,28 +879,18 @@ export class JellyfinApiClient extends MediaSourceApiClient<JellyfinItemTypes> {
       }
 
       for (const item of chunkResult.get().Items ?? []) {
-        if (isJellyfinType(item, itemType)) {
-          const convertedResult = Result.attempt(() => converter(item));
-          if (convertedResult.isFailure()) {
-            this.logger.error(
-              convertedResult.error,
-              'Failure converting Jellyfin item %s',
-              item.Id,
-            );
-            continue;
-          }
-          const converted = convertedResult.get();
-          if (converted) {
-            yield converted;
-          }
+        const converted = onItem(item);
+        if (converted) {
+          yield converted;
         }
       }
     }
-
-    return;
   }
 
-  async getChildItemCount(parentId: string, itemType: JellyfinItemKind) {
+  async getChildItemCount(
+    parentId: string,
+    itemType: Nilable<JellyfinItemKind>,
+  ) {
     const endpoint =
       itemType === 'MusicArtist' ? '/Artists/AlbumArtists' : '/Items';
     return this.doTypeCheckedGet(endpoint, JellyfinLibraryItemsResponse, {

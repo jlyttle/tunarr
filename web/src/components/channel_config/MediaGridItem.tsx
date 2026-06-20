@@ -23,6 +23,7 @@ import {
   lighten,
   useTheme,
 } from '@mui/material';
+import { useLingui } from '@lingui/react/macro';
 import { isNonEmptyString } from '@tunarr/shared/util';
 import type { ProgramOrFolder } from '@tunarr/types';
 import { isStructuralItemType, isTerminalItemType } from '@tunarr/types';
@@ -59,7 +60,6 @@ export type GridItemMetadata = {
   thumbnailUrl: string | null;
   selectedMedia?: SelectedMedia;
   isFolder?: boolean;
-  persisted: boolean;
   itemType: ProgramOrFolder['type'];
 };
 
@@ -81,6 +81,7 @@ const MediaGridItemInner = <ItemTypeT extends ProgramOrFolder>(
   props: Props<ItemTypeT>,
   ref: ForwardedRef<HTMLDivElement>,
 ) => {
+  const { t } = useLingui();
   const theme = useTheme();
   const skeletonBgColor = alpha(
     theme.palette.text.primary,
@@ -103,7 +104,6 @@ const MediaGridItemInner = <ItemTypeT extends ProgramOrFolder>(
       childCount,
       mayHaveChildren = false,
       isFolder = false,
-      persisted,
     },
     style,
     isModalOpen,
@@ -240,7 +240,7 @@ const MediaGridItemInner = <ItemTypeT extends ProgramOrFolder>(
             ref={ref}
           >
             {isTerminalItemType(item) && item.state === 'missing' && (
-              <Tooltip title="Item was not present during the last scan">
+              <Tooltip title={t`Item was not present during the last scan`}>
                 <WarningTwoTone
                   sx={{
                     position: 'absolute',
@@ -253,7 +253,7 @@ const MediaGridItemInner = <ItemTypeT extends ProgramOrFolder>(
                 />
               </Tooltip>
             )}
-            {persisted && !isStructuralItemType(itemType) && (
+            {!isStructuralItemType(itemType) && (
               <InfoSharp
                 inheritViewBox
                 onClick={(e) => showInfo(e)}
@@ -373,7 +373,7 @@ const MediaGridItemInner = <ItemTypeT extends ProgramOrFolder>(
           </ImageListItem>
         </div>
       </Fade>
-      {persisted && !isStructuralItemType(itemType) && (
+      {!isStructuralItemType(itemType) && (
         <ProgramDetailsDialog
           open={dialogOpen}
           onClose={() => setDialogOpen(false)}

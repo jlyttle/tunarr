@@ -1,6 +1,4 @@
-import type { Func } from '@/types/func.js';
-import type { MarkNonNullable, Maybe, Nilable, Try } from '@/types/util.js';
-import { createExternalId } from '@tunarr/shared';
+import type { Maybe, Nilable, Try } from '@/types/util.js';
 import type { TupleToUnion } from '@tunarr/types';
 import dayjs from 'dayjs';
 import type { Duration } from 'dayjs/plugin/duration.js';
@@ -9,7 +7,6 @@ import {
   chunk,
   compact,
   concat,
-  flatMap,
   identity,
   isArray,
   isEmpty,
@@ -25,16 +22,13 @@ import {
   once,
   range,
   reduce,
-  reject,
   trim,
   zipWith,
 } from 'lodash-es';
-import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { format, inspect } from 'node:util';
 import { isPromise } from 'node:util/types';
 import type { DeepReadonly, DeepWritable, NonEmptyArray } from 'ts-essentials';
-import type { NewProgramDao, ProgramDao } from '../db/schema/Program.ts';
 
 dayjs.extend(duration);
 
@@ -86,33 +80,6 @@ export function groupByUniqAndMap<
   return out;
 }
 
-// This will fail if any mapping function fails
-export function groupByUniqPropAndMapAsync<
-  T,
-  K extends KeysOfType<T>,
-  Key extends IsStringOrNumberValue<T, K>,
-  Value,
->(
-  data: T[],
-  member: K | ((item: T) => K),
-  mapper: (val: T) => Promise<Value>,
-  opts?: mapAsyncSeq2Opts,
-): Promise<Record<Key, Value>> {
-  const keyFunc = (t: T) => t[isFunction(member) ? member(t) : member] as Key;
-  return mapReduceAsyncSeq(
-    data,
-    (t) => mapper(t).then((v) => [keyFunc(t), v] as const),
-    (acc, [key, value]) => {
-      return {
-        ...acc,
-        [key]: value,
-      };
-    },
-    {} as Record<Key, Value>,
-    opts,
-  );
-}
-
 export function groupByUniq<T, Key extends string | number | symbol>(
   data: T[] | ReadonlyArray<T>,
   func: (item: T) => Key,
@@ -135,33 +102,15 @@ export function groupByFunc<T, Key extends string | number | symbol, Value>(
 export function groupByTyped<T, Key extends string | number | symbol>(
   data: T[],
   grouper: (val: T) => Key,
-): Record<Key, T[]> {
-  const out = {} as Record<Key, T[]>;
+): Map<Key, T[]> {
+  const out = new Map<Key, T[]>();
   for (const t of data) {
     const k = grouper(t);
-    out[k] ??= [];
-    out[k].push(t);
+    const existing = out.get(k) ?? [];
+    existing.push(t);
+    out.set(k, existing);
   }
   return out;
-}
-
-export function groupByAndMapAsync<
-  T,
-  Key extends string | number | symbol,
-  Value,
->(
-  data: T[] | null | undefined,
-  func: (val: T) => Key,
-  mapper: (val: T) => Promise<Value>,
-  opts?: mapAsyncSeq2Opts,
-) {
-  return mapReduceAsyncSeq(
-    data,
-    (t) => mapper(t).then((v) => [func(t), v] as const),
-    (acc, [key, value]) => ({ ...acc, [key]: value }),
-    {} as Record<Key, Value>,
-    opts,
-  );
 }
 
 type mapAsyncSeq2Opts = {
@@ -272,36 +221,7 @@ export function timeoutPromise<T>(
   ]);
 }
 
-type NativeFuncOrApply<In, Out> = ((input: In) => Out) | Func<In, Out>;
-
-export async function asyncFlow<T>(
-  ops: NativeFuncOrApply<T, Promise<T>>[],
-  initial: T,
-): Promise<T> {
-  let res: T = initial;
-  for (const op of ops) {
-    res = await (isFunction(op) ? op(res) : op.apply(res));
-  }
-  return res;
-}
-
-export function time<T>(
-  key: string,
-  f: () => T | PromiseLike<T>,
-): T | PromiseLike<T> {
-  console.time(key);
-  const retOrPromise = f();
-  if (isPromise(retOrPromise)) {
-    return (retOrPromise as Promise<T>).finally(() => {
-      console.timeEnd(key);
-    });
-  } else {
-    console.timeEnd(key);
-    return retOrPromise;
-  }
-}
-
-export function deepCopyArray<T>(value: T[] | undefined): T[] | undefined {
+function deepCopyArray<T>(value: T[] | undefined): T[] | undefined {
   if (isUndefined(value)) {
     return value;
   }
@@ -340,19 +260,6 @@ export function deepCopy<T>(value: T): T {
 
 export function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error;
-}
-
-export async function createDirectoryIfNotExists(
-  dirPath: string,
-): Promise<void> {
-  try {
-    await fs.mkdir(dirPath, { recursive: true });
-  } catch (err) {
-    if (isNodeError(err) && err.code !== 'EEXIST') {
-      // Throw an error if it's not because the directory already exists
-      throw err;
-    }
-  }
 }
 
 export function attemptSync<T>(f: () => T): Try<T> {
@@ -398,35 +305,8 @@ export function retrySimple<T>(f: () => Nilable<T>, times: number): Nilable<T> {
   return;
 }
 
-function enumKeys<O extends object, K extends keyof O = keyof O>(obj: O): K[] {
-  return Object.keys(obj).filter((k) => !Number.isNaN(k)) as K[];
-}
-
-export function enumFromString<O extends object>(
-  obj: O,
-  str: string,
-): O | undefined {
-  for (const key of enumKeys(obj)) {
-    const value = obj[key];
-    if ((key as string).toLowerCase() === str) {
-      return value as O;
-    }
-  }
-  return;
-}
-
 export function nilToUndefined<T>(t: T | undefined | null): T | undefined {
   return isNil(t) ? undefined : t;
-}
-
-export function emptyStringToUndefined(
-  s: string | undefined,
-): string | undefined {
-  if (isUndefined(s)) {
-    return s;
-  }
-
-  return s.length === 0 ? undefined : s;
 }
 
 export function isNonEmptyString(v: unknown): v is string {
@@ -444,22 +324,9 @@ export function ifDefined<T, U>(
   return isUndefined(ret) ? null : ret;
 }
 
-export function flipMap<K extends string | number, V extends string | number>(
-  m: Record<K, Iterable<V>>,
-): Record<V, K> {
-  const acc: Record<V, K> = {} as Record<V, K>;
-  for (const [key, vs] of Object.entries<Iterable<V>>(m)) {
-    for (const v of vs) {
-      acc[v] = key as K;
-    }
-  }
-
-  return acc;
-}
-
 export const filename = (path: string) => fileURLToPath(path);
 
-export const currentEnv = once(() => {
+const currentEnv = once(() => {
   const env = process.env.NODE_ENV;
   return env ?? 'production';
 });
@@ -475,25 +342,8 @@ export const zipWithIndex = <T>(
   return zipWith(seq, range(start, seq.length), (s, i) => [s, i]);
 };
 
-export function scale(
-  coll: readonly number[] | null | undefined,
-  factor: number,
-): number[] {
-  return map(coll, (c) => c * factor);
-}
-
 export function run<T>(f: () => T): T {
   return f();
-}
-
-// If makeLast == true, value will be inserted on a one-element array
-// If makeLast == false, value will only be inserted in between 2 array values
-export function intersperse<T>(
-  arr: T[],
-  v: T[],
-  makeLast: boolean = false,
-): T[] {
-  return flatMap(arr, (x, i) => (i === 0 && !makeLast ? [x] : [x, ...v]));
 }
 
 export function isSuccess<T>(x: Try<T>): x is T {
@@ -509,10 +359,6 @@ export function nullToUndefined<T>(x: T | null | undefined): T | undefined {
     return undefined;
   }
   return x;
-}
-
-export function removeErrors<T>(coll: Try<T>[] | null | undefined): T[] {
-  return reject(coll, isError) satisfies T[] as T[];
 }
 
 export function parseIntOrNull(s: string): number | null {
@@ -588,29 +434,6 @@ export function caughtErrorToError(e: unknown): Error {
     return new Error(e);
   } else {
     return new Error(inspect(e));
-  }
-}
-
-export function inTuple<Arr extends readonly string[], S extends string>(
-  arr: Arr,
-  typ: S,
-): boolean {
-  for (const value of arr) {
-    if (value === typ) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-export function programExternalIdString(
-  p: MarkNonNullable<ProgramDao, 'mediaSourceId'> | NewProgramDao,
-) {
-  if (p.sourceType === 'local') {
-    return p.externalKey; // This should never hit, but if it does externalKey will point to the file path.
-  } else {
-    return createExternalId(p.sourceType, p.mediaSourceId, p.externalKey);
   }
 }
 

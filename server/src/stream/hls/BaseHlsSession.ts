@@ -15,7 +15,7 @@ import { defaultHlsOptions } from '../../ffmpeg/builder/constants.ts';
 import { serverOptions } from '../../globals.ts';
 import { fileExists } from '../../util/fsUtil.ts';
 
-export const SegmentNameRegex = /data(\d{6})\..*/;
+export const SegmentNameRegex = /\D+(\d+)\.(ts|mp4|vtt)/;
 
 export abstract class BaseHlsSession<
   HlsSessionOptsT extends BaseHlsSessionOptions = BaseHlsSessionOptions,
@@ -26,10 +26,12 @@ export abstract class BaseHlsSession<
   protected _workingDirectory: string;
   // Absolute path to the stream directory
   protected _m3u8PlaylistPath: string;
+  // Absolute path to the HLS master playlist
+  protected _masterPlaylistPath: string;
   // The path to request streaming assets from the server
   protected _serverPath: string;
 
-  protected transcodedUntil: Dayjs;
+  protected transcodedUntil?: Dayjs;
 
   protected _minByIp = new Map<string, number>();
 
@@ -52,6 +54,10 @@ export abstract class BaseHlsSession<
       `stream_${this.channel.uuid}`,
     );
     this._m3u8PlaylistPath = path.join(this._workingDirectory, 'stream.m3u8');
+    this._masterPlaylistPath = path.join(
+      this._workingDirectory,
+      'playlist.m3u8',
+    );
     // Direct players back to the /hls URL which will return the playlist
     this._serverPath = `/stream/channels/${this.channel.uuid}.m3u8`;
   }
@@ -96,6 +102,15 @@ export abstract class BaseHlsSession<
 
   protected abstract getHlsOptions(): DeepRequired<HlsOptions>;
 
+  /**
+   * Returns additional filenames (basenames only) that must exist in the
+   * working directory before the stream is considered ready. Subclasses
+   * override this to gate on e.g. the subtitle playlist.
+   */
+  protected getAdditionalRequiredFiles(): string[] {
+    return [];
+  }
+
   protected async initDirectories() {
     if (!(await fileExists(this.baseDirectory))) {
       this.logger.debug(
@@ -120,14 +135,15 @@ export abstract class BaseHlsSession<
         'Cleaning up existing working directory: %s',
         this._workingDirectory,
       );
-      await fs.rmdir(this._workingDirectory, { recursive: true });
+      await fs.rm(this._workingDirectory, {
+        recursive: true,
+        force: true,
+        maxRetries: 2,
+      });
       await fs.mkdir(this._workingDirectory);
     } catch (err) {
-      return this.logger.error(
-        err,
-        'Failed to cleanup stream: %s',
-        this.channel.uuid,
-      );
+      this.logger.error(err, 'Failed to cleanup stream: %s', this.channel.uuid);
+      throw err;
     }
   }
 
@@ -175,15 +191,22 @@ export abstract class BaseHlsSession<
             (f) => f === basename(this._m3u8PlaylistPath),
           );
 
+          const additionalRequired = this.getAdditionalRequiredFiles();
+          const additionalExist = additionalRequired.every((f) =>
+            some(workingDirectoryFiles.get(), (wf) => wf === f),
+          );
+
           if (
             numSegments < this.sessionOptions.initialSegmentCount ||
-            !playlistExists
+            !playlistExists ||
+            !additionalExist
           ) {
             this.logger.debug(
-              'Still waiting for stream session to start. (num segments=%d < %d, playlist exists? %s)',
+              'Still waiting for stream session to start. (num segments=%d < %d, playlist exists? %s, additional=%j)',
               numSegments,
               this.sessionOptions.initialSegmentCount,
               playlistExists,
+              additionalRequired,
             );
             throw new Error('Stream not ready yet. Retry');
           }
@@ -211,6 +234,10 @@ export abstract class BaseHlsSession<
 
   get m3uPlaylistPath() {
     return this._m3u8PlaylistPath;
+  }
+
+  get masterPlaylistPath() {
+    return this._masterPlaylistPath;
   }
 }
 

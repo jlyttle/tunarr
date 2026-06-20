@@ -5,14 +5,17 @@ import fs from 'node:fs/promises';
 import { basename, dirname, extname } from 'node:path';
 import { match, P } from 'ts-pattern';
 import { Nullable } from '../../types/util.ts';
-import { LoggerFactory } from '../../util/logging/LoggerFactory.ts';
+import { Logger, LoggerFactory } from '../../util/logging/LoggerFactory.ts';
 import { LanguageService } from '../LanguageService.ts';
 
 @injectable()
 export class LocalSubtitlesService {
-  private static logger = LoggerFactory.child({
-    className: LocalSubtitlesService.name,
-  });
+  private static _logger?: Logger;
+  private static get logger() {
+    return (this._logger ??= LoggerFactory.child({
+      className: LocalSubtitlesService.name,
+    }));
+  }
   constructor() {}
 
   async findExternalSubtitles(fullItemPath: string) {

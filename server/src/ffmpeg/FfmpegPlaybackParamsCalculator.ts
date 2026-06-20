@@ -8,9 +8,7 @@ import type { ChannelStreamMode } from '@/db/schema/base.js';
 import type { StreamDetails, VideoStreamDetails } from '@/stream/types.js';
 import { ChannelStreamModes } from '@tunarr/types';
 import { match, P } from 'ts-pattern';
-import type {
-  VideoPreset,
-} from './builder/constants.ts';
+import type { VideoPreset } from './builder/constants.ts';
 import {
   VideoFormats,
   VideoPresets,
@@ -120,7 +118,7 @@ export class FfmpegPlaybackParamsCalculator {
     };
   }
 
-  calculateForHlsConcat() {
+  calculateForHlsConcat(): FfmpegPlaybackParams {
     return {
       audioFormat: this.transcodeConfig.audioFormat,
       audioBitrate: this.transcodeConfig.audioBitRate,

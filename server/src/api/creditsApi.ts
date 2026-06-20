@@ -1,10 +1,9 @@
 import { isNonEmptyString } from '@tunarr/shared/util';
 import { Person } from '@tunarr/types';
 import { Person as PersonSchema } from '@tunarr/types/schemas';
-import axios, { AxiosHeaders, isAxiosError } from 'axios';
-import type { HttpHeader } from 'fastify/types/utils.js';
+import axios, { isAxiosError } from 'axios';
 import { inject, injectable } from 'inversify';
-import { isNull, omitBy, trimStart } from 'lodash-es';
+import { trimStart } from 'lodash-es';
 import type stream from 'node:stream';
 import { match } from 'ts-pattern';
 import z from 'zod';
@@ -14,7 +13,7 @@ import { DrizzleDBAccess } from '../db/schema/index.ts';
 import { globalOptions } from '../globals.ts';
 import { KEYS } from '../types/inject.ts';
 import { RouterPluginAsyncCallback } from '../types/serverType.js';
-import { getBooleanEnvVar, TUNARR_ENV_VARS } from '../util/env.ts';
+import { extractAxiosHeaders } from '../util/axios.ts';
 
 @injectable()
 export class CreditsApiController {
@@ -178,25 +177,16 @@ export class CreditsApiController {
 
           const fullUrl = url.toString();
 
-          if (getBooleanEnvVar(TUNARR_ENV_VARS.PROXY_ARTWORK_ENV_VAR, false)) {
+          if (req.serverCtx.featureFlagService.get('proxyArtwork')) {
             try {
               const proxyRes = await axios.request<stream.Readable>({
                 url: fullUrl,
                 responseType: 'stream',
               });
 
-              let headers: Partial<Record<HttpHeader, string | string[]>>;
-              if (proxyRes.headers instanceof AxiosHeaders) {
-                headers = {
-                  ...proxyRes.headers
-                };
-              } else {
-                headers = { ...omitBy(proxyRes.headers, isNull) };
-              }
-
               return res
                 .status(200)
-                .headers(headers)
+                .headers(extractAxiosHeaders(proxyRes.headers))
                 .send(proxyRes.data);
             } catch (e) {
               if (isAxiosError(e) && e.response?.status === 404) {

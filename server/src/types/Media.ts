@@ -171,6 +171,7 @@ export type MediaSourceMusicTrack<
 > = TrackT & HasMediaSourceInfo;
 
 export type MediaSourceOtherVideo = OtherVideo & HasMediaSourceInfo;
+export type MediaSourceMusicVideo = MusicVideo & HasMediaSourceInfo;
 
 type PlexMixin = HasMediaSourceInfo & {
   sourceType: typeof MediaSourceType.Plex;
@@ -231,6 +232,13 @@ export type JellyfinItem =
   | JellyfinMusicVideo
   | JellyfinOtherVideo
   | Folder;
+
+export type TerminalJellyfinItem =
+  | JellyfinMovie
+  | JellyfinEpisode
+  | JellyfinMusicTrack
+  | JellyfinMusicVideo
+  | JellyfinOtherVideo;
 
 export type EmbyMovie = Movie & EmbyMixin;
 export type EmbyShow = Show & EmbyMixin;

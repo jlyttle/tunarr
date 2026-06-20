@@ -28,7 +28,7 @@ Tunarr's search feature different typed fields, such as `string`, `number`, and 
 !!! note
     Only **double-quotes** are supported for quoted strings.
 
-## Number & Date
+## Numbers
 
 | Operator | Description | Example
 |---|---|---|
@@ -36,12 +36,47 @@ Tunarr's search feature different typed fields, such as `string`, `number`, and 
 | `<` | Less Than | `minutes < 30` |
 | `<=` | Less Than or Equal To | `minutes <= 22` |
 | `>` | Greater Than | `minutes > 60` |
-| `<=` | Greater Than or Equal To | `minutes >= 60` |
+| `>=` | Greater Than or Equal To | `minutes >= 60` |
 | `!=` | Not Equals | `video_height != 2160` |
 | `between` | Range query (`[]` used for inclusive and `()` for exclusive ranges) | `minutes between [10, 30]` |
 
+## Dates
+
+Date fields support both absolute and relative date expressions.
+
 !!! info
     Date fields accept only 2 formats: `YYYY-MM-DD` or `YYYYMMDD` and can optionally be wrapped in double-quotes.
+
+### Absolute Dates
+
+| Operator | Description | Example
+|---|---|---|
+| `:` or `=` | Equals | `release_date = 1990-12-05`|
+| `<` | Before | `release_date < 2020-01-01` |
+| `<=` | On or Before | `release_date <= 2020-01-01` |
+| `>` | After | `release_date > 2000-01-01` |
+| `>=` | On or After | `added_date >= 2024-06-01` |
+| `!=` | Not Equals | `release_date != 2000-01-01` |
+| `between` | Date range | `release_date between [2000-01-01, 2010-12-31]` |
+
+### Relative Dates
+
+Relative date expressions let you search based on how recently content was released or added, without specifying exact dates.
+
+| Operator | Description | Example
+|---|---|---|
+| `inthelast` | Within the given time period | `release_date inthelast 2 weeks` |
+| `notinthelast` | Outside the given time period | `added_date notinthelast 1 year` |
+
+Relative dates take a number and a time unit: **day(s)**, **week(s)**, **month(s)**, or **year(s)**.
+
+```
+release_date inthelast 30 days
+added_date inthelast 6 months
+release_date notinthelast 1 year
+```
+
+These expressions are evaluated at query time, so "inthelast 2 weeks" always means the most recent two weeks from the current date.
 
 ## Compound Queries
 
@@ -78,6 +113,7 @@ Fields available for search:
 | `subtitle_language` | `string` | Subtitle languages (ISO 639-2 codes - see [Wikipedia page](https://en.wikipedia.org/wiki/List_of_ISO_639-2_codes)) | `eng` | 
 | `release_year` | `number` | Program release year | `1990` |
 | `release_date` | `date` | Program's original release date | `1990-12-05` (`YYYY-MM-DD` or `YYYYMMDD`) |
+| `added_date` | `date` | When the program was added to Tunarr | `2024-06-01` |
 | `show_title` | `string` | Title of the show a program belongs to (only applicable to episodes) | 30 Rock |
 | `show_genre` | `string` | Genre of the show a program belongs to (only applicable to episodes) | comedy |
 | `show_tags` | `string` | Tag on the show the program belongs to (only applicable to episodes) | - |

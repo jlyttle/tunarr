@@ -1,15 +1,23 @@
 import { ChannelDB } from '@/db/ChannelDB.js';
 import { ProgramDB } from '@/db/ProgramDB.js';
 import { ProgramConverter } from '@/db/converters/ProgramConverter.js';
-import { Lineup, LineupItem } from '@/db/derived_types/Lineup.js';
+import {
+  isContentItem,
+  isOfflineItem,
+  isRedirectItem,
+  Lineup,
+  LineupItem,
+} from '@/db/derived_types/Lineup.js';
 import { OpenDateTimeRange } from '@/types/OpenDateTimeRange.js';
 import { KEYS } from '@/types/inject.js';
 import { Maybe } from '@/types/util.js';
 import { Timer } from '@/util/Timer.js';
 import { binarySearchRange } from '@/util/binarySearch.js';
 import { devAssert } from '@/util/debug.js';
+import { InjectLogger } from '@/util/inject.js';
 import { type Logger } from '@/util/logging/LoggerFactory.js';
 import { MutexMap } from '@/util/mutexMap.js';
+import { resolveIconUrl } from '@/util/iconUtil.js';
 import { makeLocalUrl } from '@/util/serverUtil.js';
 import throttle from '@/util/throttle.js';
 import constants from '@tunarr/shared/constants';
@@ -43,9 +51,9 @@ import {
   uniq,
   uniqBy,
 } from 'lodash-es';
-import { DeepReadonly } from 'ts-essentials';
 import { match, P } from 'ts-pattern';
 import { v4 } from 'uuid';
+import { MaterializeProgramsCommand } from '../commands/MaterializeProgramsCommand.ts';
 import { ISettingsDB } from '../db/interfaces/ISettingsDB.ts';
 import { calculateStartTimeOffsets } from '../db/lineupUtil.ts';
 import { ChannelOrm } from '../db/schema/Channel.ts';
@@ -75,6 +83,7 @@ import { loggingDef } from '../util/logging/loggingDef.ts';
 import { EventService } from './EventService.ts';
 import { OnDemandChannelService } from './OnDemandChannelService.ts';
 import { XmlTvWriter } from './XmlTvWriter.ts';
+import { findMidRollAnchorIndex, isSameProgramSegment } from './tvGuideUtil.ts';
 
 export type ChannelAndPrograms = ChannelOrm & {
   programs: Pick<ProgramOrm, 'uuid'>[];
@@ -83,7 +92,7 @@ export type ChannelAndPrograms = ChannelOrm & {
 // LineupItem + optional index + startTime
 type GuideItem = {
   // The underlying lineup item
-  lineupItem: DeepReadonly<LineupItem>;
+  lineupItem: LineupItem;
   // Index in the channel lineup sequence
   index?: number;
   // Start time of the program in this guide generation
@@ -139,10 +148,11 @@ export class TVGuideService {
   // usage for no benefit. They are not used outside of guide
   // generation.
   private accumulateTable: Record<string, number[]> = {};
-  private channelsById: Record<string, ChannelWithLineup>;
+  private channelsById?: Record<string, ChannelWithLineup>;
+
+  @InjectLogger() declare private readonly logger: Logger;
 
   constructor(
-    @inject(KEYS.Logger) private logger: Logger,
     @inject(XmlTvWriter) xmltv: XmlTvWriter,
     @inject(EventService) eventService: EventService,
     @inject(KEYS.ChannelDB) private channelDB: ChannelDB,
@@ -152,8 +162,10 @@ export class TVGuideService {
     @inject(KEYS.Database) private db: Kysely<DB>,
     @inject(OnDemandChannelService)
     private onDemandChannelService: OnDemandChannelService,
+    @inject(MaterializeProgramsCommand)
+    private materializeProgramsCommand: MaterializeProgramsCommand,
   ) {
-    this.timer = new Timer(this.logger);
+    this.timer = new Timer();
     this.cachedGuide = {};
     this.lastUpdateTime = {};
     this.lastEndTime = {};
@@ -503,7 +515,7 @@ export class TVGuideService {
           updatedChannel.channel.duration,
           channel.duration,
         );
-        this.channelsById[channel.uuid] = updatedChannel;
+        this.channelsById![channel.uuid] = updatedChannel;
         channel = updatedChannel.channel;
         lineup = updatedChannel.lineup;
         channelProgress =
@@ -521,11 +533,11 @@ export class TVGuideService {
         );
       }
 
-      const lineupItem = lineup.items[targetIndex]!;
-
+      const anchorIndex = findMidRollAnchorIndex(lineup.items, targetIndex);
+      const lineupItem = lineup.items[anchorIndex]!;
       return {
-        index: targetIndex,
-        startTimeMs: startOfCycle + accumulate[targetIndex]!,
+        index: anchorIndex,
+        startTimeMs: startOfCycle + accumulate[anchorIndex]!,
         lineupItem,
       };
     }
@@ -620,7 +632,7 @@ export class TVGuideService {
         );
       } else {
         channelRedirectStack.push(redirectChannel);
-        const channel2 = this.channelsById[redirectChannel];
+        const channel2 = this.channelsById![redirectChannel];
         // TODO: Just update the lineup file directly at this point
         if (isUndefined(channel2)) {
           this.logger.error(
@@ -775,7 +787,23 @@ export class TVGuideService {
         });
       } else {
         melded = 0;
-        programs.push(program);
+        const lastProgram =
+          programs.length > 0 ? programs[programs.length - 1] : undefined;
+        if (
+          lastProgram &&
+          isSameProgramSegment(lastProgram.lineupItem, currentProgram)
+        ) {
+          programs[programs.length - 1] = {
+            ...lastProgram,
+            lineupItem: {
+              ...lastProgram.lineupItem,
+              durationMs:
+                lastProgram.lineupItem.durationMs + currentProgram.durationMs,
+            },
+          };
+        } else {
+          programs.push(program);
+        }
       }
     };
 
@@ -947,7 +975,7 @@ export class TVGuideService {
   ): Promise<ChannelPrograms> {
     devAssert(!isEmpty(this.accumulateTable));
     const currentUpdateTimeMs = this.currentUpdateTime[channelId]!;
-    const channelToUpdate = this.channelsById[channelId]!;
+    const channelToUpdate = this.channelsById![channelId]!;
     return this.getChannelPrograms(
       currentUpdateTimeMs,
       this.currentEndTime[channelToUpdate.channel.uuid]!,
@@ -973,7 +1001,7 @@ export class TVGuideService {
                 await this.buildGuideInternal(channelId);
               if (
                 writeXmlTv &&
-                !this.channelsById[channelId]!.channel.stealth
+                !this.channelsById![channelId]!.channel.stealth
               ) {
                 await this.writeXmlTv();
               }
@@ -1034,6 +1062,7 @@ export class TVGuideService {
     channelIdFilter?: string[],
   ) {
     const allChannels = await this.channelDB.getAllChannels();
+    const channelsById = groupByUniq(allChannels, (c) => c.uuid);
     const startTime = dateRange.from ?? dayjs();
     const endTime = dateRange.to;
     const lineups = await Promise.all(
@@ -1075,31 +1104,68 @@ export class TVGuideService {
       ),
     );
 
-    const materializedPrograms = groupByUniqProp(
-      await this.programDB.getProgramsByIds(programIds),
+    const dbPrograms = await this.programDB.getProgramsByIds(programIds);
+
+    const materializedPrograms =
+      await this.materializeProgramsCommand.execute(dbPrograms);
+    const materializedProgramById = groupByUniqProp(
+      materializedPrograms,
       'uuid',
     );
 
-    return map(lineups, ({ channel, programs }) => {
+    return map(lineups, ({ channel, programs: guideItems }) => {
+      const programs = guideItems.map((guideItem) => {
+        const channelItem = match(guideItem.lineupItem)
+          .when(isOfflineItem, (item) =>
+            this.programConverter.offlineLineupItemToProgram(channel, item),
+          )
+          .when(isRedirectItem, (item) => {
+            // const redirectChannel = find(channelReferences, { uuid: item.channel });
+            const targetChannel = channelsById[item.channel];
+
+            if (isNil(targetChannel)) {
+              this.logger.warn(
+                'Dangling redirect channel reference. Source channel = %s, target channel = %s',
+                channel.uuid,
+                item.channel,
+              );
+              return this.programConverter.offlineLineupItemToProgram(channel, {
+                type: 'offline',
+                durationMs: item.durationMs,
+              });
+            }
+            return this.programConverter.redirectLineupItemToProgram(
+              item,
+              targetChannel,
+            );
+          })
+          .when(isContentItem, (item) => {
+            const program = materializedProgramById[item.id];
+            if (!program) {
+              this.logger.warn(
+                'Program in lineup with ID %s not found in database',
+                item.id,
+              );
+              return this.programConverter.offlineLineupItemToProgram(channel, {
+                type: 'offline',
+                durationMs: item.durationMs,
+              });
+            }
+            return this.programConverter.materializedProgramToContentProgram(
+              program,
+            );
+          })
+          .exhaustive();
+
+        return this.guideItemToProgram(channel, guideItem, channelItem);
+      });
+
       return {
         icon: channel.icon,
         name: channel.name,
         number: channel.number,
         id: channel.uuid,
-        programs: map(programs, (program) => {
-          return this.guideItemToProgram(
-            channel,
-            program,
-            this.programConverter.lineupItemToChannelProgramOrm(
-              channel,
-              program.lineupItem,
-              allChannels,
-              program.lineupItem.type === 'content'
-                ? materializedPrograms[program.lineupItem.id]
-                : undefined,
-            ),
-          );
-        }),
+        programs,
       };
     });
   }
@@ -1128,9 +1194,8 @@ export class TVGuideService {
 
     const icon = isNonEmptyString(materializedItem.icon)
       ? materializedItem.icon
-      : isNonEmptyString(channel.icon?.path)
-        ? channel.icon.path
-        : makeLocalUrl('/images/tunarr.png');
+      : (resolveIconUrl(channel.icon, makeLocalUrl('/images/tunarr.png')) ??
+        makeLocalUrl('/images/tunarr.png'));
 
     const program = match(materializedItem)
       .returnType<TvGuideProgram>()
@@ -1166,7 +1231,16 @@ export class TVGuideService {
       guideItem.isPaused &&
       (program.type === 'content' || program.type === 'flex')
     ) {
-      program.title += ' (paused)';
+      switch (program.type) {
+        case 'content':
+          program.program.title += ' (paused)';
+          break;
+        case 'flex':
+          program.title += ' (paused)';
+          break;
+        default:
+          break;
+      }
       program.isPaused = true;
     }
 
@@ -1239,10 +1313,15 @@ export class TVGuideService {
           programming,
         };
       })
-      .with({ type: 'offline' }, () => {
-        let title = isNonEmptyString(channel.guideFlexTitle)
-          ? channel.guideFlexTitle
-          : channel.name;
+      .with({ type: 'offline' }, (offlineItem) => {
+        let title: string;
+        if (offlineItem.fillerConfig?.origin === 'midroll') {
+          title = 'Commercial Break';
+        } else {
+          title = isNonEmptyString(channel.guideFlexTitle)
+            ? channel.guideFlexTitle
+            : channel.name;
+        }
         if (isPaused) {
           title += ' (paused)';
         }
@@ -1256,7 +1335,7 @@ export class TVGuideService {
         };
       })
       .with({ type: 'redirect' }, (redirect) => {
-        const backingChannel = this.channelsById[redirect.channel]!;
+        const backingChannel = this.channelsById![redirect.channel]!;
         return {
           ...baseItem,
           programming: {
@@ -1311,6 +1390,7 @@ export class TVGuideService {
       subtitlesEnabled: false,
       subtitleDeliveryMethod: 'burn',
       subtitleUnsupportedFallback: 'burn',
+      streamSelectionProfileId: null,
     };
 
     // Placeholder channel with random ID.

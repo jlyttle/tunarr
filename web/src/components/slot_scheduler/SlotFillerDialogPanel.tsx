@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro';
 import {
   Add,
   Delete,
@@ -5,6 +6,7 @@ import {
   LastPage,
   LowPriority,
   Repeat,
+  VerticalAlignCenter,
 } from '@mui/icons-material';
 import {
   Autocomplete,
@@ -12,7 +14,6 @@ import {
   Divider,
   FormControl,
   FormHelperText,
-  Grid,
   IconButton,
   InputLabel,
   MenuItem,
@@ -31,6 +32,7 @@ import { slotOrderOptions } from '../../helpers/slotSchedulerUtil.ts';
 import { useFillerLists } from '../../hooks/useFillerLists.ts';
 
 export const SlotFillerDialogPanel = () => {
+  const { t } = useLingui();
   const { control, watch } = useFormContext<BaseSlot>();
   const fillerFields = useFieldArray({ control, name: 'filler' });
   const { data: fillerLists } = useFillerLists();
@@ -96,17 +98,19 @@ export const SlotFillerDialogPanel = () => {
         disabled={isEmpty(fillerListOptions)}
         onClick={handleAddNewFillerList}
       >
-        Add filler
+        <Trans>Add filler</Trans>
       </Button>
       {fillerFields.fields.map((fillerField, idx) => (
         <>
-          <Grid
-            container
-            spacing={2}
-            key={fillerField.id}
-            sx={{ alignItems: 'center' }}
-          >
-            <Grid size={{ xs: 4 }}>
+          <Stack spacing={2}>
+            <Stack spacing={2} direction={'row'}>
+              <IconButton
+                onClick={() => fillerFields.remove(idx)}
+                disableRipple
+                sx={{ alignSelf: 'start', top: 2 }}
+              >
+                <Delete />{' '}
+              </IconButton>
               <Controller
                 control={control}
                 name={`filler.${idx}.fillerListId` as const}
@@ -121,14 +125,43 @@ export const SlotFillerDialogPanel = () => {
                     value={find(fillerLists, { id: field.value })}
                     onChange={(_, list) => field.onChange(list?.id)}
                     renderInput={(params) => (
-                      <TextField {...params} label="Filler List" />
+                      <TextField
+                        {...params}
+                        fullWidth
+                        label={t`Filler List`}
+                        helperText={' '}
+                      />
                     )}
-                    sx={{ flex: 1 }}
                   />
                 )}
               />
-            </Grid>
-            <Grid size="auto">
+              <Controller
+                control={control}
+                name={`filler.${idx}.fillerOrder`}
+                render={({ field }) => {
+                  const opts = slotOrderOptions('filler');
+                  const helperText = find(opts, {
+                    value: field.value,
+                  })?.helperText;
+                  return (
+                    <FormControl fullWidth>
+                      <InputLabel>Order</InputLabel>
+                      <Select label="Order" {...field}>
+                        {map(opts, ({ description, value }) => (
+                          <MenuItem key={value} value={value}>
+                            {description}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {helperText && (
+                        <FormHelperText>{helperText}</FormHelperText>
+                      )}
+                    </FormControl>
+                  );
+                }}
+              />
+            </Stack>
+            <Stack direction={'row'} sx={{ pl: 6 }}>
               <Controller
                 control={control}
                 name={`filler.${idx}.types`}
@@ -142,7 +175,7 @@ export const SlotFillerDialogPanel = () => {
                   >
                     <ToggleButton value="head">
                       <FirstPage />
-                      Head
+                      <Trans>Head</Trans>
                     </ToggleButton>
                     <ToggleButton value={'pre'}>
                       <LowPriority
@@ -152,60 +185,28 @@ export const SlotFillerDialogPanel = () => {
                           mr: 1,
                         }}
                       />{' '}
-                      Pre
+                      <Trans>Pre</Trans>
+                    </ToggleButton>
+                    <ToggleButton value="mid">
+                      <VerticalAlignCenter sx={{ mr: 1 }} /> Mid
+                    </ToggleButton>
+                    <ToggleButton value="mid">
+                      <VerticalAlignCenter sx={{ mr: 1 }} /> Mid
                     </ToggleButton>
                     <ToggleButton value="post">
-                      <LowPriority sx={{ mr: 1 }} /> Post
+                      <LowPriority sx={{ mr: 1 }} /> <Trans>Post</Trans>
                     </ToggleButton>
                     <ToggleButton value="tail">
-                      <LastPage sx={{ mr: 1 }} /> Tail
+                      <LastPage sx={{ mr: 1 }} /> <Trans>Tail</Trans>
                     </ToggleButton>
                     <ToggleButton value="fallback">
-                      <Repeat /> Fallback
+                      <Repeat /> <Trans>Fallback</Trans>
                     </ToggleButton>
                   </ToggleButtonGroup>
                 )}
               />
-            </Grid>
-            <Grid size="auto" offset="auto" justifyContent="flex-end">
-              <IconButton
-                onClick={() => fillerFields.remove(idx)}
-                disableRipple
-              >
-                <Delete />{' '}
-              </IconButton>
-            </Grid>
-            {/* <Box sx={{ flexBasis: '100%', height: 0, p: 0, m: 0 }}></Box> */}
-            <Grid size={{ xs: 6 }}>
-              <Stack direction="row" flex={1} sx={{ ml: 3 }}>
-                <Controller
-                  control={control}
-                  name={`filler.${idx}.fillerOrder`}
-                  render={({ field }) => {
-                    const opts = slotOrderOptions('filler');
-                    const helperText = find(opts, {
-                      value: field.value,
-                    })?.helperText;
-                    return (
-                      <FormControl fullWidth>
-                        <InputLabel>Order</InputLabel>
-                        <Select label="Order" {...field}>
-                          {map(opts, ({ description, value }) => (
-                            <MenuItem key={value} value={value}>
-                              {description}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {helperText && (
-                          <FormHelperText>{helperText}</FormHelperText>
-                        )}
-                      </FormControl>
-                    );
-                  }}
-                />
-              </Stack>
-            </Grid>
-          </Grid>
+            </Stack>
+          </Stack>
           {idx < fillerFields.fields.length - 1 && <Divider />}
         </>
       ))}

@@ -11,10 +11,12 @@ import { getTunarrVersion } from '@/util/version.js';
 import { seq } from '@tunarr/shared/util';
 import type {
   Actor,
+  Collection,
   Director,
   Folder,
   Library,
   MediaArtwork,
+  ProgramOrFolder,
   Writer,
 } from '@tunarr/types';
 import type { MediaSourceStatus } from '@tunarr/types/api';
@@ -55,10 +57,11 @@ import { match, P } from 'ts-pattern';
 import { v4 } from 'uuid';
 import { z } from 'zod/v4';
 import type { ArtworkType } from '../../db/schema/Artwork.ts';
+import { MediaSourceType } from '../../db/schema/base.ts';
 import type { ProgramType } from '../../db/schema/Program.ts';
 import type { ProgramGroupingType } from '../../db/schema/ProgramGrouping.ts';
 import type { Canonicalizer } from '../../services/Canonicalizer.ts';
-import { extractIsAnamorphic } from '../../stream/jellyfin/JellyfinStreamDetails.ts';
+import { extractIsAnamorphic } from '../../stream/util.ts';
 import {
   isEmbyType,
   type EmbyEpisode as ApiEmbyEpisode,
@@ -616,6 +619,80 @@ export class EmbyApiClient extends MediaSourceApiClient<EmbyItemTypes> {
     );
   }
 
+  getOtherVideoLibraryContents(
+    libraryId: string,
+    pageSize?: number,
+  ): AsyncIterable<EmbyOtherVideo> {
+    return this.getChildContents(
+      'Video',
+      (series) => this.embyApiOtherVideoInjection(series),
+      (page) =>
+        this.getRawItems(
+          null,
+          libraryId,
+          ['Video'],
+          [
+            'Path',
+            'Genres',
+            'Tags',
+            'DateCreated',
+            'Etag',
+            'Overview',
+            'Taglines',
+            'Studios',
+            'People',
+            'ProductionYear',
+            'PremiereDate',
+            'MediaSources',
+            'OfficialRating',
+            'ProviderIds',
+          ],
+          {
+            offset: page * (pageSize ?? 50),
+            limit: pageSize ?? 50,
+          },
+        ),
+      pageSize,
+    );
+  }
+
+  getMusicVideoLibraryContents(
+    libraryId: string,
+    pageSize?: number,
+  ): AsyncIterable<EmbyMusicVideo> {
+    return this.getChildContents(
+      'MusicVideo',
+      (series) => this.embyApiMusicVideoInjection(series),
+      (page) =>
+        this.getRawItems(
+          null,
+          libraryId,
+          ['MusicVideo'],
+          [
+            'Path',
+            'Genres',
+            'Tags',
+            'DateCreated',
+            'Etag',
+            'Overview',
+            'Taglines',
+            'Studios',
+            'People',
+            'ProductionYear',
+            'PremiereDate',
+            'MediaSources',
+            'OfficialRating',
+            'ProviderIds',
+          ],
+          {
+            offset: page * (pageSize ?? 50),
+            limit: pageSize ?? 50,
+          },
+        ),
+      pageSize,
+    );
+  }
+
   async getMovie(externalKey: string): Promise<QueryResult<EmbyMovie>> {
     return this.getItemOfType(externalKey, 'Movie', (movie) =>
       this.embyApiMovieInjection(movie),
@@ -782,6 +859,93 @@ export class EmbyApiClient extends MediaSourceApiClient<EmbyItemTypes> {
     );
   }
 
+  async *getAllLibraryCollections(
+    libraryId: string,
+    pageSize: number = 50,
+  ): AsyncGenerator<Collection> {
+    const library = this.options.mediaSource.libraries.find(
+      (lib) => lib.externalKey === libraryId,
+    );
+    if (!library) {
+      throw new Error(
+        `Could not find matching library in DB for key = ${libraryId}`,
+      );
+    }
+
+    let page = 0;
+    let totalCount = Number.MAX_SAFE_INTEGER;
+
+    while (page * pageSize < totalCount) {
+      const result = await this.getRawItems(
+        null,
+        libraryId,
+        ['BoxSet'],
+        [],
+        { offset: page * pageSize, limit: pageSize },
+      );
+
+      if (result.isFailure()) {
+        throw result.error;
+      }
+
+      const data = result.get();
+      totalCount = data.TotalRecordCount;
+
+      for (const item of data.Items ?? []) {
+        if (item.Id && item.Name) {
+          yield {
+            type: 'collection',
+            externalId: item.Id,
+            title: item.Name,
+            sourceType: MediaSourceType.Emby,
+            childCount: item.ChildCount ?? undefined,
+            childType: undefined,
+            uuid: v4(),
+            mediaSourceId: this.options.mediaSource.uuid,
+            libraryId: library.uuid,
+          } satisfies Collection;
+        }
+      }
+
+      page++;
+    }
+  }
+
+  async *getCollectionItems(
+    collectionId: string,
+    pageSize: number = 50,
+  ): AsyncGenerator<ProgramOrFolder> {
+    let page = 0;
+    let totalCount = Number.MAX_SAFE_INTEGER;
+
+    while (page * pageSize < totalCount) {
+      const result = await this.getRawItems(
+        null,
+        collectionId,
+        null,
+        [],
+        { offset: page * pageSize, limit: pageSize },
+        { recursive: false },
+      );
+
+      if (result.isFailure()) {
+        throw result.error;
+      }
+
+      const data = result.get();
+      totalCount = data.TotalRecordCount;
+
+      for (const item of data.Items ?? []) {
+        const converted = this.embyApiItemInjection(item);
+        if (converted) {
+          yield converted as ProgramOrFolder;
+        }
+      }
+
+      page++;
+    }
+  }
+
   getMusicArtist(key: string): Promise<QueryResult<EmbyMusicArtist>> {
     return this.getItemOfType(key, 'MusicArtist', (track) =>
       this.embyApiMusicArtistInjection(track),
@@ -797,6 +961,20 @@ export class EmbyApiClient extends MediaSourceApiClient<EmbyItemTypes> {
   async getMusicTrack(key: string): Promise<QueryResult<EmbyMusicTrack>> {
     return this.getItemOfType(key, 'Audio', (track) =>
       this.embyApiMusicTrackInjection(track),
+    );
+  }
+
+  async getVideo(externalKey: string): Promise<QueryResult<EmbyOtherVideo>> {
+    return this.getItemOfType(externalKey, 'Video', (video) =>
+      this.embyApiOtherVideoInjection(video),
+    );
+  }
+
+  async getMusicVideo(
+    externalKey: string,
+  ): Promise<QueryResult<EmbyMusicVideo>> {
+    return this.getItemOfType(externalKey, 'MusicVideo', (video) =>
+      this.embyApiMusicVideoInjection(video),
     );
   }
 

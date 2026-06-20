@@ -1,4 +1,9 @@
-import type { ContentProgram, CustomProgram, FlexProgram, RedirectProgram } from '@tunarr/types';
+import type {
+  ContentProgram,
+  CustomProgram,
+  FlexProgram,
+  RedirectProgram,
+} from '@tunarr/types';
 import { describe, expect, test } from 'vitest';
 import type { UIChannelProgram } from '../../types/index';
 import { removeDuplicatePrograms } from './useRemoveDuplicates';
@@ -9,11 +14,9 @@ const createContentProgram = (
 ): UIChannelProgram<ContentProgram> => ({
   type: 'content',
   id,
-  persisted: true,
-  subtype: 'movie',
-  title: `Movie ${id}`,
+  uniqueId: id,
   duration: 3600000,
-  externalIds: [],
+  program: { type: 'movie', identifiers: [] } as ContentProgram['program'],
   uiIndex: 0,
   originalIndex: 0,
   ...overrides,
@@ -22,16 +25,16 @@ const createContentProgram = (
 const createFlexProgram = (): UIChannelProgram<FlexProgram> => ({
   type: 'flex',
   duration: 60000,
-  persisted: false,
   uiIndex: 0,
   originalIndex: 0,
 });
 
-const createRedirectProgram = (channel: string): UIChannelProgram<RedirectProgram> => ({
+const createRedirectProgram = (
+  channel: string,
+): UIChannelProgram<RedirectProgram> => ({
   type: 'redirect',
   channel,
   duration: 3600000,
-  persisted: false,
   uiIndex: 0,
   originalIndex: 0,
 });
@@ -44,7 +47,6 @@ const createCustomProgram = (
   customShowId,
   id,
   duration: 3600000,
-  persisted: false,
   uiIndex: 0,
   originalIndex: 0,
 });
@@ -83,32 +85,32 @@ describe('removeDuplicatePrograms', () => {
     ]);
   });
 
-  test('deduplicates by external ID (Plex/Jellyfin)', () => {
+  test('does not deduplicate by external ID when internal IDs differ', () => {
     const programWithExternalId = (
       internalId: string,
       externalId: string,
-    ): UIChannelProgram<ContentProgram> =>
-      createContentProgram(internalId, {
-        persisted: false,
-        externalIds: [
-          {
-            type: 'multi',
-            source: 'plex',
-            sourceId: 'server-1',
-            id: externalId,
-          },
-        ],
-      });
+    ): UIChannelProgram<ContentProgram> => ({
+      type: 'content',
+      id: internalId,
+      uniqueId: internalId,
+      duration: 3600000,
+      program: {
+        type: 'movie',
+        identifiers: [{ type: 'plex', sourceId: 'server-1', id: externalId }],
+      } as ContentProgram['program'],
+      uiIndex: 0,
+      originalIndex: 0,
+    });
 
     const programs: UIChannelProgram[] = [
       programWithExternalId('a', 'plex-123'),
       programWithExternalId('b', 'plex-456'),
-      programWithExternalId('c', 'plex-123'), // Duplicate external ID
+      programWithExternalId('c', 'plex-123'), // Same external ID, different internal ID
     ];
 
     const result = removeDuplicatePrograms(programs);
 
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(3);
   });
 
   test('keeps first occurrence of redirect programs (by channel)', () => {
@@ -158,7 +160,11 @@ describe('removeDuplicatePrograms', () => {
 
     // content-1 (1), channel-1 redirect (1), custom show-1/custom-1 (1)
     expect(result).toHaveLength(3);
-    expect(result.map((p) => p.type)).toEqual(['content', 'redirect', 'custom']);
+    expect(result.map((p) => p.type)).toEqual([
+      'content',
+      'redirect',
+      'custom',
+    ]);
   });
 
   test('handles empty array', () => {
@@ -176,6 +182,10 @@ describe('removeDuplicatePrograms', () => {
 
     const result = removeDuplicatePrograms(programs);
 
-    expect(result.map((p) => (p as ContentProgram).id)).toEqual(['3', '1', '2']);
+    expect(result.map((p) => (p as ContentProgram).id)).toEqual([
+      '3',
+      '1',
+      '2',
+    ]);
   });
 });

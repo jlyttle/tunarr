@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro';
 import { Delete } from '@mui/icons-material';
 import {
   FormControl,
@@ -15,7 +16,7 @@ import type {
   StringOperators,
 } from '@tunarr/types/schemas';
 import { OperatorsByType } from '@tunarr/types/schemas';
-import { find, isArray } from 'lodash-es';
+import { find, isArray, isNumber } from 'lodash-es';
 import { useCallback, useMemo } from 'react';
 import type { ControllerRenderProps } from 'react-hook-form';
 import { Controller, useFormContext } from 'react-hook-form';
@@ -51,6 +52,7 @@ export function SearchValueNode(props: ValueNodeProps) {
     only,
     remove,
   } = props;
+  const { t } = useLingui();
   const { control, watch, setValue } = useFormContext<SearchForm>();
   const [selfValue, searchField] = watch([formKey, `${formKey}.fieldSpec`]) as [
     SearchFilterValueNode,
@@ -124,7 +126,35 @@ export function SearchValueNode(props: ValueNodeProps) {
 
   const handleOpChange = useCallback(
     (newOp: string) => {
-      if (
+      const isRelativeOp = newOp === 'inthelast' || newOp === 'notinthelast';
+      const wasRelativeOp =
+        selfValue.fieldSpec.type === 'date' &&
+        (selfValue.fieldSpec.op === 'inthelast' ||
+          selfValue.fieldSpec.op === 'notinthelast');
+
+      if (isRelativeOp && selfValue.fieldSpec.type === 'date') {
+        // Switching to a relative date operator: set default relative metadata
+        const relativeDate = {
+          op: newOp,
+          amount: 1,
+          unit: 'week',
+        } as const;
+        const resolved = +dayjs().subtract(1, 'week');
+        setValue(getFieldName('fieldSpec.value'), resolved);
+        setValue(getFieldName('fieldSpec.relativeDate'), relativeDate);
+      } else if (wasRelativeOp && !isRelativeOp) {
+        // Switching from relative to absolute: clear relativeDate metadata
+        setValue(getFieldName('fieldSpec.relativeDate'), undefined);
+        if (newOp === 'to') {
+          const now = +dayjs();
+          setValue(getFieldName('fieldSpec.value'), [now, now] as [
+            number,
+            number,
+          ]);
+        } else if (!isNumber(selfValue.fieldSpec.value)) {
+          setValue(getFieldName('fieldSpec.value'), +dayjs());
+        }
+      } else if (
         selfValue.fieldSpec.type === 'numeric' ||
         selfValue.fieldSpec.type === 'date'
       ) {
@@ -154,7 +184,7 @@ export function SearchValueNode(props: ValueNodeProps) {
         newOp as StringOperators | NumericOperators,
       );
     },
-    [getFieldName, selfValue.fieldSpec, setValue],
+    [getFieldName, selfValue.fieldSpec, setValue, dayjs],
   );
 
   const renderValueInput = useMemo(() => {
@@ -212,7 +242,7 @@ export function SearchValueNode(props: ValueNodeProps) {
 
       return (
         <Select
-          label="Operator"
+          label={t`Operator`}
           {...field}
           value={field.value.op}
           onChange={(ev) => handleOpChange(ev.target.value)}
@@ -235,9 +265,9 @@ export function SearchValueNode(props: ValueNodeProps) {
         name={getFieldName('fieldSpec')}
         render={({ field }) => (
           <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Field</InputLabel>
+            <InputLabel>{t`Field`}</InputLabel>
             <Select
-              label="Field"
+              label={t`Field`}
               MenuProps={{ sx: { maxHeight: 375 } }}
               value={field.value.name ?? field.value.key}
               onChange={(e) => handleFieldChange(e.target.value)}
@@ -264,7 +294,7 @@ export function SearchValueNode(props: ValueNodeProps) {
         )}
       />
       <FormControl size="small" sx={{ minWidth: 200 }}>
-        <InputLabel>Operator</InputLabel>
+        <InputLabel>{t`Operator`}</InputLabel>
         <Controller
           control={control}
           name={getFieldName('fieldSpec')}

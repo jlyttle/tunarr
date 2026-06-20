@@ -1,6 +1,8 @@
-import type { Channel } from '@/db/schema/Channel.js';
+import type { ChannelOrm } from '@/db/schema/Channel.js';
 import type { BaseHlsSession } from '@/stream/hls/BaseHlsSession.js';
 import { HlsPlaylistCreator } from '@/stream/hls/HlsPlaylistCreator.js';
+import type { HlsSession } from '@/stream/hls/HlsSession.js';
+import { VideoStream } from '@/stream/VideoStream.js';
 import type { Result } from '@/types/result.js';
 import { TruthyQueryParam } from '@/types/schemas.js';
 import type { RouterPluginAsyncCallback } from '@/types/serverType.js';
@@ -20,6 +22,19 @@ import { format } from 'node:util';
 import { match } from 'ts-pattern';
 import { v4 } from 'uuid';
 import z from 'zod/v4';
+import { container } from '../container.ts';
+
+// Inject X-TIMESTAMP-MAP after the WEBVTT header line so AVPlayer/IINA
+// can sync subtitle cue timestamps to the video MPEG-TS PTS clock.
+// The constant MPEGTS:0 is correct because HlsSubtitleOutputFormat applies
+// the same -output_ts_offset as the video output, keeping cue timestamps
+// aligned with the 90kHz PTS timeline starting at 0.
+export function injectTimestampMap(vttContent: string): string {
+  return vttContent.replace(
+    /^(WEBVTT[^\n]*)(\r?\n)/,
+    '$1$2X-TIMESTAMP-MAP=MPEGTS:0,LOCAL:00:00:00.000\n',
+  );
+}
 
 export const streamApi: RouterPluginAsyncCallback = async (fastify) => {
   const logger = LoggerFactory.child({
@@ -169,7 +184,7 @@ export const streamApi: RouterPluginAsyncCallback = async (fastify) => {
       // in fastify on the send).
       // TODO: We could probably record periodic heartbeats by listening
       // to the data event on this piped stream. Just debounce them!
-      const piped = session.rawStream.pipe(
+      const piped = session.rawStream!.pipe(
         new PassThrough({ allowHalfOpen: false }),
       );
 
@@ -283,7 +298,39 @@ export const streamApi: RouterPluginAsyncCallback = async (fastify) => {
       }
 
       session.recordHeartbeat(req.ip);
+
+      if (
+        req.params.file === 'stream.m3u8' &&
+        (req.params.sessionType === 'hls' ||
+          req.params.sessionType === 'hls_direct_v2')
+      ) {
+        const playlistResult = await (session as HlsSession).trimPlaylist();
+        if (playlistResult.isFailure()) {
+          logger.error(playlistResult.error);
+          return res.status(500).send('Error retrieving variant playlist');
+        }
+        const playlist = playlistResult.get();
+        if (!playlist) {
+          return res.status(404).send('Variant playlist not found');
+        }
+        return res
+          .type('application/vnd.apple.mpegurl')
+          .send(playlist.playlist);
+      }
+
       session.onSegmentRequested(req.ip, req.params.file);
+
+      if (req.params.file.endsWith('.vtt')) {
+        const filePath = join(session.workingDirectory, req.params.file);
+        const content = await fs.readFile(filePath, 'utf-8');
+        return res.type('text/vtt').send(injectTimestampMap(content));
+      }
+
+      if (req.params.file.endsWith('.m3u8')) {
+        const filePath = join(session.workingDirectory, req.params.file);
+        const content = await fs.readFile(filePath);
+        return res.type('application/vnd.apple.mpegurl').send(content);
+      }
 
       return res.sendFile(req.params.file, session.workingDirectory);
     },
@@ -304,7 +351,6 @@ export const streamApi: RouterPluginAsyncCallback = async (fastify) => {
       }),
       querystring: z.object({
         mode: ChannelStreamModeSchema.optional(),
-        media: z.literal('1').optional(),
       }),
     },
     handler: async (req, res) => {
@@ -313,7 +359,7 @@ export const streamApi: RouterPluginAsyncCallback = async (fastify) => {
         userAgent: req.headers['user-agent'],
       };
 
-      let channel: Maybe<Channel>;
+      let channel: Maybe<ChannelOrm>;
       let channelId: string;
       if (isNumber(req.params.id)) {
         channel = await req.serverCtx.channelDB.getChannel(req.params.id);
@@ -345,47 +391,31 @@ export const streamApi: RouterPluginAsyncCallback = async (fastify) => {
             .then((result) =>
               result.mapAsync(async (session) => {
                 session.recordHeartbeat(req.ip);
-                const playlistResult = await session.trimPlaylist();
+                const masterResult = await session.getMasterPlaylist();
 
-                if (playlistResult.isFailure()) {
-                  logger.error(playlistResult.error);
+                if (masterResult.isFailure()) {
+                  logger.error(masterResult.error);
                   throw new Error(
-                    'Error retrieving HLS playlist for playback',
-                    { cause: playlistResult.error },
+                    'Error retrieving HLS master playlist for playback',
+                    { cause: masterResult.error },
                   );
                 }
 
-                const playlist = playlistResult.get();
+                const masterPlaylist = masterResult.get();
 
-                if (!playlist) {
+                if (!masterPlaylist) {
                   const fmtError = format(
-                    'No playlist found for channel %s at path %s. This could mean the stream is not ready.',
+                    'No master playlist found for channel %s at path %s. This could mean the stream is not ready.',
                     channelId,
-                    session.m3uPlaylistPath,
+                    session.masterPlaylistPath,
                   );
                   logger.error(fmtError);
                   throw new Error(fmtError);
                 }
 
-                if (
-                  req.query.media !== '1' &&
-                  session.hasSubtitleRenditions
-                ) {
-                  const mediaParams = new URLSearchParams();
-                  mediaParams.set('mode', mode);
-                  mediaParams.set('media', '1');
-                  return res
-                    .type('application/vnd.apple.mpegurl')
-                    .send(
-                      session.createMasterPlaylist(
-                        `/stream/channels/${channelId}.m3u8?${mediaParams.toString()}`,
-                      ),
-                    );
-                }
-
                 return res
                   .type('application/vnd.apple.mpegurl')
-                  .send(playlist.playlist);
+                  .send(masterPlaylist);
               }),
             );
 
@@ -432,4 +462,79 @@ export const streamApi: RouterPluginAsyncCallback = async (fastify) => {
       });
     },
   });
+
+  /**
+   * Returns a finite MPEG-TS stream for a single lineup item, identified by
+   * the epoch ms timestamp when that item started playing (`t`).
+   * Designed for native clients (tvOS, Android TV) using AVQueuePlayer /
+   * ConcatenatingMediaSource for gapless, item-by-item playback.
+   */
+  fastify.get(
+    '/stream/channels/:id/item-stream.ts',
+    {
+      schema: {
+        tags: ['Native'],
+        description:
+          'Returns a finite MPEG-TS stream for the single lineup item that started at time t (epoch ms). Stream closes cleanly at EOF when the item ends.',
+        params: z.object({
+          id: z.uuid(),
+        }),
+        querystring: z.object({
+          t: z.coerce.number().int(),
+        }),
+      },
+    },
+    async (req, res) => {
+      const channel = await req.serverCtx.channelDB.getChannel(req.params.id);
+      if (isNil(channel)) {
+        return res.status(404).send('Channel not found.');
+      }
+
+      const videoStream = container.get(VideoStream);
+      const itemStartedAtMs = req.query.t;
+
+      // Use the current wall-clock time so the stream begins at the live
+      // position (current seek offset) rather than replaying from the item's
+      // beginning. `itemStartedAtMs` identifies which item the client expects;
+      // if a different item is now playing, startStream will stream that one
+      // and the client will detect the mismatch when the queue expires.
+      const now = Date.now();
+
+      const rawStreamResult = await videoStream.startStream(
+        {
+          channel: req.params.id,
+          audioOnly: false,
+          streamMode: 'mpegts',
+          encoding: { mode: 'remux' },
+        },
+        now,
+        false,
+      );
+
+      if (rawStreamResult.type === 'error') {
+        logger.error(
+          rawStreamResult.error ?? null,
+          'Error starting item stream for channel %s at t=%d: %s',
+          req.params.id,
+          itemStartedAtMs,
+          rawStreamResult.message,
+        );
+        return res
+          .status(rawStreamResult.httpStatus)
+          .send(rawStreamResult.message);
+      }
+
+      req.raw.on('close', () => {
+        logger.debug(
+          { channel: req.params.id, t: itemStartedAtMs },
+          'Native item stream client disconnected, stopping stream.',
+        );
+        rawStreamResult.stop();
+      });
+
+      return res
+        .header('Content-Type', 'video/mp2t')
+        .send(rawStreamResult.stream);
+    },
+  );
 };

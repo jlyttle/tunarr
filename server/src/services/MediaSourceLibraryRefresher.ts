@@ -13,16 +13,17 @@ import { MediaSourceId } from '../db/schema/base.js';
 import type { MediaSourceWithRelations } from '../db/schema/derivedTypes.js';
 import type { MediaLibraryType } from '../db/schema/MediaSource.ts';
 import { MediaSourceApiFactory } from '../external/MediaSourceApiFactory.js';
-import { KEYS } from '../types/inject.ts';
+
 import { Maybe } from '../types/util.ts';
 import { groupByUniq, isDefined } from '../util/index.ts';
+import { InjectLogger } from '../util/inject.ts';
 import { Logger } from '../util/logging/LoggerFactory.ts';
-import { booleanToNumber } from '../util/sqliteUtil.ts';
 
 @injectable()
 export class MediaSourceLibraryRefresher {
+  @InjectLogger() private declare readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.Logger) private logger: Logger,
     @inject(MediaSourceDB) private mediaSourceDB: MediaSourceDB,
     @inject(MediaSourceApiFactory)
     private mediaSourceApiFactory: MediaSourceApiFactory,
@@ -65,6 +66,7 @@ export class MediaSourceLibraryRefresher {
         await this.handleEmby(source);
         break;
       case 'local':
+        break;
     }
 
     return;
@@ -116,7 +118,7 @@ export class MediaSourceLibraryRefresher {
         // Checked above
         mediaType: this.plexLibraryTypeToTunarrType(plexLibrary)!,
         uuid: v4(),
-        enabled: booleanToNumber(false),
+        enabled: false,
         name: plexLibrary.title,
       } satisfies NewMediaSourceLibrary);
     }
@@ -146,7 +148,7 @@ export class MediaSourceLibraryRefresher {
       mediaSource.uuid,
     );
 
-    await this.mediaSourceDB.updateLibraries({
+    this.mediaSourceDB.updateLibraries({
       addedLibraries: librariesToAdd,
       deletedLibraries: librariesToRemove.map(({ uuid }) => uuid),
       updatedLibraries: librariesToUpdate,
@@ -224,7 +226,7 @@ export class MediaSourceLibraryRefresher {
           jellyfinLibrary.CollectionType,
         )!,
         uuid: v4(),
-        enabled: booleanToNumber(false),
+        enabled: false,
         name: jellyfinLibrary.Name ?? '',
       } satisfies NewMediaSourceLibrary);
     }
@@ -252,7 +254,7 @@ export class MediaSourceLibraryRefresher {
       mediaSource.uuid,
     );
 
-    await this.mediaSourceDB.updateLibraries({
+    this.mediaSourceDB.updateLibraries({
       addedLibraries: librariesToAdd,
       deletedLibraries: librariesToRemove.map(({ uuid }) => uuid),
       updatedLibraries: [],
@@ -314,7 +316,7 @@ export class MediaSourceLibraryRefresher {
           embyLibrary.CollectionType,
         )!,
         uuid: v4(),
-        enabled: booleanToNumber(false),
+        enabled: false,
         name: embyLibrary.Name ?? '',
       } satisfies NewMediaSourceLibrary);
     }
@@ -330,7 +332,7 @@ export class MediaSourceLibraryRefresher {
       mediaSource.uuid,
     );
 
-    await this.mediaSourceDB.updateLibraries({
+    this.mediaSourceDB.updateLibraries({
       addedLibraries: librariesToAdd,
       deletedLibraries: librariesToRemove.map(({ uuid }) => uuid),
       updatedLibraries: [],

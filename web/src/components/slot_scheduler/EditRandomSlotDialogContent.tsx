@@ -6,6 +6,7 @@ import type {
 } from '@/helpers/slotSchedulerUtil';
 import { useAdjustRandomSlotWeights } from '@/hooks/slot_scheduler/useAdjustRandomSlotWeights.ts';
 import { useRandomSlotFormContext } from '@/hooks/useRandomSlotFormContext.ts';
+import { Trans, useLingui } from '@lingui/react/macro';
 import {
   Alert,
   Box,
@@ -25,16 +26,23 @@ import type { RandomSlot } from '@tunarr/types/api';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { find, isNil, map } from 'lodash-es';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, FormProvider, useForm } from 'react-hook-form';
 import type { StrictOmit } from 'ts-essentials';
 import { match } from 'ts-pattern';
+import { v4 } from 'uuid';
 import { useSlotProgramOptionsContext } from '../../hooks/programming_controls/useSlotProgramOptions.ts';
 import { useFillerLists } from '../../hooks/useFillerLists.ts';
+import type { LinkMode } from '../../model/CommonSlotModels.ts';
+import {
+  copySlotForLinking,
+  slotIsLinkable,
+} from '../../model/CommonSlotModels.ts';
 import type { SlotViewModel } from '../../model/SlotModels.ts';
 import { RouterLink } from '../base/RouterLink.tsx';
 import { TabPanel } from '../TabPanel.tsx';
 import { EditSlotProgrammingForm } from './EditSlotProgrammingForm.tsx';
+import { MidRollConfigPanel } from './MidRollConfigPanel.tsx';
 import { SlotFillerDialogPanel } from './SlotFillerDialogPanel.tsx';
 
 type EditRandomSlotDialogContentProps = {
@@ -56,6 +64,7 @@ export const EditRandomSlotDialogContent = ({
   onSave,
   onCancel,
 }: EditRandomSlotDialogContentProps) => {
+  const { t } = useLingui();
   const randomSlotForm = useRandomSlotFormContext();
   const programOptions = useSlotProgramOptionsContext();
   const { slotArray } = randomSlotForm;
@@ -65,6 +74,74 @@ export const EditRandomSlotDialogContent = ({
     'lockWeights',
   ]);
 
+  const allSlots = useMemo(
+    () =>
+      currentSlots
+        .filter((s): s is typeof s & { id: string } => 'id' in s)
+        .map((s) => ({ ...s })),
+    [currentSlots],
+  );
+
+  const linkableSlots = useMemo(
+    () => allSlots.filter(slotIsLinkable),
+    [allSlots],
+  );
+
+  const handleLinkSourceSlot = useCallback(
+    (sourceSlotId: string, groupId: string, linkMode: LinkMode) => {
+      const slots = randomSlotForm.getValues('slots');
+      const idx = slots.findIndex(
+        (s) => slotIsLinkable(s) && s.id === sourceSlotId,
+      );
+      if (idx !== -1) {
+        const field = slots[idx];
+        if (slotIsLinkable(field)) {
+          slotArray.update(idx, {
+            ...field,
+            iterationGroup: groupId,
+            linkMode,
+          });
+        }
+      }
+    },
+    [slotArray, randomSlotForm],
+  );
+
+  const handleUnlinkFromGroup = useCallback(
+    (groupId: string) => {
+      const currentSlotId = slotIsLinkable(slot) ? slot.id : undefined;
+      const slots = randomSlotForm.getValues('slots');
+      const peersInGroup = slots.filter(
+        (s) =>
+          slotIsLinkable(s) &&
+          s.iterationGroup === groupId &&
+          s.id !== currentSlotId,
+      );
+      if (peersInGroup.length <= 1) {
+        const newSlots = slots.map((s) => {
+          if (
+            slotIsLinkable(s) &&
+            s.iterationGroup === groupId &&
+            s.id !== currentSlotId
+          ) {
+            return {
+              ...s,
+              iterationGroup: undefined,
+              linkMode: undefined,
+              rerunOverflow: undefined,
+            };
+          }
+          return s;
+        });
+        randomSlotForm.setValue('slots', newSlots, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      }
+    },
+    [randomSlotForm, slot],
+  );
+
   const formMethods = useForm<SlotViewModel>({
     defaultValues: slot,
     reValidateMode: 'onChange',
@@ -72,9 +149,35 @@ export const EditRandomSlotDialogContent = ({
 
   const { control, getValues, setValue, watch, formState } = formMethods;
   const { isValid, isDirty } = formState;
-  const [durationSpec, programType] = watch(['durationSpec', 'type']);
+  const [durationSpec, programType, fillerValues] = watch([
+    'durationSpec',
+    'type',
+    'filler',
+  ]);
+  const hasMidFiller =
+    (fillerValues as { types?: string[] }[] | undefined)?.some((f) =>
+      f.types?.includes('mid'),
+    ) ?? false;
   const [tab, setTab] = useState(0);
   const { data: fillerLists } = useFillerLists();
+
+  useEffect(() => {
+    if (!hasMidFiller && tab === 2) {
+      setTab(0);
+    }
+    if (hasMidFiller && !getValues('midRoll')) {
+      setValue('midRoll', {
+        intervalMs: 30 * 60 * 1000,
+        breakRule: { type: 'fixed_interval', intervalMs: 30 * 60 * 1000 },
+        breakDurationMs: 3 * 60 * 1000,
+        maxBreaks: 0,
+        minProgramDurationMs: 60 * 60 * 1000,
+        tailBufferMs: 0,
+        programTypes: [],
+        strategy: 'eager',
+      });
+    }
+  }, [hasMidFiller, tab, getValues, setValue]);
 
   const [weightValue, setWeightValue] = useState(getValues('weight'));
 
@@ -131,7 +234,29 @@ export const EditRandomSlotDialogContent = ({
   };
 
   const commit = () => {
-    slotArray.update(index, getValues());
+    const saved = getValues();
+    const linkable = slotIsLinkable(saved) ? saved : undefined;
+    const groupId = linkable?.iterationGroup;
+    const linkedContent =
+      groupId && linkable ? copySlotForLinking(linkable) : undefined;
+
+    if (linkedContent && groupId) {
+      const currentSlots = randomSlotForm.getValues('slots');
+      const newSlots = currentSlots.map((s, i) => {
+        if (i === index) return saved;
+        if (slotIsLinkable(s) && s.iterationGroup === groupId) {
+          return { ...s, ...linkedContent };
+        }
+        return s;
+      });
+      randomSlotForm.setValue('slots', newSlots, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+    } else {
+      slotArray.update(index, saved);
+    }
+
     onSave();
   };
 
@@ -154,6 +279,7 @@ export const EditRandomSlotDialogContent = ({
       return match(type)
         .returnType<PartialRandomSlot>()
         .with('custom-show', () => ({
+          id: v4(),
           type: 'custom-show',
           order: 'next',
           direction: 'asc',
@@ -163,11 +289,13 @@ export const EditRandomSlotDialogContent = ({
           )!.customShowId,
         }))
         .with('movie', () => ({
+          id: v4(),
           type: 'movie',
           order: 'alphanumeric',
           direction: 'asc',
         }))
         .with('filler', () => ({
+          id: v4(),
           type: 'filler',
           order: 'shuffle_prefer_short',
           direction: 'asc',
@@ -187,17 +315,20 @@ export const EditRandomSlotDialogContent = ({
           direction: 'asc',
         }))
         .with('show', () => ({
+          id: v4(),
           type: 'show',
           showId: programOptions.find((opt) => opt.type === 'show')!.showId,
           order: 'next',
           direction: 'asc',
           seasonFilter: [],
+          seasonExcludeFilter: [],
         }))
         .with('smart-collection', () => {
           const opt = programOptions.find(
             (opt) => opt.type === 'smart-collection',
           );
           return {
+            id: v4(),
             type: 'smart-collection' as const,
             order: 'next',
             direction: 'asc',
@@ -266,8 +397,9 @@ export const EditRandomSlotDialogContent = ({
             onChange={(_, tab: number) => setTab(tab)}
             sx={{ borderBottom: 1, borderColor: 'divider' }}
           >
-            <Tab label="Programming" value={0} />
-            {programType !== 'flex' && <Tab label="Filler" value={1} />}
+            <Tab label={t`Programming`} value={0} />
+            {programType !== 'flex' && <Tab label={t`Filler`} value={1} />}
+            {hasMidFiller && <Tab label={t`Mid-Roll`} value={2} />}
           </Tabs>
           <TabPanel value={tab} index={0}>
             <Stack gap={2} useFlexGap>
@@ -289,8 +421,12 @@ export const EditRandomSlotDialogContent = ({
                             )
                           }
                         >
-                          <ToggleButton value="fixed">Fixed</ToggleButton>
-                          <ToggleButton value="dynamic">Dynamic</ToggleButton>
+                          <ToggleButton value="fixed">
+                            <Trans>Fixed</Trans>
+                          </ToggleButton>
+                          <ToggleButton value="dynamic">
+                            <Trans>Dynamic</Trans>
+                          </ToggleButton>
                         </ToggleButtonGroup>
                       )}
                     />
@@ -300,7 +436,7 @@ export const EditRandomSlotDialogContent = ({
                   <NumericFormControllerText
                     control={control}
                     TextFieldProps={{
-                      label: 'Program Count',
+                      label: t`Program Count`,
                       fullWidth: true,
                       helperText: '',
                     }}
@@ -327,7 +463,7 @@ export const EditRandomSlotDialogContent = ({
                           onChange={(value) =>
                             updateSlotTime(value, field.onChange)
                           }
-                          label="Duration"
+                          label={t`Duration`}
                           slotProps={{
                             textField: {
                               fullWidth: true,
@@ -356,7 +492,7 @@ export const EditRandomSlotDialogContent = ({
                           onChange={(value) =>
                             updateSlotTime(value, field.onChange)
                           }
-                          label="Cooldown"
+                          label={t`Cooldown`}
                           slotProps={{
                             textField: {
                               fullWidth: true,
@@ -374,7 +510,12 @@ export const EditRandomSlotDialogContent = ({
                 )}
               </Stack>
               <FormProvider {...formMethods}>
-                <EditSlotProgrammingForm newSlotForType={newSlotForType} />
+                <EditSlotProgrammingForm
+                  newSlotForType={newSlotForType}
+                  allSlots={linkableSlots}
+                  onLinkSourceSlot={handleLinkSourceSlot}
+                  onUnlinkFromGroup={handleUnlinkFromGroup}
+                />
               </FormProvider>
               {distribution === 'weighted' && (
                 <Stack direction="row" spacing={2} alignItems="center">
@@ -400,7 +541,7 @@ export const EditRandomSlotDialogContent = ({
                   />
                   <TextField
                     type="number"
-                    label={lockWeights ? 'Weight %' : 'Frequency'}
+                    label={lockWeights ? t`Weight %` : t`Frequency`}
                     value={weightValue}
                     disabled
                   />
@@ -411,9 +552,11 @@ export const EditRandomSlotDialogContent = ({
           <TabPanel value={tab} index={1}>
             {fillerLists.length === 0 ? (
               <Alert severity="warning" variant="outlined">
-                You must create at least one{' '}
-                <RouterLink to="/library/fillers">filler list</RouterLink>{' '}
-                before assigning filler to a lot.
+                <Trans>
+                  You must create at least one{' '}
+                  <RouterLink to="/library/fillers">filler list</RouterLink>{' '}
+                  before assigning filler to a lot.
+                </Trans>
               </Alert>
             ) : (
               <FormProvider {...formMethods}>
@@ -421,16 +564,23 @@ export const EditRandomSlotDialogContent = ({
               </FormProvider>
             )}
           </TabPanel>
+          <TabPanel value={tab} index={2}>
+            <FormProvider {...formMethods}>
+              <MidRollConfigPanel />
+            </FormProvider>
+          </TabPanel>
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={() => onCancel()}>Cancel</Button>
+        <Button onClick={() => onCancel()}>
+          <Trans>Cancel</Trans>
+        </Button>
         <Button
           disabled={!isDirty || !isValid}
           onClick={() => commit()}
           variant="contained"
         >
-          Save
+          <Trans>Save</Trans>
         </Button>
       </DialogActions>
     </>

@@ -1,9 +1,5 @@
-import {
-  HourglassTop,
-  Radar,
-  Refresh,
-  VideoLibrary,
-} from '@mui/icons-material';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { HourglassTop, Radar, Refresh } from '@mui/icons-material';
 import {
   Box,
   Card,
@@ -19,7 +15,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { prettifySnakeCaseString } from '@tunarr/shared/util';
 import type { MediaSourceLibrary, MediaSourceSettings } from '@tunarr/types';
 import type { ScanProgress } from '@tunarr/types/api';
@@ -44,7 +40,6 @@ import { useDayjs } from '../hooks/useDayjs.ts';
 import { useQueryObserver } from '../hooks/useQueryObserver.ts';
 import { useStoreBackedTableSettings } from '../hooks/useTableSettings.ts';
 import type { Nullable } from '../types/util.ts';
-import { RouterIconButtonLink } from './base/RouterButtonLink.tsx';
 import { NetworkIcon } from './util/NetworkIcon.tsx';
 
 type MediaSourceLibraryRow = MediaSourceLibrary & {
@@ -60,6 +55,7 @@ const MediaSourceLibraryTableActionCell = ({
   mediaSource,
   library,
 }: ActionCellProps) => {
+  const { t } = useLingui();
   const [isRefreshing, setIsRefreshing] = useState(library.isLocked);
   const refreshLibraryMutation = useScanLibraryMutation();
   const scanStateQuery = useLibraryScanState(
@@ -73,7 +69,9 @@ const MediaSourceLibraryTableActionCell = ({
   const queryClient = useQueryClient();
 
   const startRefresh = useCallback(
-    (force: boolean = false) => {
+    (ev: React.MouseEvent, force: boolean = false) => {
+      ev.stopPropagation();
+      ev.preventDefault();
       setIsRefreshing(true);
       refreshLibraryMutation.mutate(
         {
@@ -146,39 +144,20 @@ const MediaSourceLibraryTableActionCell = ({
 
   return (
     <>
-      <Tooltip placement="top" title="View Library">
-        <Box component="span">
-          {mediaSource.type === 'local' ? (
-            <RouterIconButtonLink
-              to="/media_sources/$mediaSourceId"
-              params={{ mediaSourceId: mediaSource.id }}
-            >
-              <VideoLibrary />
-            </RouterIconButtonLink>
-          ) : (
-            <RouterIconButtonLink
-              to={'/media_sources/$mediaSourceId/libraries/$libraryId'}
-              params={{ mediaSourceId: mediaSource.id, libraryId: library.id }}
-            >
-              <VideoLibrary />
-            </RouterIconButtonLink>
-          )}
-        </Box>
-      </Tooltip>
       <Tooltip
         placement="top"
         title={
           scanStateQuery.data?.state === 'queued'
-            ? 'Queued'
+            ? t`Queued`
             : library.isLocked
-              ? 'Scanning'
-              : 'Scan'
+              ? t`Scanning`
+              : t`Scan`
         }
       >
         <span>
           <IconButton
             disabled={library.isLocked}
-            onClick={() => startRefresh()}
+            onClick={(e) => startRefresh(e)}
           >
             {scanStateQuery.data?.state === 'queued' ? (
               <HourglassTop />
@@ -199,16 +178,16 @@ const MediaSourceLibraryTableActionCell = ({
           placement="top"
           title={
             scanStateQuery.data?.state === 'queued'
-              ? 'Queued'
+              ? t`Queued`
               : library.isLocked
-                ? 'Scanning'
-                : 'Force Scan'
+                ? t`Scanning`
+                : t`Force Scan`
           }
         >
           <span>
             <IconButton
               disabled={library.isLocked}
-              onClick={() => startRefresh(true)}
+              onClick={(e) => startRefresh(e, true)}
             >
               <Radar
                 sx={{
@@ -240,7 +219,9 @@ const MediaSourceLibraryTableActionCell = ({
 const TableName = 'MediaSourceLibraryTable';
 
 export const MediaSourceLibraryTable = () => {
+  const { t } = useLingui();
   const dayjs = useDayjs();
+  const navigate = useNavigate();
   const { data: mediaSources } = useMediaSources();
   const tableSettings = useStoreBackedTableSettings(TableName);
   const theme = useTheme();
@@ -249,7 +230,7 @@ export const MediaSourceLibraryTable = () => {
   const columns = useMemo<MRT_ColumnDef<MediaSourceLibraryRow>[]>(() => {
     return [
       {
-        header: 'Source Type',
+        header: t`Source Type`,
         id: 'type',
         accessorFn: ({ type }) => capitalize(type),
         // size: 100,
@@ -257,7 +238,7 @@ export const MediaSourceLibraryTable = () => {
         grow: false,
       },
       {
-        header: 'Name',
+        header: t`Name`,
         id: 'name',
         accessorFn(originalRow) {
           if (originalRow.type === 'local') {
@@ -270,14 +251,14 @@ export const MediaSourceLibraryTable = () => {
         // grow: false,
       },
       {
-        header: 'Media Type',
+        header: t`Media Type`,
         id: 'mediaType',
         accessorFn: ({ mediaType }) => prettifySnakeCaseString(mediaType),
         // size: 150,
         // grow: false,
       },
       {
-        header: 'Last Synced',
+        header: t`Last Synced`,
         id: 'lastUpdated',
         accessorFn: ({ lastScannedAt }) =>
           lastScannedAt ? dayjs(lastScannedAt).format('LLL') : '-',
@@ -304,7 +285,7 @@ export const MediaSourceLibraryTable = () => {
         },
       },
     ];
-  }, [dayjs]);
+  }, [dayjs, t]);
 
   const data = useMemo(() => {
     const remoteLibraries = mediaSources
@@ -420,6 +401,23 @@ export const MediaSourceLibraryTable = () => {
         library={original}
       />
     ),
+    muiTableBodyRowProps: ({ row }) => ({
+      onClick: () => {
+        navigate({
+          to:
+            row.original.type === 'local'
+              ? '/media_sources/$mediaSourceId'
+              : '/media_sources/$mediaSourceId/libraries/$libraryId',
+          params: {
+            mediaSourceId: row.original.mediaSource.id,
+            libraryId: row.original.id,
+          },
+        }).catch(console.error);
+      },
+      sx: {
+        cursor: 'pointer',
+      },
+    }),
     positionActionsColumn: 'last',
     ...tableSettings,
     state: {
@@ -442,10 +440,12 @@ export const MediaSourceLibraryTable = () => {
         </TableContainer>
       )}
       <Typography variant="body2" align="center">
-        Don't see the library you want here? Ensure it is enabled in the{' '}
-        <MuiLink component={Link} to="/settings/sources">
-          Media Source Settings.
-        </MuiLink>
+        <Trans>
+          Don't see the library you want here? Ensure it is enabled in the{' '}
+          <MuiLink component={Link} to="/settings/sources">
+            Media Source Settings.
+          </MuiLink>
+        </Trans>
       </Typography>
     </>
   );

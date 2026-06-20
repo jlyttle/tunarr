@@ -29,11 +29,13 @@ import {
   uniqBy,
   values,
 } from 'lodash-es';
-import pluralize from 'pluralize';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { plural } from '@lingui/core/macro';
 import type { HTMLAttributes } from 'react';
 import { useMemo, useState } from 'react';
 import { match, P } from 'ts-pattern';
 import { useCounter } from 'usehooks-ts';
+import { extractProgramGrandparent } from '../../helpers/programUtil.ts';
 import type { RemoveProgrammingRequest } from '../../hooks/programming_controls/useRemoveProgramming';
 import { useRemoveProgramming } from '../../hooks/programming_controls/useRemoveProgramming';
 import useStore from '../../store';
@@ -51,6 +53,7 @@ interface FilmOptionType {
 }
 
 export const RemoveShowsModal = ({ open, onClose }: RemoveShowsModalProps) => {
+  const { t } = useLingui();
   const { count, increment, decrement } = useCounter(0);
   const removeProgramming = useRemoveProgramming();
   const [removeRequest, setRemoveRequest] = useState<RemoveProgrammingRequest>(
@@ -58,7 +61,10 @@ export const RemoveShowsModal = ({ open, onClose }: RemoveShowsModalProps) => {
   );
   const programs = useStore(materializedProgramListSelector);
   const hasMovies = useMemo(() => {
-    return some(programs, (p) => p.type === 'content' && p.subtype === 'movie');
+    return some(
+      programs,
+      (p) => p.type === 'content' && p.program.type === 'movie',
+    );
   }, [programs]);
 
   const numAndDurationById = useMemo(() => {
@@ -69,12 +75,21 @@ export const RemoveShowsModal = ({ open, onClose }: RemoveShowsModalProps) => {
           .with(
             {
               type: 'content',
-              subtype: P.select(P.union('movie', 'music_video', 'other_video')),
+              program: {
+                type: P.select(P.union('movie', 'music_video', 'other_video')),
+              },
             },
             identity,
           )
-          .with({ type: 'content', subtype: 'episode' }, (curr) => curr.showId)
-          .with({ type: 'content', subtype: 'track' }, (curr) => curr.artistId)
+          .with(
+            { type: 'content', program: { type: 'episode' } },
+            ({ program }) => program.show?.uuid ?? program.season?.show?.uuid,
+          )
+          .with(
+            { type: 'content', program: { type: 'track' } },
+            ({ program }) =>
+              program.artist?.uuid ?? program.album?.artist?.uuid,
+          )
           .with({ type: P._ }, () => undefined)
           .exhaustive();
 
@@ -99,18 +114,22 @@ export const RemoveShowsModal = ({ open, onClose }: RemoveShowsModalProps) => {
         seq.collect(programs, (program) => {
           if (
             program.type === 'content' &&
-            program.subtype === 'episode' &&
-            isNonEmptyString(program.showId)
+            program.program.type === 'episode' &&
+            isNonEmptyString(
+              program.program.show?.uuid ?? program.program.season?.show?.uuid,
+            )
           ) {
             return program;
           }
           return;
         }),
-        'showId',
+        ({ program }) => extractProgramGrandparent(program)?.uuid,
       ),
-      (program) => ({
-        id: program.showId!,
-        title: program.grandparent?.title ?? program.title,
+      ({ program }) => ({
+        // Verified safe above
+        // eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain
+        id: extractProgramGrandparent(program)?.uuid!,
+        title: extractProgramGrandparent(program)?.title ?? program.title,
       }),
     );
   }, [programs]);
@@ -121,18 +140,20 @@ export const RemoveShowsModal = ({ open, onClose }: RemoveShowsModalProps) => {
         seq.collect(programs, (program) => {
           if (
             program.type === 'content' &&
-            program.subtype === 'track' &&
-            isNonEmptyString(program.artistId)
+            program.program.type === 'track' &&
+            isNonEmptyString(extractProgramGrandparent(program.program)?.uuid)
           ) {
             return program;
           }
           return;
         }),
-        'artistId',
+        ({ program }) => extractProgramGrandparent(program)?.uuid,
       ),
-      (program) => ({
-        id: program.artistId!,
-        title: program.grandparent?.title ?? program.title,
+      ({ program }) => ({
+        // Verified safe above
+        // eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain
+        id: extractProgramGrandparent(program)?.uuid!,
+        title: extractProgramGrandparent(program)?.title ?? program.title,
       }),
     );
   }, [programs]);
@@ -189,10 +210,13 @@ export const RemoveShowsModal = ({ open, onClose }: RemoveShowsModalProps) => {
       return null;
     }
 
-    return `${details.totalPrograms} ${pluralize(
-      type ?? 'program',
-      details.totalPrograms,
-    )}, ${betterHumanize(dayjs.duration(details.totalDuration), {
+    const count = details.totalPrograms;
+    const programLabel = type === 'episode'
+      ? plural(count, { one: 'episode', other: 'episodes' })
+      : type === 'track'
+        ? plural(count, { one: 'track', other: 'tracks' })
+        : plural(count, { one: 'program', other: 'programs' });
+    return t`${count} ${programLabel}, ${betterHumanize(dayjs.duration(details.totalDuration), {
       style: 'short',
     })}`;
   };
@@ -202,10 +226,10 @@ export const RemoveShowsModal = ({ open, onClose }: RemoveShowsModalProps) => {
   return (
     <>
       <Dialog open={open} scroll={'paper'}>
-        <DialogTitle>Remove Programming</DialogTitle>
+        <DialogTitle><Trans>Remove Programming</Trans></DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Pick specific programming to remove from the channel.
+            <Trans>Pick specific programming to remove from the channel.</Trans>
           </DialogContentText>
 
           <Autocomplete
@@ -249,7 +273,7 @@ export const RemoveShowsModal = ({ open, onClose }: RemoveShowsModalProps) => {
                 : []
             }
             renderInput={(params) => (
-              <TextField {...params} label="Select Shows to Remove" />
+              <TextField {...params} label={t`Select Shows to Remove`} />
             )}
             renderOption={(
               props: HTMLAttributes<HTMLLIElement>,
@@ -328,7 +352,7 @@ export const RemoveShowsModal = ({ open, onClose }: RemoveShowsModalProps) => {
                 }
               }}
               renderInput={(params) => (
-                <TextField {...params} label="Select Artists to Remove" />
+                <TextField {...params} label={t`Select Artists to Remove`} />
               )}
               renderOption={(
                 props: HTMLAttributes<HTMLLIElement>,
@@ -393,7 +417,7 @@ export const RemoveShowsModal = ({ open, onClose }: RemoveShowsModalProps) => {
                   }
                 >
                   <ListItemText
-                    primary={`Remove All ${movieCount} ${pluralize('Movie', movieCount)}`}
+                    primary={t`Remove All ${movieCount} ${plural(movieCount, { one: 'Movie', other: 'Movies' })}`}
                     secondary={getProgramCounts('movies')}
                   />
                 </ListItem>
@@ -402,13 +426,13 @@ export const RemoveShowsModal = ({ open, onClose }: RemoveShowsModalProps) => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => onClose()}>Cancel</Button>
+          <Button onClick={() => onClose()}><Trans>Cancel</Trans></Button>
           <Button
             variant="contained"
             onClick={() => removeShowsProgramming()}
             disabled={isEmptyRemoveRequest}
           >
-            {`Remove ${count} ${pluralize('program', count)}`}
+            <Trans>Remove {count} {plural(count, { one: 'program', other: 'programs' })}</Trans>
           </Button>
         </DialogActions>
       </Dialog>

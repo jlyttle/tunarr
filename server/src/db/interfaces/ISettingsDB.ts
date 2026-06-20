@@ -4,6 +4,7 @@ import type {
   SettingsFile,
 } from '@/db/SettingsDB.js';
 import type {
+  FeatureFlags,
   FfmpegSettings,
   HdhrSettings,
   PlexStreamSettings,
@@ -14,10 +15,10 @@ import type {
   BackupSettings,
   GlobalMediaSourceSettings,
 } from '@tunarr/types/schemas';
+import type events from 'node:events';
 import type { DeepReadonly } from 'ts-essentials';
-import type { TypedEventEmitter } from '../../types/eventEmitter.ts';
 
-export interface ISettingsDB extends TypedEventEmitter<SettingsChangeEvents> {
+export interface ISettingsDB extends events.EventEmitter<SettingsChangeEvents> {
   migrationState: DeepReadonly<MigrationState>;
   backup: DeepReadonly<BackupSettings>;
 
@@ -41,6 +42,8 @@ export interface ISettingsDB extends TypedEventEmitter<SettingsChangeEvents> {
 
   systemSettings(): DeepReadonly<SystemSettings>;
 
+  featureFlags(): DeepReadonly<FeatureFlags>;
+
   directUpdate(
     fn: (settings: SettingsFile) => SettingsFile | void,
   ): Promise<void>;
@@ -62,5 +65,5 @@ export interface ISettingsDB extends TypedEventEmitter<SettingsChangeEvents> {
 
 export type ReadableFfmpegSettings = DeepReadonly<FfmpegSettings>;
 export type SettingsChangeEvents = {
-  change(prevSettings?: SettingsFile): void;
+  change: [prevSettings?: SettingsFile];
 };

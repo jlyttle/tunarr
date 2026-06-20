@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro';
 import {
   Box,
   CircularProgress,
@@ -21,6 +22,7 @@ import { filter, find, isNil, isUndefined } from 'lodash-es';
 import { useEffect } from 'react';
 import type { SubmitHandler } from 'react-hook-form';
 import { Controller, useForm } from 'react-hook-form';
+import { betterHumanize } from '../../helpers/dayjs.ts';
 import { uuidRegexPattern } from '../../helpers/util.ts';
 import { useChannels } from '../../hooks/useChannels.ts';
 import {
@@ -28,9 +30,8 @@ import {
   setProgramAtIndex,
 } from '../../store/channelEditor/actions.ts';
 import useStore from '../../store/index.ts';
-import { NumericFormControllerText } from '../util/TypedController.tsx';
 import type { UIRedirectProgram } from '../../types/index.ts';
-import { betterHumanize } from '../../helpers/dayjs.ts';
+import { NumericFormControllerText } from '../util/TypedController.tsx';
 
 dayjs.extend(duration);
 
@@ -46,6 +47,7 @@ type FormValues = {
 };
 
 const AddRedirectModal = (props: AddRedirectModalProps) => {
+  const { t } = useLingui();
   const currentChannel = useStore((s) => s.channelEditor.currentEntity);
   const { isPending, error, data: channels } = useChannels();
   const previousData = usePrevious(channels);
@@ -95,7 +97,6 @@ const AddRedirectModal = (props: AddRedirectModalProps) => {
         channelNumber: channel.number,
         duration: data.redirectDuration * 1000,
         type: 'redirect',
-        persisted: false,
       };
 
       if (isUndefined(props.initialProgram)) {
@@ -128,8 +129,10 @@ const AddRedirectModal = (props: AddRedirectModalProps) => {
             rules={{ minLength: 1, pattern: new RegExp(uuidRegexPattern) }}
             render={({ field }) => (
               <FormControl fullWidth margin="normal">
-                <InputLabel>Channel</InputLabel>
-                <Select label="Channel" {...field}>
+                <InputLabel>
+                  <Trans>Channel</Trans>
+                </InputLabel>
+                <Select label={t`Channel`} {...field}>
                   {channelOptions?.map((channel) => (
                     <MenuItem key={channel.number} value={channel.id}>
                       {channel.name}
@@ -142,12 +145,12 @@ const AddRedirectModal = (props: AddRedirectModalProps) => {
           <NumericFormControllerText
             control={control}
             name="redirectDuration"
-            prettyFieldName="Redirect duration"
+            prettyFieldName={t`Redirect duration`}
             rules={{ required: true, minLength: 1, min: 1 }}
             TextFieldProps={{
               fullWidth: true,
               margin: 'normal',
-              label: 'Duration (seconds)',
+              label: t`Duration (seconds)`,
               helperText: ({ field, formState: { errors } }) =>
                 isNil(errors['redirectDuration'])
                   ? betterHumanize(dayjs.duration(field.value, 'seconds'))
@@ -159,7 +162,9 @@ const AddRedirectModal = (props: AddRedirectModalProps) => {
     } else {
       return (
         <Typography>
-          Error occurred while loading channels, please try again soon.{' '}
+          <Trans>
+            Error occurred while loading channels, please try again soon.
+          </Trans>{' '}
           {error ? error.message : null}
         </Typography>
       );
@@ -169,7 +174,11 @@ const AddRedirectModal = (props: AddRedirectModalProps) => {
   return (
     <Dialog open={props.open}>
       <DialogTitle>
-        {isUndefined(props.initialProgram) ? 'Add' : 'Edit'} Channel Redirect
+        {isUndefined(props.initialProgram) ? (
+          <Trans>Add Channel Redirect</Trans>
+        ) : (
+          <Trans>Edit Channel Redirect</Trans>
+        )}
       </DialogTitle>
       <DialogContent>
         <Box
@@ -181,9 +190,11 @@ const AddRedirectModal = (props: AddRedirectModalProps) => {
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={() => props.onClose()}>Cancel</Button>
+        <Button onClick={() => props.onClose()}>
+          <Trans>Cancel</Trans>
+        </Button>
         <Button variant="contained" form="redirect-channel-form" type="submit">
-          Save
+          <Trans>Save</Trans>
         </Button>
       </DialogActions>
     </Dialog>

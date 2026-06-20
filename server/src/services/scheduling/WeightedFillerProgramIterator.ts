@@ -71,7 +71,7 @@ export class WeightedFillerProgramIterator
   current(state: IterationState): Nullable<FillerProgram> {
     let idx = 0;
     if (state.slotDuration > this.maxDuration) {
-      idx = this.weightedPrograms.length - 1;
+      idx = this.weightedPrograms.length;
     } else {
       while (idx < this.weightedPrograms.length) {
         if (this.weightedPrograms[idx]!.program.duration > state.slotDuration) {
@@ -112,7 +112,6 @@ export class WeightedFillerProgramIterator
           duration: program.program.duration,
           fillerListId: this.slotDef.fillerListId,
           id: program.program.uuid,
-          persisted: true,
           fillerType: this.fillerType,
         };
       }
@@ -128,7 +127,6 @@ export class WeightedFillerProgramIterator
       duration: p.duration,
       fillerListId: this.slotDef.fillerListId,
       id: p.uuid,
-      persisted: true,
       fillerType: this.fillerType,
     };
   }

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import constants from '@tunarr/shared/constants';
 import type { TimeSlotSchedule } from '@tunarr/types/api';
 import dayjs from '@/util/dayjs.js';
@@ -6,7 +7,485 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createFakeProgramOrm } from '../../testing/fakes/entityCreators.ts';
 import { groupByUniq } from '../../util/index.ts';
 import type { SlotSchedulerProgram } from './slotSchedulerUtil.js';
+import { createProgramMap, createSlotIterators } from './slotSchedulerUtil.js';
 import { scheduleTimeSlots } from './TimeSlotService.ts';
+import { MersenneTwister19937, Random } from 'random-js';
+
+describe('createSlotIterators unit', () => {
+  test('unlinked slots with same content get independent iterators', () => {
+    const episodes: SlotSchedulerProgram[] = Array.from(
+      { length: 5 },
+      (_, i) => ({
+        ...createFakeProgramOrm({
+          uuid: `ep${i + 1}`,
+          title: `Episode ${i + 1}`,
+          type: 'episode',
+          duration: 30 * 60 * 1000,
+          episode: i + 1,
+          tvShowUuid: 'show1',
+          show: { uuid: 'show1' },
+        }),
+        parentFillerLists: [],
+        parentCustomShows: [],
+        parentSmartCollections: [],
+      }),
+    );
+
+    const slotA = {
+      id: randomUUID(),
+      startTime: 0,
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+    };
+    const slotB = {
+      id: randomUUID(),
+      startTime: 12 * 60 * 60 * 1000,
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+    };
+
+    const mt = MersenneTwister19937.seed(42);
+    const random = new Random(mt);
+    const programMap = createProgramMap(episodes);
+    const { iterators } = createSlotIterators(
+      [slotA, slotB],
+      programMap,
+      random,
+    );
+
+    const itA = iterators.get(slotA.id)!;
+    const itB = iterators.get(slotB.id)!;
+
+    const state = { slotDuration: 60 * 60 * 1000, timeCursor: 0 };
+    expect(itA).not.toBe(itB);
+    expect(itA.current(state)?.id).toBe('ep1');
+    expect(itB.current(state)?.id).toBe('ep1');
+
+    itA.next();
+    expect(itA.current(state)?.id).toBe('ep2');
+    expect(itB.current(state)?.id).toBe('ep1');
+  });
+
+  test('rerun group: both slots see the same episode, advance after both fire', () => {
+    const episodes: SlotSchedulerProgram[] = Array.from(
+      { length: 5 },
+      (_, i) => ({
+        ...createFakeProgramOrm({
+          uuid: `ep${i + 1}`,
+          title: `Episode ${i + 1}`,
+          type: 'episode',
+          duration: 30 * 60 * 1000,
+          episode: i + 1,
+          tvShowUuid: 'show1',
+          show: { uuid: 'show1' },
+        }),
+        parentFillerLists: [],
+        parentCustomShows: [],
+        parentSmartCollections: [],
+      }),
+    );
+
+    const groupId = randomUUID();
+    const slotA = {
+      id: randomUUID(),
+      startTime: 0,
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+      iterationGroup: groupId,
+      linkMode: 'rerun' as const,
+    };
+    const slotB = {
+      id: randomUUID(),
+      startTime: 12 * 60 * 60 * 1000,
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+      iterationGroup: groupId,
+      linkMode: 'rerun' as const,
+    };
+
+    const mt = MersenneTwister19937.seed(42);
+    const random = new Random(mt);
+    const programMap = createProgramMap(episodes);
+    const { iterators } = createSlotIterators(
+      [slotA, slotB],
+      programMap,
+      random,
+    );
+
+    const itA = iterators.get(slotA.id)!;
+    const itB = iterators.get(slotB.id)!;
+    const state = { slotDuration: 60 * 60 * 1000, timeCursor: 0 };
+
+    expect(itA.current(state)?.id).toBe('ep1');
+    expect(itB.current(state)?.id).toBe('ep1');
+
+    itA.next();
+    expect(itA.current(state)?.id).toBe('ep1');
+    expect(itB.current(state)?.id).toBe('ep1');
+
+    itB.next();
+    expect(itA.current(state)?.id).toBe('ep2');
+    expect(itB.current(state)?.id).toBe('ep2');
+  });
+
+  test('rerun group with 3 slots: all see same episode, advance after all fire', () => {
+    const episodes: SlotSchedulerProgram[] = Array.from(
+      { length: 5 },
+      (_, i) => ({
+        ...createFakeProgramOrm({
+          uuid: `ep${i + 1}`,
+          title: `Episode ${i + 1}`,
+          type: 'episode',
+          duration: 30 * 60 * 1000,
+          episode: i + 1,
+          tvShowUuid: 'show1',
+          show: { uuid: 'show1' },
+        }),
+        parentFillerLists: [],
+        parentCustomShows: [],
+        parentSmartCollections: [],
+      }),
+    );
+
+    const groupId = randomUUID();
+    const makeSlot = (startTime: number) => ({
+      id: randomUUID(),
+      startTime,
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+      iterationGroup: groupId,
+      linkMode: 'rerun' as const,
+    });
+
+    const slotA = makeSlot(0);
+    const slotB = makeSlot(4 * 60 * 60 * 1000);
+    const slotC = makeSlot(8 * 60 * 60 * 1000);
+
+    const mt = MersenneTwister19937.seed(42);
+    const random = new Random(mt);
+    const programMap = createProgramMap(episodes);
+    const { iterators } = createSlotIterators(
+      [slotA, slotB, slotC],
+      programMap,
+      random,
+    );
+
+    const itA = iterators.get(slotA.id)!;
+    const itB = iterators.get(slotB.id)!;
+    const itC = iterators.get(slotC.id)!;
+    const state = { slotDuration: 60 * 60 * 1000, timeCursor: 0 };
+
+    // All see ep1
+    expect(itA.current(state)?.id).toBe('ep1');
+    expect(itB.current(state)?.id).toBe('ep1');
+    expect(itC.current(state)?.id).toBe('ep1');
+
+    itA.next();
+    expect(itA.current(state)?.id).toBe('ep1');
+
+    itB.next();
+    expect(itB.current(state)?.id).toBe('ep1');
+
+    // Third fires — all have now consumed, inner advances
+    itC.next();
+    expect(itA.current(state)?.id).toBe('ep2');
+    expect(itB.current(state)?.id).toBe('ep2');
+    expect(itC.current(state)?.id).toBe('ep2');
+  });
+
+  test('solo rerun group member behaves as independent', () => {
+    const episodes: SlotSchedulerProgram[] = Array.from(
+      { length: 5 },
+      (_, i) => ({
+        ...createFakeProgramOrm({
+          uuid: `ep${i + 1}`,
+          title: `Episode ${i + 1}`,
+          type: 'episode',
+          duration: 30 * 60 * 1000,
+          episode: i + 1,
+          tvShowUuid: 'show1',
+          show: { uuid: 'show1' },
+        }),
+        parentFillerLists: [],
+        parentCustomShows: [],
+        parentSmartCollections: [],
+      }),
+    );
+
+    const slotA = {
+      id: randomUUID(),
+      startTime: 0,
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+      iterationGroup: randomUUID(),
+      linkMode: 'rerun' as const,
+    };
+
+    const mt = MersenneTwister19937.seed(42);
+    const random = new Random(mt);
+    const programMap = createProgramMap(episodes);
+    const { iterators } = createSlotIterators([slotA], programMap, random);
+
+    const itA = iterators.get(slotA.id)!;
+    const state = { slotDuration: 60 * 60 * 1000, timeCursor: 0 };
+
+    expect(itA.current(state)?.id).toBe('ep1');
+    itA.next();
+    // groupSize=1, so every call to next() advances
+    expect(itA.current(state)?.id).toBe('ep2');
+  });
+
+  test('mixed group: continue records, rerun(flex) replays and returns null when exhausted', () => {
+    const episodes: SlotSchedulerProgram[] = Array.from(
+      { length: 5 },
+      (_, i) => ({
+        ...createFakeProgramOrm({
+          uuid: `ep${i + 1}`,
+          title: `Episode ${i + 1}`,
+          type: 'episode',
+          duration: 30 * 60 * 1000,
+          episode: i + 1,
+          tvShowUuid: 'show1',
+          show: { uuid: 'show1' },
+        }),
+        parentFillerLists: [],
+        parentCustomShows: [],
+        parentSmartCollections: [],
+      }),
+    );
+
+    const groupId = randomUUID();
+    const continueSlot = {
+      id: randomUUID(),
+      startTime: 0,
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+      iterationGroup: groupId,
+      linkMode: 'continue' as const,
+    };
+    const rerunSlot = {
+      id: randomUUID(),
+      startTime: 12 * 60 * 60 * 1000,
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+      iterationGroup: groupId,
+      linkMode: 'rerun' as const,
+      rerunOverflow: 'flex' as const,
+    };
+
+    const mt = MersenneTwister19937.seed(42);
+    const random = new Random(mt);
+    const programMap = createProgramMap(episodes);
+    const { iterators } = createSlotIterators(
+      [continueSlot, rerunSlot],
+      programMap,
+      random,
+    );
+
+    const itContinue = iterators.get(continueSlot.id)!;
+    const itRerun = iterators.get(rerunSlot.id)!;
+    const state = { slotDuration: 60 * 60 * 1000, timeCursor: 0 };
+
+    // Rerun buffer is empty initially -- returns null
+    expect(itRerun.current(state)).toBeNull();
+
+    // Continue slot consumes ep1, ep2
+    expect(itContinue.current(state)?.id).toBe('ep1');
+    itContinue.next();
+    expect(itContinue.current(state)?.id).toBe('ep2');
+    itContinue.next();
+
+    // Rerun now replays from buffer
+    expect(itRerun.current(state)?.id).toBe('ep1');
+    itRerun.next();
+    expect(itRerun.current(state)?.id).toBe('ep2');
+    itRerun.next();
+
+    // Buffer exhausted -- flex mode returns null
+    expect(itRerun.current(state)).toBeNull();
+
+    // Continue slot is unaffected -- still at ep3
+    expect(itContinue.current(state)?.id).toBe('ep3');
+  });
+
+  test('mixed group: rerun(continue) pulls new content past buffer', () => {
+    const episodes: SlotSchedulerProgram[] = Array.from(
+      { length: 5 },
+      (_, i) => ({
+        ...createFakeProgramOrm({
+          uuid: `ep${i + 1}`,
+          title: `Episode ${i + 1}`,
+          type: 'episode',
+          duration: 30 * 60 * 1000,
+          episode: i + 1,
+          tvShowUuid: 'show1',
+          show: { uuid: 'show1' },
+        }),
+        parentFillerLists: [],
+        parentCustomShows: [],
+        parentSmartCollections: [],
+      }),
+    );
+
+    const groupId = randomUUID();
+    const continueSlot = {
+      id: randomUUID(),
+      startTime: 0,
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+      iterationGroup: groupId,
+      linkMode: 'continue' as const,
+    };
+    const rerunSlot = {
+      id: randomUUID(),
+      startTime: 12 * 60 * 60 * 1000,
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+      iterationGroup: groupId,
+      linkMode: 'rerun' as const,
+      rerunOverflow: 'continue' as const,
+    };
+
+    const mt = MersenneTwister19937.seed(42);
+    const random = new Random(mt);
+    const programMap = createProgramMap(episodes);
+    const { iterators } = createSlotIterators(
+      [continueSlot, rerunSlot],
+      programMap,
+      random,
+    );
+
+    const itContinue = iterators.get(continueSlot.id)!;
+    const itRerun = iterators.get(rerunSlot.id)!;
+    const state = { slotDuration: 60 * 60 * 1000, timeCursor: 0 };
+
+    // Continue consumes ep1
+    expect(itContinue.current(state)?.id).toBe('ep1');
+    itContinue.next();
+
+    // Rerun replays ep1 from buffer
+    expect(itRerun.current(state)?.id).toBe('ep1');
+    itRerun.next();
+
+    // Buffer exhausted, overflow=continue -- pulls ep2 from live iterator
+    expect(itRerun.current(state)?.id).toBe('ep2');
+    itRerun.next(); // Advances real iterator past ep2
+
+    // Continue slot now sees ep3 (ep2 was consumed by overflow)
+    expect(itContinue.current(state)?.id).toBe('ep3');
+  });
+
+  test('mixed group: period reset clears buffer and replay cursor', () => {
+    const episodes: SlotSchedulerProgram[] = Array.from(
+      { length: 5 },
+      (_, i) => ({
+        ...createFakeProgramOrm({
+          uuid: `ep${i + 1}`,
+          title: `Episode ${i + 1}`,
+          type: 'episode',
+          duration: 30 * 60 * 1000,
+          episode: i + 1,
+          tvShowUuid: 'show1',
+          show: { uuid: 'show1' },
+        }),
+        parentFillerLists: [],
+        parentCustomShows: [],
+        parentSmartCollections: [],
+      }),
+    );
+
+    const groupId = randomUUID();
+    const continueSlot = {
+      id: randomUUID(),
+      startTime: 0,
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+      iterationGroup: groupId,
+      linkMode: 'continue' as const,
+    };
+    const rerunSlot = {
+      id: randomUUID(),
+      startTime: 12 * 60 * 60 * 1000,
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+      iterationGroup: groupId,
+      linkMode: 'rerun' as const,
+      rerunOverflow: 'flex' as const,
+    };
+
+    const mt = MersenneTwister19937.seed(42);
+    const random = new Random(mt);
+    const programMap = createProgramMap(episodes);
+    const { iterators, resetPeriodCallbacks } = createSlotIterators(
+      [continueSlot, rerunSlot],
+      programMap,
+      random,
+    );
+
+    const itContinue = iterators.get(continueSlot.id)!;
+    const itRerun = iterators.get(rerunSlot.id)!;
+    const state = { slotDuration: 60 * 60 * 1000, timeCursor: 0 };
+
+    // Period 1: continue consumes ep1, ep2
+    expect(itContinue.current(state)?.id).toBe('ep1');
+    itContinue.next();
+    expect(itContinue.current(state)?.id).toBe('ep2');
+    itContinue.next();
+
+    // Rerun replays ep1
+    expect(itRerun.current(state)?.id).toBe('ep1');
+    itRerun.next();
+
+    // Reset period
+    for (const cb of resetPeriodCallbacks) cb();
+
+    // Buffer is cleared -- rerun returns null again
+    expect(itRerun.current(state)).toBeNull();
+
+    // Continue is still at ep3 (period reset doesn't affect iterator position)
+    expect(itContinue.current(state)?.id).toBe('ep3');
+    itContinue.next();
+
+    // Rerun now sees ep3 from fresh buffer
+    expect(itRerun.current(state)?.id).toBe('ep3');
+  });
+});
 
 describe('TimeSlotService', () => {
   describe('scheduleTimeSlots', () => {
@@ -22,6 +501,7 @@ describe('TimeSlotService', () => {
           padMs: 30 * 60 * 1000, // 30 min slots
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'movie',
               order: 'next',
@@ -72,6 +552,7 @@ describe('TimeSlotService', () => {
           padMs: 120 * 60 * 1000, // 2 hour slots
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'movie',
               order: 'next',
@@ -97,6 +578,7 @@ describe('TimeSlotService', () => {
           padMs: 30 * 60 * 1000,
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'movie',
               order: 'next',
@@ -149,14 +631,17 @@ describe('TimeSlotService', () => {
           padMs: 60 * 60 * 1000, // 1 hour slots
           slots: [
             {
+              id: randomUUID(),
               startTime: 0, // Midnight
               type: 'show',
               showId: 'show1',
               order: 'next',
               direction: 'asc',
               seasonFilter: [],
+              seasonExcludeFilter: [],
             },
             {
+              id: randomUUID(),
               startTime: 12 * 60 * 60 * 1000, // Noon
               type: 'movie',
               order: 'next',
@@ -206,12 +691,14 @@ describe('TimeSlotService', () => {
           padMs: 30 * 60 * 1000, // 30 min slots
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'show',
               showId: 'show1',
               order: 'next',
               direction: 'asc',
               seasonFilter: [],
+              seasonExcludeFilter: [],
             },
           ],
           period: 'day',
@@ -263,12 +750,14 @@ describe('TimeSlotService', () => {
           padMs: 30 * 60 * 1000,
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'show',
               showId: 'show1',
               order: 'next',
               direction: 'asc',
               seasonFilter: [],
+              seasonExcludeFilter: [],
             },
           ],
           period: 'day',
@@ -312,12 +801,14 @@ describe('TimeSlotService', () => {
           padMs: 30 * 60 * 1000,
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'show',
               showId: 'show1',
               order: 'next',
               direction: 'asc',
               seasonFilter: [],
+              seasonExcludeFilter: [],
             },
           ],
           period: 'day',
@@ -389,12 +880,14 @@ describe('TimeSlotService', () => {
           padMs: 30 * 60 * 1000,
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'show',
               showId: 'show1',
               order: 'next',
               direction: 'desc',
               seasonFilter: [],
+              seasonExcludeFilter: [],
             },
           ],
           period: 'day',
@@ -461,6 +954,7 @@ describe('TimeSlotService', () => {
           padMs: 120 * 60 * 1000, // 2 hour slots
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'movie',
               order: 'shuffle',
@@ -501,12 +995,14 @@ describe('TimeSlotService', () => {
           padMs: 30 * 60 * 1000, // 30 min slots
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'show',
               showId: 'show1',
               order: 'next',
               direction: 'asc',
               seasonFilter: [],
+              seasonExcludeFilter: [],
             },
           ],
           period: 'day',
@@ -558,12 +1054,14 @@ describe('TimeSlotService', () => {
           padMs: 30 * 60 * 1000,
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'show',
               showId: 'show1',
               order: 'next',
               direction: 'asc',
               seasonFilter: [],
+              seasonExcludeFilter: [],
             },
           ],
           period: 'day',
@@ -609,6 +1107,7 @@ describe('TimeSlotService', () => {
           padMs: 120 * 60 * 1000, // 2 hour slots
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'movie',
               order: 'next',
@@ -662,6 +1161,7 @@ describe('TimeSlotService', () => {
           padMs: 120 * 60 * 1000,
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'movie',
               order: 'next',
@@ -707,12 +1207,14 @@ describe('TimeSlotService', () => {
           padMs: 60 * 60 * 1000,
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'show',
               showId: 'show1',
               order: 'next',
               direction: 'asc',
               seasonFilter: [],
+              seasonExcludeFilter: [],
             },
           ],
           period: 'week',
@@ -749,12 +1251,14 @@ describe('TimeSlotService', () => {
           padMs: 60 * 60 * 1000,
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'show',
               showId: 'nonexistent-show',
               order: 'next',
               direction: 'asc',
               seasonFilter: [],
+              seasonExcludeFilter: [],
             },
           ],
           period: 'day',
@@ -806,6 +1310,7 @@ describe('TimeSlotService', () => {
           padMs: 120 * 60 * 1000,
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'movie',
               order: 'next',
@@ -849,6 +1354,7 @@ describe('TimeSlotService', () => {
           padMs: 120 * 60 * 1000,
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'movie',
               order: 'shuffle',
@@ -902,6 +1408,7 @@ describe('TimeSlotService', () => {
           padMs: 120 * 60 * 1000,
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'movie',
               order: 'shuffle',
@@ -950,6 +1457,7 @@ describe('TimeSlotService', () => {
           padMs: 120 * 60 * 1000,
           slots: [
             {
+              id: randomUUID(),
               startTime: 0,
               type: 'movie',
               order: 'shuffle',
@@ -1129,18 +1637,21 @@ describe('TimeSlotService', () => {
       padMs: HOUR_MS,
       slots: [
         {
+          id: randomUUID(),
           startTime: 0, // midnight
           type: 'movie',
           order: 'next',
           direction: 'asc',
         },
         {
+          id: randomUUID(),
           startTime: 18 * HOUR_MS, // 6 PM
           type: 'show',
           showId: 'dst-show',
           order: 'next',
           direction: 'asc',
           seasonFilter: [],
+          seasonExcludeFilter: [],
         },
       ],
       period: 'day',
@@ -1343,6 +1854,343 @@ describe('TimeSlotService', () => {
         expect(wallClock.hour(), info).toBe(18);
         expect(wallClock.minute()).toBe(0);
       }
+    });
+
+    describe('iteration groups', () => {
+      // Computed lazily so the dayjs object is created after the parent
+      // beforeAll has set process.env.TZ to America/New_York.  Evaluating
+      // dayjs.tz() at describe-level captures the *initial* system TZ
+      // ($localOffset), producing a wrong epoch on CI where TZ starts as UTC.
+      let midnight: dayjs.Dayjs;
+      beforeAll(() => {
+        midnight = makeStartTime('2025-01-15 00:00:00');
+      });
+      const oneHour = 60 * 60 * 1000;
+
+      const makeEpisodes = (
+        showId: string,
+        count: number,
+      ): SlotSchedulerProgram[] =>
+        Array.from({ length: count }, (_, i) => ({
+          ...createFakeProgramOrm({
+            uuid: `${showId}-ep${i + 1}`,
+            title: `${showId} Episode ${i + 1}`,
+            type: 'episode',
+            duration: oneHour,
+            episode: i + 1,
+            tvShowUuid: showId,
+            show: { uuid: showId },
+          }),
+          parentFillerLists: [],
+          parentCustomShows: [],
+          parentSmartCollections: [],
+        }));
+
+      function contentIds(lineup: { type: string; id?: string }[]): string[] {
+        return lineup
+          .filter((p) => p.type === 'content' && p.id !== undefined)
+          .map((p) => p.id!);
+      }
+
+      function firstContentIdPerSlot(
+        lineup: { type: string; id?: string; duration: number }[],
+        slotDuration: number,
+      ): string[] {
+        const result: string[] = [];
+        let elapsed = 0;
+        let slotIndex = 0;
+        for (const item of lineup) {
+          const currentSlot = Math.floor(elapsed / slotDuration);
+          if (
+            currentSlot > slotIndex ||
+            (currentSlot === slotIndex && result.length <= slotIndex)
+          ) {
+            slotIndex = currentSlot;
+          }
+          if (
+            item.type === 'content' &&
+            item.id !== undefined &&
+            result.length === slotIndex
+          ) {
+            result.push(item.id);
+          }
+          elapsed += item.duration;
+        }
+        return result;
+      }
+
+      test('linked slots share iteration (same iterationGroup)', async () => {
+        const episodes = makeEpisodes('show1', 10);
+        const slotIdA = randomUUID();
+        const slotIdB = randomUUID();
+        const sharedGroup = randomUUID();
+
+        const schedule: TimeSlotSchedule = {
+          type: 'time',
+          flexPreference: 'distribute',
+          maxDays: 1,
+          padMs: oneHour,
+          slots: [
+            {
+              id: slotIdA,
+              startTime: 0,
+              type: 'show',
+              showId: 'show1',
+              order: 'next',
+              direction: 'asc',
+              seasonFilter: [],
+              iterationGroup: sharedGroup,
+            },
+            {
+              id: slotIdB,
+              startTime: 12 * oneHour,
+              type: 'show',
+              showId: 'show1',
+              order: 'next',
+              direction: 'asc',
+              seasonFilter: [],
+              iterationGroup: sharedGroup,
+            },
+          ],
+          period: 'day',
+          latenessMs: 0,
+          timeZoneOffset: 0,
+        };
+
+        const result = await scheduleTimeSlots(
+          schedule,
+          episodes,
+          [42],
+          undefined,
+          midnight,
+        );
+
+        const firsts = firstContentIdPerSlot(
+          result.lineup as { type: string; id?: string; duration: number }[],
+          12 * oneHour,
+        );
+        expect(firsts.length).toBeGreaterThanOrEqual(2);
+        expect(firsts[0]).toBe('show1-ep1');
+        expect(firsts[1]).not.toBe('show1-ep1');
+      });
+
+      test('unlinked slots iterate independently (no iterationGroup)', async () => {
+        const episodes = makeEpisodes('show1', 10);
+        const slotIdA = randomUUID();
+        const slotIdB = randomUUID();
+
+        const schedule: TimeSlotSchedule = {
+          type: 'time',
+          flexPreference: 'distribute',
+          maxDays: 1,
+          padMs: oneHour,
+          slots: [
+            {
+              id: slotIdA,
+              startTime: 0,
+              type: 'show',
+              showId: 'show1',
+              order: 'next',
+              direction: 'asc',
+              seasonFilter: [],
+            },
+            {
+              id: slotIdB,
+              startTime: 12 * oneHour,
+              type: 'show',
+              showId: 'show1',
+              order: 'next',
+              direction: 'asc',
+              seasonFilter: [],
+            },
+          ],
+          period: 'day',
+          latenessMs: 0,
+          timeZoneOffset: 0,
+        };
+
+        const result = await scheduleTimeSlots(
+          schedule,
+          episodes,
+          [42],
+          undefined,
+          midnight,
+        );
+
+        const firsts = firstContentIdPerSlot(
+          result.lineup as { type: string; id?: string; duration: number }[],
+          12 * oneHour,
+        );
+        expect(firsts.length).toBeGreaterThanOrEqual(2);
+        expect(firsts[0]).toBe('show1-ep1');
+        expect(firsts[1]).toBe('show1-ep1');
+      });
+
+      test('different groups are independent', async () => {
+        const episodes = makeEpisodes('show1', 10);
+        const slotIdA = randomUUID();
+        const slotIdB = randomUUID();
+        const groupA = randomUUID();
+        const groupB = randomUUID();
+
+        const schedule: TimeSlotSchedule = {
+          type: 'time',
+          flexPreference: 'distribute',
+          maxDays: 1,
+          padMs: oneHour,
+          slots: [
+            {
+              id: slotIdA,
+              startTime: 0,
+              type: 'show',
+              showId: 'show1',
+              order: 'next',
+              direction: 'asc',
+              seasonFilter: [],
+              iterationGroup: groupA,
+            },
+            {
+              id: slotIdB,
+              startTime: 12 * oneHour,
+              type: 'show',
+              showId: 'show1',
+              order: 'next',
+              direction: 'asc',
+              seasonFilter: [],
+              iterationGroup: groupB,
+            },
+          ],
+          period: 'day',
+          latenessMs: 0,
+          timeZoneOffset: 0,
+        };
+
+        const result = await scheduleTimeSlots(
+          schedule,
+          episodes,
+          [42],
+          undefined,
+          midnight,
+        );
+
+        const firsts = firstContentIdPerSlot(
+          result.lineup as { type: string; id?: string; duration: number }[],
+          12 * oneHour,
+        );
+        expect(firsts.length).toBeGreaterThanOrEqual(2);
+        expect(firsts[0]).toBe('show1-ep1');
+        expect(firsts[1]).toBe('show1-ep1');
+      });
+
+      test('same group, different content → independent', async () => {
+        const show1Episodes = makeEpisodes('show1', 10);
+        const show2Episodes = makeEpisodes('show2', 10);
+        const slotIdA = randomUUID();
+        const slotIdB = randomUUID();
+        const sharedGroup = randomUUID();
+
+        const schedule: TimeSlotSchedule = {
+          type: 'time',
+          flexPreference: 'distribute',
+          maxDays: 1,
+          padMs: oneHour,
+          slots: [
+            {
+              id: slotIdA,
+              startTime: 0,
+              type: 'show',
+              showId: 'show1',
+              order: 'next',
+              direction: 'asc',
+              seasonFilter: [],
+              iterationGroup: sharedGroup,
+            },
+            {
+              id: slotIdB,
+              startTime: 12 * oneHour,
+              type: 'show',
+              showId: 'show2',
+              order: 'next',
+              direction: 'asc',
+              seasonFilter: [],
+              iterationGroup: sharedGroup,
+            },
+          ],
+          period: 'day',
+          latenessMs: 0,
+          timeZoneOffset: 0,
+        };
+
+        const result = await scheduleTimeSlots(
+          schedule,
+          [...show1Episodes, ...show2Episodes],
+          [42],
+          undefined,
+          midnight,
+        );
+
+        const firsts = firstContentIdPerSlot(
+          result.lineup as { type: string; id?: string; duration: number }[],
+          12 * oneHour,
+        );
+        expect(firsts.length).toBeGreaterThanOrEqual(2);
+        expect(firsts[0]).toBe('show1-ep1');
+        expect(firsts[1]).toBe('show2-ep1');
+      });
+
+      test('same group, different ordering → independent', async () => {
+        const episodes = makeEpisodes('show1', 10);
+        const slotIdA = randomUUID();
+        const slotIdB = randomUUID();
+        const sharedGroup = randomUUID();
+
+        const schedule: TimeSlotSchedule = {
+          type: 'time',
+          flexPreference: 'distribute',
+          maxDays: 1,
+          padMs: oneHour,
+          slots: [
+            {
+              id: slotIdA,
+              startTime: 0,
+              type: 'show',
+              showId: 'show1',
+              order: 'next',
+              direction: 'asc',
+              seasonFilter: [],
+              iterationGroup: sharedGroup,
+            },
+            {
+              id: slotIdB,
+              startTime: 12 * oneHour,
+              type: 'show',
+              showId: 'show1',
+              order: 'shuffle',
+              direction: 'asc',
+              seasonFilter: [],
+              iterationGroup: sharedGroup,
+            },
+          ],
+          period: 'day',
+          latenessMs: 0,
+          timeZoneOffset: 0,
+        };
+
+        const result = await scheduleTimeSlots(
+          schedule,
+          episodes,
+          [42],
+          undefined,
+          midnight,
+        );
+
+        const firsts = firstContentIdPerSlot(
+          result.lineup as { type: string; id?: string; duration: number }[],
+          12 * oneHour,
+        );
+        expect(firsts.length).toBeGreaterThanOrEqual(2);
+        expect(firsts[0]).toBe('show1-ep1');
+      });
     });
   });
 });

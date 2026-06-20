@@ -1,14 +1,9 @@
-import type {
-  GetChildLoggerArgs,
-  Logger,
-} from '@/util/logging/LoggerFactory.js';
 import { isString } from 'lodash-es';
 
 const KEYS = {
   GlobalOptions: Symbol.for('GlobalOptions'),
   ServerOptions: Symbol.for('ServerOptions'),
 
-  Logger: Symbol.for('Logger'),
   LoggerFactory: Symbol.for('LoggerFactory'),
   RootLogger: Symbol.for('RootLogger'),
   Timer: Symbol.for('Timer'),
@@ -76,6 +71,9 @@ const KEYS = {
   MediaSourceOtherVideoLibraryScanner: Symbol.for(
     'MediaSourceOtherVideoLibraryScanner',
   ),
+  MediaSourceMusicVideoLibraryScanner: Symbol.for(
+    'MediaSourceMusicVideoLibraryScanner',
+  ),
   MediaSourceLibraryScanner: Symbol.for('MediaSourceLibraryScanner'),
   LocalMediaSourceScanner: Symbol.for('LocalMediaSourceScanner'),
   ExternalCollectionScanner: Symbol.for('ExternalCollectionScanner'),
@@ -93,13 +91,20 @@ const KEYS = {
   ProgramExternalIdRepository: Symbol.for('ProgramExternalIdRepository'),
   ProgramUpsertRepository: Symbol.for('ProgramUpsertRepository'),
   ProgramMetadataRepository: Symbol.for('ProgramMetadataRepository'),
-  ProgramGroupingUpsertRepository: Symbol.for('ProgramGroupingUpsertRepository'),
+  ProgramGroupingUpsertRepository: Symbol.for(
+    'ProgramGroupingUpsertRepository',
+  ),
   ProgramSearchRepository: Symbol.for('ProgramSearchRepository'),
   ProgramStateRepository: Symbol.for('ProgramStateRepository'),
+
+  // Stream Selection
+  CelEvaluationService: Symbol.for('CelEvaluationService'),
+  StreamSelectionProfileResolver: Symbol.for('StreamSelectionProfileResolver'),
 
   // ChannelDB repositories
   BasicChannelRepository: Symbol.for('BasicChannelRepository'),
   ChannelProgramRepository: Symbol.for('ChannelProgramRepository'),
+  ChannelReadOpsRepository: Symbol.for('ChannelReadOpsRepository'),
   LineupRepository: Symbol.for('LineupRepository'),
   ChannelConfigRepository: Symbol.for('ChannelConfigRepository'),
 };
@@ -118,7 +123,5 @@ export function autoFactoryKey(s: string): symbol;
 export function autoFactoryKey(s: Constructor | string): symbol {
   return Symbol.for(`AutoFactory<${isString(s) ? s : s.name}>`);
 }
-
-export type LoggerFactory = (args: GetChildLoggerArgs) => Logger;
 
 export { KEYS };

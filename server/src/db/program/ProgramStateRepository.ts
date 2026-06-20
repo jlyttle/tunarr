@@ -9,9 +9,7 @@ import type { DrizzleDBAccess } from '../schema/index.ts';
 
 @injectable()
 export class ProgramStateRepository {
-  constructor(
-    @inject(KEYS.DrizzleDB) private drizzleDB: DrizzleDBAccess,
-  ) {}
+  constructor(@inject(KEYS.DrizzleDB) private drizzleDB: DrizzleDBAccess) {}
 
   async updateProgramsState(
     programIds: string[],

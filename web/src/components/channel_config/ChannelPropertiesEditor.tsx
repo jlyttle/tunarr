@@ -1,14 +1,20 @@
+import ClearIcon from '@mui/icons-material/Clear';
+import HideImageOutlinedIcon from '@mui/icons-material/HideImageOutlined';
+import RestoreIcon from '@mui/icons-material/Restore';
 import {
   Box,
   Divider,
   FormControlLabel,
+  IconButton,
   Stack,
   Switch,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import dayjs from 'dayjs';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useCallback, useEffect, useRef } from 'react';
 import { Controller } from 'react-hook-form';
 import { useChannelFormContext } from '../../hooks/useChannelFormContext.ts';
@@ -18,9 +24,8 @@ import TunarrLogo from '../TunarrLogo.tsx';
 import { ImageUploadInput } from '../settings/ImageUploadInput.tsx';
 import { NumericFormControllerText } from '../util/TypedController.tsx';
 
-const DefaultIconPath = '';
-
 export function ChannelPropertiesEditor() {
+  const { t } = useLingui();
   const imgRef = useRef<HTMLImageElement | null>(null);
   const channel = useStore((s) => s.channelEditor.currentEntity);
   const {
@@ -61,6 +66,7 @@ export function ChannelPropertiesEditor() {
   );
 
   const imagePath = watch('icon.path');
+  const useDefaultIconFallback = watch('icon.useDefaultIconFallback');
 
   const isChannelFormat = (str: string) => {
     // Regex to match "Channel 123" format
@@ -99,11 +105,11 @@ export function ChannelPropertiesEditor() {
 
   const validateNumber = (value: number) => {
     if (isNaN(value)) {
-      return 'Not a valid number';
+      return t`Not a valid number`;
     }
 
     if (value <= 0) {
-      return 'Cannot use a channel number <= 0';
+      return t`Cannot use a channel number <= 0`;
     }
 
     // TODO: We could probably use the touched fields property of the form here.
@@ -112,7 +118,7 @@ export function ChannelPropertiesEditor() {
     }
 
     return channels.find((channel) => channel.number === Number(value))
-      ? 'This channel number has already been used'
+      ? t`This channel number has already been used`
       : undefined;
   };
 
@@ -122,7 +128,7 @@ export function ChannelPropertiesEditor() {
         <Box>
           <Stack spacing={3} divider={<Divider />}>
             <Box>
-              <Typography variant="h5">General</Typography>
+              <Typography variant="h5"><Trans>General</Trans></Typography>
               <NumericFormControllerText
                 name="number"
                 control={control}
@@ -134,20 +140,20 @@ export function ChannelPropertiesEditor() {
                 }}
                 TextFieldProps={{
                   fullWidth: true,
-                  label: 'Channel Number',
+                  label: t`Channel Number`,
                   margin: 'normal',
                 }}
               />
               <Controller
                 name="name"
                 control={control}
-                rules={{ required: 'Channel name is required' }}
+                rules={{ required: t`Channel name is required` }}
                 render={({ field, formState: { errors } }) => (
                   <TextField
                     fullWidth
-                    label="Channel Name"
+                    label={t`Channel Name`}
                     margin="normal"
-                    helperText={errors.name ? 'Channel name is required' : null}
+                    helperText={errors.name ? t`Channel name is required` : null}
                     {...field}
                   />
                 )}
@@ -155,14 +161,14 @@ export function ChannelPropertiesEditor() {
               <Controller
                 name="groupTitle"
                 control={control}
-                rules={{ required: 'Channel group is required' }}
+                rules={{ required: t`Channel group is required` }}
                 render={({ field, formState: { errors } }) => (
                   <TextField
                     fullWidth
-                    label="Channel Group"
+                    label={t`Channel Group`}
                     margin="normal"
-                    helperText={`This is used by iptv clients to categorize the channels. You can leave it as 'tunarr' if you don't need this sort of classification.
-                  ${errors.groupTitle ? 'Channel group is required' : ''}`}
+                    helperText={`${t`This is used by iptv clients to categorize the channels. You can leave it as 'tunarr' if you don't need this sort of classification.`}
+                  ${errors.groupTitle ? t`Channel group is required` : ''}`}
                     {...field}
                   />
                 )}
@@ -172,7 +178,7 @@ export function ChannelPropertiesEditor() {
                 control={control}
                 render={({ field }) => (
                   <DateTimePicker
-                    label="Programming Start"
+                    label={t`Programming Start`}
                     slotProps={{
                       textField: {
                         margin: 'normal',
@@ -187,8 +193,8 @@ export function ChannelPropertiesEditor() {
                   />
                 )}
               />
-              <Box sx={{ display: 'flex', alignItems: 'end' }}>
-                {DefaultIconPath !== imagePath ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 1 }}>
+                {imagePath ? (
                   <Box
                     component="img"
                     width="10%"
@@ -196,8 +202,27 @@ export function ChannelPropertiesEditor() {
                     sx={{ mr: 1 }}
                     ref={imgRef}
                   />
-                ) : (
+                ) : useDefaultIconFallback !== false ? (
                   <TunarrLogo style={{ width: '132px' }} />
+                ) : (
+                  <Box
+                    sx={{
+                      width: '132px',
+                      height: '106px',
+                      border: '2px dashed',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mr: 1,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <HideImageOutlinedIcon
+                      sx={{ fontSize: 40, color: 'text.disabled' }}
+                    />
+                  </Box>
                 )}
 
                 <Controller
@@ -205,28 +230,66 @@ export function ChannelPropertiesEditor() {
                   control={control}
                   render={({ field }) => (
                     <ImageUploadInput
-                      FormControlProps={{ fullWidth: true, margin: 'normal' }}
-                      value={field.value}
+                      FormControlProps={{ fullWidth: true }}
+                      value={field.value ?? ''}
                       onFormValueChange={(newPath) => {
                         field.onChange(newPath);
+                        if (newPath) {
+                          setValue('icon.useDefaultIconFallback', true, {
+                            shouldDirty: true,
+                          });
+                        }
                       }}
                       fileRenamer={renameFile}
-                      label="Thumbnail URL"
+                      label={t`Thumbnail URL`}
                       // TODO Pop a toast or something
                       onUploadError={console.error}
                     />
                   )}
                 />
+
+                {(imagePath || useDefaultIconFallback !== false) && (
+                  <Tooltip title={t`Remove icon`}>
+                    <IconButton
+                      aria-label="Remove channel icon"
+                      onClick={() => {
+                        setValue('icon.path', '', { shouldDirty: true });
+                        setValue('icon.useDefaultIconFallback', false, {
+                          shouldDirty: true,
+                        });
+                      }}
+                    >
+                      <ClearIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
+
+                {!imagePath && useDefaultIconFallback === false && (
+                  <Tooltip title={t`Restore default logo`}>
+                    <IconButton
+                      aria-label="Restore default channel logo"
+                      onClick={() =>
+                        setValue('icon.useDefaultIconFallback', true, {
+                          shouldDirty: true,
+                        })
+                      }
+                    >
+                      <RestoreIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </Box>
             </Box>
             <Stack gap={2}>
-              <Typography variant="h5">On-Demand</Typography>
+              <Typography variant="h5"><Trans>On-Demand</Trans></Typography>
               <Typography variant="body2">
-                On-Demand channels resume from where you left off. Programming
-                is paused when the channel is not streaming.
-                <br />
-                <strong>NOTE:</strong> While the channel is inactive, the TV
-                Guide for the channel will be empty.
+                <Trans>
+                  On-Demand channels resume from where you left off. Programming
+                  is paused when the channel is not streaming.
+                  <br />
+                  <strong>NOTE:</strong> While the channel is inactive, the TV
+                  Guide for the channel will be empty.
+                </Trans>
               </Typography>
               <Controller
                 control={control}
@@ -239,7 +302,7 @@ export function ChannelPropertiesEditor() {
                         onChange={(e) => field.onChange(e.target.checked)}
                       />
                     }
-                    label="Enabled"
+                    label={t`Enabled`}
                   />
                 )}
               />

@@ -10,7 +10,7 @@ import { match, P } from 'ts-pattern';
 import { v4 } from 'uuid';
 import z from 'zod/v4';
 import { IWorkerPool } from '../interfaces/IWorkerPool.ts';
-import { KEYS } from '../types/inject.ts';
+
 import {
   WorkerMessage,
   WorkerRequest,
@@ -18,6 +18,7 @@ import {
 } from '../types/worker_schemas.ts';
 import { getNumericEnvVar, WORKER_POOL_SIZE_ENV_VAR } from '../util/env.ts';
 import { timeoutPromise } from '../util/index.ts';
+import { InjectLogger } from '../util/inject.ts';
 import { Logger } from '../util/logging/LoggerFactory.ts';
 import { TunarrSubprocessService } from './TunarrSubprocessService.ts';
 
@@ -34,10 +35,10 @@ interface PooledWorker {
   ready: boolean;
 }
 
-export class Future<T> implements Promise<T> {
+class Future<T> implements Promise<T> {
   #promise: Promise<T>;
-  #resolve: (v: T | PromiseLike<T>) => void;
-  #reject: (reason?: unknown) => void;
+  #resolve!: (v: T | PromiseLike<T>) => void;
+  #reject!: (reason?: unknown) => void;
   #state: 'pending' | 'fulfilled' | 'rejected' = 'pending';
   #value: T | undefined;
   #err: unknown;
@@ -60,7 +61,7 @@ export class Future<T> implements Promise<T> {
     );
   }
 
-  [Symbol.toStringTag]: string;
+  [Symbol.toStringTag]!: string;
 
   resolve(value: T | PromiseLike<T>) {
     if (this.#state === 'pending') {
@@ -128,8 +129,9 @@ export class TunarrWorkerPool implements IWorkerPool {
   #outstandingByIndex = new Map<number, string[]>();
   #startPromises: Promise<boolean>[] = [];
 
+  @InjectLogger() private declare readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.Logger) private logger: Logger,
     @inject(TunarrSubprocessService)
     private subprocessService: TunarrSubprocessService,
   ) {}
@@ -198,7 +200,7 @@ export class TunarrWorkerPool implements IWorkerPool {
             idx,
             requestId,
           );
-          this.#listeners.set(reqWithId.requestId, fut);
+          this.#listeners.set(reqWithId.requestId, fut as Future<unknown>);
           this.#outstandingByIndex.set(
             idx,
             this.#outstandingByIndex.get(idx)?.concat([requestId]) ?? [

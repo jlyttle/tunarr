@@ -4,6 +4,7 @@ import type {
 } from '@/db/interfaces/IProgramDB.js';
 import { KEYS } from '@/types/inject.js';
 import type { Maybe, PagedResult } from '@/types/util.js';
+import { InjectLogger } from '@/util/inject.js';
 import { type Logger } from '@/util/logging/LoggerFactory.js';
 import { seq } from '@tunarr/shared/util';
 import { untag } from '@tunarr/types';
@@ -14,7 +15,7 @@ import type {
 } from 'drizzle-orm/sqlite-core';
 import { inject, injectable } from 'inversify';
 import type { Kysely } from 'kysely';
-import { chunk, isEmpty, isUndefined, orderBy, sum, uniq } from 'lodash-es';
+import { chunk, isEmpty, orderBy, sum, uniq } from 'lodash-es';
 import type { MarkRequired } from 'ts-essentials';
 import {
   createManyRelationAgg,
@@ -22,7 +23,6 @@ import {
 } from '../../util/drizzleUtil.ts';
 import type { PageParams } from '../interfaces/IChannelDB.ts';
 import type { ProgramGroupingChildCounts } from '../interfaces/IProgramDB.ts';
-import { selectProgramsBuilder } from '../programQueryHelpers.ts';
 import { Artwork } from '../schema/Artwork.ts';
 import { ChannelPrograms } from '../schema/ChannelPrograms.ts';
 import { Program, ProgramType } from '../schema/Program.ts';
@@ -38,7 +38,6 @@ import type { DB } from '../schema/db.ts';
 import type {
   MusicAlbumOrm,
   ProgramGroupingOrmWithRelations,
-  ProgramGroupingWithExternalIds,
   ProgramWithRelationsOrm,
   TvSeasonOrm,
 } from '../schema/derivedTypes.ts';
@@ -46,8 +45,9 @@ import type { DrizzleDBAccess } from '../schema/index.ts';
 
 @injectable()
 export class ProgramGroupingRepository {
+  @InjectLogger() declare private readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.Logger) private logger: Logger,
     @inject(KEYS.Database) private db: Kysely<DB>,
     @inject(KEYS.DrizzleDB) private drizzleDB: DrizzleDBAccess,
   ) {}
@@ -171,31 +171,6 @@ export class ProgramGroupingRepository {
     }
 
     return programs;
-  }
-
-  async getProgramParent(
-    programId: string,
-  ): Promise<Maybe<ProgramGroupingWithExternalIds>> {
-    const p = await selectProgramsBuilder(this.db, {
-      joins: { tvSeason: true, trackAlbum: true },
-    })
-      .where('program.uuid', '=', programId)
-      .executeTakeFirst()
-      .then((program) => program?.tvSeason ?? program?.trackAlbum);
-
-    if (p) {
-      const eids = await this.db
-        .selectFrom('programGroupingExternalId')
-        .where('groupUuid', '=', p.uuid)
-        .selectAll()
-        .execute();
-      return {
-        ...p,
-        externalIds: eids,
-      };
-    }
-
-    return;
   }
 
   getChildren(
@@ -542,7 +517,7 @@ export class ProgramGroupingRepository {
   async getProgramGroupingDescendants(
     groupId: string,
     groupTypeHint?: ProgramGroupingType,
-  ): Promise<ProgramWithRelationsOrm[]> {
+  ): Promise<MarkRequired<ProgramWithRelationsOrm, 'externalIds'>[]> {
     const programs = await this.drizzleDB.query.program.findMany({
       where: (fields, { or, eq }) => {
         if (groupTypeHint) {
@@ -566,30 +541,26 @@ export class ProgramGroupingRepository {
         }
       },
       with: {
-        album:
-          isUndefined(groupTypeHint) ||
-          groupTypeHint === 'album' ||
-          groupTypeHint === 'artist'
-            ? true
-            : undefined,
-        artist:
-          isUndefined(groupTypeHint) ||
-          groupTypeHint === 'album' ||
-          groupTypeHint === 'artist'
-            ? true
-            : undefined,
-        season:
-          isUndefined(groupTypeHint) ||
-          groupTypeHint === 'show' ||
-          groupTypeHint === 'season'
-            ? true
-            : undefined,
-        show:
-          isUndefined(groupTypeHint) ||
-          groupTypeHint === 'show' ||
-          groupTypeHint === 'season'
-            ? true
-            : undefined,
+        album: {
+          with: {
+            externalIds: true,
+          },
+        },
+        artist: {
+          with: {
+            externalIds: true,
+          },
+        },
+        season: {
+          with: {
+            externalIds: true,
+          },
+        },
+        show: {
+          with: {
+            externalIds: true,
+          },
+        },
         externalIds: true,
       },
     });

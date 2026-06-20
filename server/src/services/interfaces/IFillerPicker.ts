@@ -1,13 +1,18 @@
 import type { ChannelOrm } from '../../db/schema/Channel.ts';
 import type {
   ChannelFillerShowWithContent,
-  ProgramWithRelations,
+  ProgramOrmWithExternalIds,
 } from '../../db/schema/derivedTypes.js';
 import type { Nullable } from '../../types/util.ts';
 
+export type FillerPickOptions = {
+  fillerRepeatCooldownOverrideMs?: number;
+  fillerListCooldownOverrides?: Record<string, number>;
+};
+
 export type FillerPickResult = {
   fillerListId: Nullable<string>;
-  filler: Nullable<ProgramWithRelations>;
+  filler: Nullable<ProgramOrmWithExternalIds>;
   minimumWait: number;
 };
 
@@ -23,6 +28,7 @@ export interface IFillerPicker {
     fillers: ChannelFillerShowWithContent[],
     maxDuration: number,
     now?: number,
+    options?: FillerPickOptions,
   ): Promise<FillerPickResult>;
 }
 export const DefaultFillerCooldownMillis = 30 * 60 * 1000;

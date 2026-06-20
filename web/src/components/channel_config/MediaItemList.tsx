@@ -1,3 +1,5 @@
+import { TopBarPadddingPx } from '@/helpers/constants.ts';
+import { Trans } from '@lingui/react/macro';
 import { Box, LinearProgress, Typography } from '@mui/material';
 import type {
   InfiniteData,
@@ -11,15 +13,14 @@ import {
   type ListOnItemsRenderedProps,
 } from 'react-window';
 import { useResizeObserver } from 'usehooks-ts';
-import { TopBarPadddingPx } from './MediaItemGrid.tsx';
 
-export interface ListItemProps<ItemType> {
+interface ListItemProps<ItemType> {
   item: ItemType;
   index: number;
   style?: React.CSSProperties;
 }
 
-export type MediaItemListProps<PageDataType, ItemType> = {
+type MediaItemListProps<PageDataType, ItemType> = {
   infiniteQuery: UseInfiniteQueryResult<InfiniteData<PageDataType>>;
   getPageDataSize: (page: PageDataType) => { total?: number; size: number };
   extractItems: (page: PageDataType) => ItemType[];
@@ -155,7 +156,7 @@ export function MediaItemList<PageDataType, ItemType>(
             fontStyle={'italic'}
             sx={{ textAlign: 'center', mt: 2 }}
           >
-            No results
+            <Trans>No results</Trans>
           </Typography>
         )}
       </Box>

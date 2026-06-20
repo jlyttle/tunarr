@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro';
 import { Clear, FilterList, Help, Save, Search } from '@mui/icons-material';
 import {
   Box,
@@ -86,6 +87,7 @@ export const SearchInput = ({
   mediaSourceId,
   showViewToggle,
 }: Props) => {
+  const { t } = useLingui();
   const [savedInitialSearch, setInitialSearch] = useState(initialSearchFilter);
   const [savedKeywords, setKeywords] = useState(initialKeywords);
   const formMethods = useForm<SearchForm>({
@@ -227,7 +229,7 @@ export const SearchInput = ({
             name="keywords"
             render={({ field }) => (
               <TextField
-                label="Keywords"
+                label={t`Keywords`}
                 fullWidth
                 {...field}
                 slotProps={{
@@ -243,7 +245,7 @@ export const SearchInput = ({
                           </InputAdornment>
                         )}
                         <InputAdornment position="end">
-                          <Tooltip title="Restrict search fields">
+                          <Tooltip title={t`Restrict search fields`}>
                             <IconButton
                               onClick={(e) =>
                                 setSearchRestrictEl(e.currentTarget)
@@ -262,7 +264,7 @@ export const SearchInput = ({
                         </InputAdornment>
                         <InputAdornment position="end">
                           <Tooltip
-                            title="Keywords perform full text search across all (or configured) fields"
+                            title={t`Keywords perform full text search across all (or configured) fields`}
                             placement="top"
                             sx={{ textAlign: 'center' }}
                             slotProps={{
@@ -291,7 +293,7 @@ export const SearchInput = ({
             <Stack direction={'row'}>
               {showViewToggle && <ProgramViewToggleButton />}
               <Box sx={{ marginLeft: 'auto' }}>
-                <Tooltip title="Save as Smart Collection">
+                <Tooltip title={t`Save as Smart Collection`}>
                   <IconButton
                     onClick={(e) => {
                       e.preventDefault();

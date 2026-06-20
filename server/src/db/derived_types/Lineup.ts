@@ -3,15 +3,16 @@ import {
   LineupScheduleSchema,
   SchedulingOperationSchema,
 } from '@tunarr/types/api';
-import { FillerType } from '@tunarr/types/schemas';
+import { FillerType, OfflineFillerConfigSchema } from '@tunarr/types/schemas';
 import { first } from 'lodash-es';
+import type { DeepReadonly } from 'ts-essentials';
 import { z } from 'zod/v4';
 
 const BaseLineupItemSchema = z.object({
   durationMs: z.number().positive(), // Add a max
 });
 
-export const ContentLineupItemSchema = z
+const ContentLineupItemSchema = z
   .object({
     type: z.literal('content'),
     id: z.string().min(1),
@@ -22,21 +23,23 @@ export const ContentLineupItemSchema = z
     customShowId: z.uuid().optional(),
     fillerListId: z.uuid().optional(),
     fillerType: FillerType.optional(),
+    startOffsetMs: z.number().nonnegative().optional(),
   })
   .merge(BaseLineupItemSchema);
 
 // This item has to be hydrated from the DB
 export type ContentItem = z.infer<typeof ContentLineupItemSchema>;
 
-export const OfflineLineupItemSchema = z
+const OfflineLineupItemSchema = z
   .object({
     type: z.literal('offline'),
+    fillerConfig: OfflineFillerConfigSchema.optional(),
   })
   .merge(BaseLineupItemSchema);
 
 export type OfflineItem = z.infer<typeof OfflineLineupItemSchema>;
 
-export const RedirectLineupItemSchema = z
+const RedirectLineupItemSchema = z
   .object({
     type: z.literal('redirect'),
     channel: z.uuid(),
@@ -44,7 +47,7 @@ export const RedirectLineupItemSchema = z
   .merge(BaseLineupItemSchema);
 export type RedirectItem = z.infer<typeof RedirectLineupItemSchema>;
 
-export const LineupItemSchema = z.discriminatedUnion('type', [
+const LineupItemSchema = z.discriminatedUnion('type', [
   ContentLineupItemSchema,
   OfflineLineupItemSchema,
   RedirectLineupItemSchema,
@@ -53,8 +56,10 @@ export const LineupItemSchema = z.discriminatedUnion('type', [
 export type LineupItem = z.infer<typeof LineupItemSchema>;
 
 function isItemOfType<T extends LineupItem>(discrim: string) {
-  return function (t: LineupItem | undefined): t is T {
-    return t?.type === discrim;
+  return function <U extends LineupItem | DeepReadonly<LineupItem> | undefined>(
+    t: U,
+  ): t is U & T {
+    return (t as LineupItem | undefined)?.type === discrim;
   };
 }
 
@@ -69,7 +74,7 @@ const PendingProgramSchema = ContentLineupItemSchema.extend({
 
 export type PendingProgram = z.infer<typeof PendingProgramSchema>;
 
-export const OnDemandChannelConfigSchema = z.object({
+const OnDemandChannelConfigSchema = z.object({
   state: z
     .union([z.literal('paused'), z.literal('playing')])
     .default('paused')
@@ -82,7 +87,7 @@ export const OnDemandChannelConfigSchema = z.object({
 
 export type OnDemandChannelConfig = z.infer<typeof OnDemandChannelConfigSchema>;
 
-export const CurrentLineupSchemaVersion = 4;
+export const CurrentLineupSchemaVersion = 5;
 
 export const LineupSchema = z.object({
   version: z

@@ -1,7 +1,10 @@
 import { nullToUndefined, seq } from '@tunarr/shared/util';
 import {
+  Episode,
   FindChild,
   MediaStream,
+  MusicTrack as MusicTrackType,
+  MusicVideo,
   tag,
   Tag,
   TerminalProgram,
@@ -21,7 +24,7 @@ import dayjs from 'dayjs';
 import type { ProcessInfo } from 'find-process';
 import findProcess from 'find-process';
 import { inject, injectable } from 'inversify';
-import { compact, find, isEmpty, isNull, isString, uniq } from 'lodash-es';
+import { compact, find, isEmpty, uniq } from 'lodash-es';
 import {
   DocumentsQuery,
   EnqueuedTask,
@@ -36,7 +39,6 @@ import {
 } from 'meilisearch';
 import { createWriteStream } from 'node:fs';
 import fs from 'node:fs/promises';
-import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { isMainThread } from 'node:worker_threads';
@@ -51,7 +53,6 @@ import { ServerOptions } from '../globals.ts';
 import { KEYS } from '../types/inject.ts';
 import {
   AlbumWithArtist,
-  Episode,
   EpisodeWithAncestors2,
   HasMediaSourceAndLibraryId,
   MediaSourceEpisode,
@@ -61,7 +62,6 @@ import {
   Movie,
   MusicAlbum,
   MusicArtist,
-  MusicTrack,
   MusicTrackWithAncestors,
   OtherVideo,
   Season,
@@ -83,7 +83,9 @@ import {
 } from '../util/env.ts';
 import { fileExists } from '../util/fsUtil.ts';
 import { isNonEmptyString, isWindows, wait } from '../util/index.ts';
+import { InjectLogger } from '../util/inject.ts';
 import { Logger } from '../util/logging/LoggerFactory.ts';
+import { getAvailablePort } from '../util/net.ts';
 import { FileSystemService } from './FileSystemService.ts';
 import { ISearchService } from './ISearchService.ts';
 import { SearchParser } from './search/SearchParser.ts';
@@ -133,6 +135,7 @@ const ProgramsIndex: TunarrSearchIndex<ProgramSearchDocument> = {
     'rating',
     'originalReleaseDate',
     'originalReleaseYear',
+    'addedAt',
     'externalIdsMerged',
     'grandparent.id',
     'grandparent.type',
@@ -173,6 +176,7 @@ const ProgramsIndex: TunarrSearchIndex<ProgramSearchDocument> = {
     'duration',
     'originalReleaseDate',
     'originalReleaseYear',
+    'addedAt',
     'index',
   ],
   caseSensitiveFilters: [
@@ -278,6 +282,7 @@ type BaseProgramSearchDocument = {
   studio?: Studio[];
   tags: string[];
   state: ProgramState;
+  addedAt: Nullable<number>;
 };
 
 export type TerminalProgramSearchDocument<
@@ -388,11 +393,12 @@ export class MeilisearchService implements ISearchService {
   private mutex = new Mutex();
   private started = false;
   private proc?: ChildProcessWrapper;
-  private port: number;
-  #client: MeiliSearch;
+  private port?: number;
+  #client?: MeiliSearch;
+
+  @InjectLogger() declare private readonly logger: Logger;
 
   constructor(
-    @inject(KEYS.Logger) private logger: Logger,
     @inject(KEYS.ServerOptions) private serverOptions: ServerOptions,
     @inject(KEYS.SettingsDB) private settingsDB: ISettingsDB,
     @inject(ChildProcessHelper) private childProcessHelper: ChildProcessHelper,
@@ -575,6 +581,7 @@ export class MeilisearchService implements ISearchService {
           args.join(' '),
         );
         this.proc = await this.childProcessHelper.spawn(executablePath, args, {
+          name: 'meilisearch',
           maxAttempts: 3,
           additionalOpts: {
             cwd: this.serverOptions.databaseDirectory,
@@ -677,9 +684,9 @@ export class MeilisearchService implements ISearchService {
 
   async getProgram(id: string) {
     try {
-      return await this.#client
-        .index<ProgramSearchDocument>(ProgramsIndex.name)
-        .getDocument(id);
+      return await this.#client!.index<ProgramSearchDocument>(
+        ProgramsIndex.name,
+      ).getDocument(id);
     } catch (e) {
       if (e instanceof MeiliSearchApiError && e.response.status === 404) {
         return Promise.resolve(undefined);
@@ -698,14 +705,14 @@ export class MeilisearchService implements ISearchService {
       let res: ResourceResults<ProgramSearchDocument[]>;
       let offset = 0;
       do {
-        res = await this.#client
-          .index<ProgramSearchDocument>(ProgramsIndex.name)
-          .getDocuments({
-            ids,
-            offset,
-            limit: 100,
-            filter: '',
-          });
+        res = await this.#client!.index<ProgramSearchDocument>(
+          ProgramsIndex.name,
+        ).getDocuments({
+          ids,
+          offset,
+          limit: 100,
+          filter: '',
+        });
         results.push(...res.results);
         offset += res.results.length;
       } while (results.length < res.total || res.results.length > 0);
@@ -745,14 +752,14 @@ export class MeilisearchService implements ISearchService {
     }
 
     return await Promise.all(
-      this.#client
-        .index<ProgramSearchDocument>(ProgramsIndex.name)
-        .updateDocumentsInBatches(
-          movies.map((movie) =>
-            this.convertPartialProgramToSearchDocument(movie),
-          ),
-          100,
+      this.#client!.index<ProgramSearchDocument>(
+        ProgramsIndex.name,
+      ).updateDocumentsInBatches(
+        movies.map((movie) =>
+          this.convertPartialProgramToSearchDocument(movie),
         ),
+        100,
+      ),
     );
   }
 
@@ -762,13 +769,28 @@ export class MeilisearchService implements ISearchService {
     }
 
     return await Promise.all(
-      this.#client
-        .index<ProgramSearchDocument>(ProgramsIndex.name)
-        .updateDocumentsInBatches(programs, 20),
+      this.#client!.index<ProgramSearchDocument>(
+        ProgramsIndex.name,
+      ).updateDocumentsInBatches(programs, 20),
     );
   }
 
   async indexOtherVideo(programs: (OtherVideo & HasMediaSourceAndLibraryId)[]) {
+    if (isEmpty(programs)) {
+      return;
+    }
+
+    return await Promise.all(
+      this.client()
+        .index<ProgramSearchDocument>(ProgramsIndex.name)
+        .addDocumentsInBatches(
+          programs.map((p) => this.convertProgramToSearchDocument(p)),
+          100,
+        ),
+    );
+  }
+
+  async indexMusicVideo(programs: (MusicVideo & HasMediaSourceAndLibraryId)[]) {
     if (isEmpty(programs)) {
       return;
     }
@@ -816,6 +838,7 @@ export class MeilisearchService implements ISearchService {
       tags: show.tags,
       studio: show.studios,
       state: 'ok',
+      addedAt: show.createdAt ?? null,
     };
 
     await this.client()
@@ -867,6 +890,7 @@ export class MeilisearchService implements ISearchService {
       ),
       tags: season.tags,
       state: 'ok',
+      addedAt: season.createdAt ?? null,
       parent: {
         id: encodeCaseSensitiveId(season.show.uuid),
         externalIds: showEids ?? [],
@@ -991,6 +1015,7 @@ export class MeilisearchService implements ISearchService {
       ),
       tags: artist.tags,
       state: 'ok',
+      addedAt: artist.createdAt ?? null,
     };
 
     await this.client()
@@ -1040,6 +1065,7 @@ export class MeilisearchService implements ISearchService {
       ),
       tags: album.tags,
       state: 'ok',
+      addedAt: album.createdAt ?? null,
       parent: {
         id: encodeCaseSensitiveId(album.artist.uuid),
         externalIds: artistEids ?? [],
@@ -1126,6 +1152,157 @@ export class MeilisearchService implements ISearchService {
         .index<TerminalProgramSearchDocument<'track'>>(ProgramsIndex.name)
         .addDocumentsInBatches(episodeDocuments, 100),
     );
+  }
+
+  async indexTerminalPrograms(
+    programs: (TerminalProgram & HasMediaSourceAndLibraryId)[],
+  ) {
+    if (isEmpty(programs)) return;
+
+    const tasks: Promise<unknown>[] = [];
+
+    const episodes = programs.filter(
+      (p): p is Episode & HasMediaSourceAndLibraryId => p.type === 'episode',
+    );
+    if (episodes.length > 0) {
+      const docs = episodes.map((ep) => {
+        const document = this.convertProgramToSearchDocument(ep);
+        const season = ep.season;
+        const show = season?.show ?? ep.show;
+        if (season) {
+          const seasonEids = (season.identifiers ?? []).map((eid) => ({
+            id: eid.id,
+            source: eid.type,
+            sourceId: eid.sourceId
+              ? encodeCaseSensitiveId(eid.sourceId)
+              : undefined,
+          }));
+          document.parent = {
+            id: encodeCaseSensitiveId(season.uuid),
+            externalIds: seasonEids,
+            type: season.type,
+            externalIdsMerged: seasonEids.map(
+              (eid) =>
+                `${season.type}_${eid.source}|${eid.sourceId ?? ''}|${eid.id}` satisfies MergedGroupingExternalId<'season'>,
+            ),
+            title: season.title,
+            year: season.year ?? undefined,
+            genres: season.genres?.map(({ name }) => name) ?? [],
+            studio: season.studios?.map(({ name }) => name) ?? [],
+            tags: season.tags ?? [],
+          };
+        }
+        if (show) {
+          const showEids = (show.identifiers ?? []).map((eid) => ({
+            id: eid.id,
+            source: eid.type,
+            sourceId: eid.sourceId
+              ? encodeCaseSensitiveId(eid.sourceId)
+              : undefined,
+          }));
+          document.grandparent = {
+            id: encodeCaseSensitiveId(show.uuid),
+            type: show.type,
+            externalIds: showEids,
+            externalIdsMerged: showEids.map(
+              (eid) =>
+                `${show.type}_${eid.source}|${eid.sourceId ?? ''}|${eid.id}` satisfies MergedGroupingExternalId<'show'>,
+            ),
+            title: show.title,
+            year: show.year ?? undefined,
+            genres: show.genres?.map(({ name }) => name) ?? [],
+            studio: show.studios?.map(({ name }) => name) ?? [],
+            tags: show.tags ?? [],
+            rating: show.rating ?? undefined,
+          };
+        }
+        return document;
+      });
+      tasks.push(
+        ...this.client()
+          .index<TerminalProgramSearchDocument<'episode'>>(ProgramsIndex.name)
+          .addDocumentsInBatches(docs, 100),
+      );
+    }
+
+    const tracks = programs.filter(
+      (p): p is MusicTrackType & HasMediaSourceAndLibraryId =>
+        p.type === 'track',
+    );
+    if (tracks.length > 0) {
+      const docs = tracks.map((track) => {
+        const document = this.convertProgramToSearchDocument(track);
+        const album = track.album;
+        const artist = album?.artist;
+        if (album) {
+          const albumEids = (album.identifiers ?? []).map((eid) => ({
+            id: eid.id,
+            source: eid.type,
+            sourceId: eid.sourceId
+              ? encodeCaseSensitiveId(eid.sourceId)
+              : undefined,
+          }));
+          document.parent = {
+            id: encodeCaseSensitiveId(album.uuid),
+            externalIds: albumEids,
+            type: album.type,
+            externalIdsMerged: albumEids.map(
+              (eid) =>
+                `${album.type}_${eid.source}|${eid.sourceId ?? ''}|${eid.id}` satisfies MergedGroupingExternalId<'album'>,
+            ),
+            title: album.title,
+            year: album.year ?? undefined,
+            genres: album.genres?.map(({ name }) => name) ?? [],
+            studio: album.studios?.map(({ name }) => name) ?? [],
+            tags: album.tags ?? [],
+          };
+        }
+        if (artist) {
+          const artistEids = (artist.identifiers ?? []).map((eid) => ({
+            id: eid.id,
+            source: eid.type,
+            sourceId: eid.sourceId
+              ? encodeCaseSensitiveId(eid.sourceId)
+              : undefined,
+          }));
+          document.grandparent = {
+            id: encodeCaseSensitiveId(artist.uuid),
+            type: artist.type,
+            externalIds: artistEids,
+            externalIdsMerged: artistEids.map(
+              (eid) =>
+                `${artist.type}_${eid.source}|${eid.sourceId ?? ''}|${eid.id}` satisfies MergedGroupingExternalId<'artist'>,
+            ),
+            title: artist.title,
+            genres: artist.genres?.map(({ name }) => name) ?? [],
+            tags: artist.tags ?? [],
+            studio: [],
+          };
+        }
+        return document;
+      });
+      tasks.push(
+        ...this.client()
+          .index<TerminalProgramSearchDocument<'track'>>(ProgramsIndex.name)
+          .addDocumentsInBatches(docs, 100),
+      );
+    }
+
+    const others = programs.filter(
+      (p) => p.type !== 'episode' && p.type !== 'track',
+    );
+    if (others.length > 0) {
+      tasks.push(
+        ...this.client()
+          .index<ProgramSearchDocument>(ProgramsIndex.name)
+          .addDocumentsInBatches(
+            others.map((p) => this.convertProgramToSearchDocument(p)),
+            100,
+          ),
+      );
+    }
+
+    await Promise.all(tasks);
   }
 
   async search<
@@ -1289,7 +1466,7 @@ export class MeilisearchService implements ISearchService {
 
   // AHHH!!!!
   async deleteAll() {
-    return await this.#client.index(ProgramsIndex.name).deleteAllDocuments();
+    return await this.#client!.index(ProgramsIndex.name).deleteAllDocuments();
   }
 
   async deleteByIds(ids: string[]) {
@@ -1297,12 +1474,12 @@ export class MeilisearchService implements ISearchService {
       return;
     }
 
-    return await this.#client.index(ProgramsIndex.name).deleteDocuments(ids);
+    return await this.#client!.index(ProgramsIndex.name).deleteDocuments(ids);
   }
 
   async deleteMissing() {
     const filter = `state = "missing"`;
-    return await this.#client.index(ProgramsIndex.name).deleteDocuments({
+    return await this.#client!.index(ProgramsIndex.name).deleteDocuments({
       filter,
     });
   }
@@ -1315,18 +1492,18 @@ export class MeilisearchService implements ISearchService {
     const encodedIds = ids.map((id) => encodeCaseSensitiveId(id));
     const filter = `mediaSourceId NOT IN [${encodedIds.join(', ')}]`;
 
-    return await this.#client.index(ProgramsIndex.name).deleteDocuments({
+    return await this.#client!.index(ProgramsIndex.name).deleteDocuments({
       filter,
     });
   }
 
   async createSnapshot() {
-    const taskResult = await this.#client.createSnapshot();
+    const taskResult = await this.#client!.createSnapshot();
     return taskResult.taskUid;
   }
 
   async monitorTask(id: number) {
-    let task = await this.#client.tasks.getTask(id);
+    let task = await this.#client!.tasks.getTask(id);
     if (!task) {
       this.logger.info(
         'Attempted to monitor search task %d but it was not found',
@@ -1347,7 +1524,7 @@ export class MeilisearchService implements ISearchService {
 
       await wait(3_000);
 
-      task = await this.#client.tasks.getTask(id);
+      task = await this.#client!.tasks.getTask(id);
       if (!task) {
         return;
       }
@@ -1433,13 +1610,42 @@ export class MeilisearchService implements ISearchService {
             },
           )
           .with(
-            { type: P.union('date', 'numeric'), value: [P.number, P.number] },
+            P.union(
+              { type: 'numeric', value: [P.number, P.number] },
+              {
+                type: 'date',
+                value: [P.number, P.number],
+              },
+            ),
             ({ value }) => {
               return `${value[0]} TO ${value[1]}`;
             },
           )
           .with(
-            { type: P.union('date', 'numeric'), value: P.number },
+            { type: 'numeric', value: P.number },
+            ({ value, op }) => `${op.toUpperCase()} ${value}`,
+          )
+          .with(
+            {
+              type: 'date',
+              relativeDate: { op: 'inthelast' },
+              value: P.number,
+            },
+            ({ value }) => `>= ${value}`,
+          )
+          .with(
+            {
+              type: 'date',
+              relativeDate: { op: 'notinthelast' },
+              value: P.number,
+            },
+            ({ value }) => `< ${value}`,
+          )
+          .with(
+            {
+              type: 'date',
+              value: P.number,
+            },
             ({ value, op }) => `${op.toUpperCase()} ${value}`,
           )
           .otherwise(() => null);
@@ -1479,8 +1685,7 @@ export class MeilisearchService implements ISearchService {
   }
 
   private convertProgramToSearchDocument<
-    ProgramT extends (Movie | Episode | MusicTrack | OtherVideo) &
-      HasMediaSourceAndLibraryId,
+    ProgramT extends TerminalProgram & HasMediaSourceAndLibraryId,
   >(
     program: ProgramT,
   ): TerminalProgramSearchDocument<NoInfer<ProgramT['type']>> {
@@ -1533,6 +1738,7 @@ export class MeilisearchService implements ISearchService {
         break;
       case 'track':
       case 'other_video':
+      case 'music_video':
         summary = null;
         break;
     }
@@ -1547,6 +1753,7 @@ export class MeilisearchService implements ISearchService {
         break;
       case 'track':
       case 'other_video':
+      case 'music_video':
         rating = null;
         break;
     }
@@ -1580,6 +1787,7 @@ export class MeilisearchService implements ISearchService {
       writer: program.writers ?? [],
       studio: program.studios ?? [],
       tags: program.tags,
+      addedAt: program.createdAt ?? null,
       mediaSourceId: encodeCaseSensitiveId(program.mediaSourceId),
       libraryId: encodeCaseSensitiveId(program.libraryId),
       videoWidth: width,
@@ -1794,25 +2002,7 @@ export class MeilisearchService implements ISearchService {
   }
 }
 
-async function getAvailablePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.unref();
-    server.on('error', reject);
-    server.listen(0, () => {
-      const addr = server.address();
-      server.close(() => {
-        if (isString(addr) || isNull(addr)) {
-          reject(new Error('Server was not open on a port'));
-        } else {
-          resolve(addr.port);
-        }
-      });
-    });
-  });
-}
-
-export function encodeCaseSensitiveId(id: string): SingleCaseString {
+function encodeCaseSensitiveId(id: string): SingleCaseString {
   return tag(base32.encode(id));
 }
 

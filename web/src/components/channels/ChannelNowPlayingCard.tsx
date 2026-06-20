@@ -1,3 +1,4 @@
+import { Trans } from '@lingui/react/macro';
 import { ZoomIn } from '@mui/icons-material';
 import {
   Box,
@@ -15,14 +16,14 @@ import {
 } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
 import { createExternalId } from '@tunarr/shared';
-import { isNonEmptyString } from '@tunarr/shared/util';
-import type { MediaArtwork} from '@tunarr/types';
+import type { MediaArtwork } from '@tunarr/types';
 import { tag } from '@tunarr/types';
 import * as globalDayjs from 'dayjs';
-import { capitalize, isUndefined } from 'lodash-es';
+import { capitalize, isNil } from 'lodash-es';
 import { useMemo, useState } from 'react';
 import { match, P } from 'ts-pattern';
 import { useTimeout, useToggle } from 'usehooks-ts';
+import { extractProgramGrandparent } from '../../helpers/programUtil.ts';
 import { useChannelAndProgramming } from '../../hooks/useChannelLineup.ts';
 import { useDayjs } from '../../hooks/useDayjs.ts';
 import { useChannelNowPlaying } from '../../hooks/useTvGuide.ts';
@@ -69,28 +70,38 @@ export const ChannelNowPlayingCard = ({ channelId }: Props) => {
     return match(firstProgram)
       .returnType<ProgramDetails | null>()
       .with(P.nullish, () => null)
-      .with({ type: 'content', subtype: P.union('episode', 'track') }, (c) => ({
-        title: c.title,
-        showTitle: lineup.programs[c.id]?.grandparent?.title,
-        seasonAndEpisode:
-          !isUndefined(lineup.programs[c.id]?.index) &&
-          !isUndefined(lineup.programs[c.id]?.parent?.index)
-            ? {
-                season: lineup.programs[c.id].parent!.index!,
-                episode: lineup.programs[c.id].index!,
-              }
-            : undefined,
-      }))
-      .with({ type: 'content' }, (c) => ({ title: c.title }))
-      .with({ type: 'custom' }, (c) => ({
-        title: c.program?.title ?? `Custom`,
+      .with(
+        { type: 'content', program: { type: P.union('episode', 'track') } },
+        ({ program: c }) => {
+          const grandparent = extractProgramGrandparent(c);
+          const programIndex =
+            c.type === 'episode' ? c.episodeNumber : c.trackNumber;
+          const parentIndex =
+            c.type === 'episode' ? c.season?.index : c.album?.index;
+
+          return {
+            title: c.title,
+            showTitle: grandparent?.title,
+            seasonAndEpisode:
+              !isNil(programIndex) && !isNil(parentIndex)
+                ? {
+                    season: parentIndex,
+                    episode: programIndex,
+                  }
+                : undefined,
+          };
+        },
+      )
+      .with({ type: 'content' }, ({ program: c }) => ({ title: c.title }))
+      .with({ type: 'custom' }, ({ program: c }) => ({
+        title: c?.program?.title ?? `Custom`,
       }))
       .with({ type: 'flex' }, () => ({ title: 'Flex' }))
       .with({ type: 'redirect' }, (c) => ({
         title: `Redirect to ${c.channelNumber}`,
       }))
       .exhaustive();
-  }, [firstProgram, lineup.programs]);
+  }, [firstProgram]);
 
   const imageUrl = useMemo(() => {
     if (!firstProgram) {
@@ -106,26 +117,35 @@ export const ChannelNowPlayingCard = ({ channelId }: Props) => {
       return;
     }
 
-    if (program.externalSourceType === 'local') {
+    if (program.program.sourceType === 'local') {
       // Temporary workaround, real fix on "dev"
-      const [id, artworkType, fallbackTypes] = match(program)
+      const [id, artworkType, fallbackTypes] = match([
+        program.program,
+        extractProgramGrandparent(program.program),
+      ])
         .returnType<[string, MediaArtwork['type'], MediaArtwork['type'][]]>()
         // We don't have enough type info to know here.
-        .with(
-          { subtype: 'episode', grandparent: { id: P.when(isNonEmptyString) } },
-          (show) => [show.grandparent.id, 'fanart', ['poster']],
-        )
-        .with({ subtype: 'episode' }, (ep) => [ep.id!, 'thumbnail', []])
-        .with(
-          { subtype: 'track', grandparent: { id: P.when(isNonEmptyString) } },
-          (show) => [show.grandparent.id, 'banner', ['fanart', 'poster']],
-        )
-        .with({ subtype: 'movie' }, (movie) => [
-          movie.id!,
+        .with([{ type: 'episode' }, P.nonNullable], ([_, show]) => [
+          show.uuid,
+          'fanart',
+          ['poster'],
+        ])
+        .with([{ type: 'episode' }, P._], ([ep, _]) => [
+          ep.uuid,
+          'thumbnail',
+          [],
+        ])
+        .with([{ type: 'track' }, P.nonNullable], ([_, artist]) => [
+          artist.uuid,
           'banner',
           ['fanart', 'poster'],
         ])
-        .otherwise((other) => [other.id!, 'fanart', ['poster']]);
+        .with([{ type: 'movie' }, P._], ([movie, _]) => [
+          movie.uuid,
+          'banner',
+          ['fanart', 'poster'],
+        ])
+        .otherwise(([other, _]) => [other.uuid, 'fanart', ['poster']]);
       const fallbackParts =
         fallbackTypes.length === 0 ? '' : `${fallbackTypes.join(',')}`;
 
@@ -133,18 +153,18 @@ export const ChannelNowPlayingCard = ({ channelId }: Props) => {
     }
 
     const id =
-      program.subtype === 'movie' ||
-      program.subtype === 'music_video' ||
-      program.subtype === 'other_video'
-        ? program.externalKey
-        : program.grandparent?.externalKey;
+      program.program.type === 'movie' ||
+      program.program.type === 'music_video' ||
+      program.program.type === 'other_video'
+        ? program.program.externalId
+        : extractProgramGrandparent(program.program)?.externalId;
 
     const query = new URLSearchParams({
       mode: 'proxy',
       asset: 'image',
       id: createExternalId(
-        program.externalSourceType,
-        tag(program.externalSourceId),
+        program.program.sourceType,
+        tag(program.program.mediaSourceId),
         id ?? '',
       ),
       imageType: smallViewport ? 'poster' : 'background',
@@ -166,6 +186,12 @@ export const ChannelNowPlayingCard = ({ channelId }: Props) => {
     console.error(`Failed to load image: ${imageUrl}`);
     setImageLoaded(true);
   };
+
+  const startedAgo = dayjs(firstProgram?.start).fromNow();
+  const remainingTime =
+    globalDayjs
+      .duration(dayjs(firstProgram?.stop ?? 0).diff(dayjs()))
+      .humanize() + ' ';
 
   return (
     <Card
@@ -215,31 +241,30 @@ export const ChannelNowPlayingCard = ({ channelId }: Props) => {
       >
         <CardContent sx={{ flex: 1 }}>
           <Typography gutterBottom variant="h4">
-            Now Playing:
+            <Trans>Now Playing:</Trans>
           </Typography>
           <Typography gutterBottom variant="h5" component="div">
             {details?.showTitle ?? details?.title}
           </Typography>
           {details?.showTitle && <Typography>{details.title}</Typography>}
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Started {dayjs(firstProgram?.start).fromNow()} -{' '}
-            {globalDayjs
-              .duration(dayjs(firstProgram?.stop ?? 0).diff(dayjs()))
-              .humanize() + ' '}
-            remaining
+            <Trans>
+              Started {startedAgo} - {remainingTime}
+              remaining
+            </Trans>
           </Typography>
         </CardContent>
         <CardActions>
           <Button startIcon={<ZoomIn />} size="small" onClick={toggleOpen}>
-            Details
+            <Trans>Details</Trans>
           </Button>
 
           {firstProgram?.type === 'content' &&
-            firstProgram?.externalSourceType !== 'local' && (
+            firstProgram?.program.sourceType !== 'local' && (
               <Button
                 startIcon={
                   <NetworkIcon
-                    network={firstProgram.externalSourceType}
+                    network={firstProgram.program.sourceType}
                     width={15}
                     height={15}
                   />
@@ -249,7 +274,9 @@ export const ChannelNowPlayingCard = ({ channelId }: Props) => {
                 href={`${backendUri}/api/programs/${firstProgram.id}/external-link`}
                 target="_blank"
               >
-                View in {capitalize(firstProgram.externalSourceType)}
+                <Trans>
+                  View in {capitalize(firstProgram.program.sourceType)}
+                </Trans>
               </Button>
             )}
         </CardActions>
@@ -258,7 +285,7 @@ export const ChannelNowPlayingCard = ({ channelId }: Props) => {
         <ProgramDetailsDialog
           open={open}
           programId={firstProgram.id}
-          programType={firstProgram.subtype}
+          programType={firstProgram.program.type}
           onClose={toggleOpen}
           start={dayjs(firstProgram.start)}
           stop={dayjs(firstProgram.stop)}

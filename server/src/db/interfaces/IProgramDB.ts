@@ -21,19 +21,12 @@ import type {
   NewProgramVersion,
   NewProgramWithRelations,
   ProgramGroupingOrmWithRelations,
-  ProgramGroupingWithExternalIds,
+  ProgramOrmWithExternalIds,
   ProgramWithExternalIds,
-  ProgramWithRelations,
   ProgramWithRelationsOrm,
   TvSeasonOrm,
 } from '@/db/schema/derivedTypes.js';
-import type {
-  MarkNonNullable,
-  Maybe,
-  Nullable,
-  PagedResult,
-} from '@/types/util.js';
-import type { ChannelProgram } from '@tunarr/types';
+import type { Maybe, Nullable, PagedResult } from '@/types/util.js';
 import type {
   Dictionary,
   MarkOptional,
@@ -42,7 +35,6 @@ import type {
 } from 'ts-essentials';
 import type { NewArtwork } from '../schema/Artwork.ts';
 import type { NewGenre } from '../schema/Genre.ts';
-import type { RemoteMediaSourceType } from '../schema/MediaSource.ts';
 import type { ProgramGroupingType } from '../schema/ProgramGrouping.ts';
 import type { MediaSourceId, MediaSourceType } from '../schema/base.js';
 import type { PageParams } from './IChannelDB.ts';
@@ -62,10 +54,12 @@ export interface IProgramDB {
 
   updateProgramDuration(programId: string, duration: number): Promise<void>;
 
+  clearExtractedSubtitle(uuid: string): Promise<void>;
+
   getProgramsByIds(
     ids: string[] | readonly string[],
     batchSize?: number,
-  ): Promise<ProgramWithRelationsOrm[]>;
+  ): Promise<MarkRequired<ProgramWithRelationsOrm, 'externalIds'>[]>;
 
   getProgramGrouping(
     id: string,
@@ -85,10 +79,6 @@ export interface IProgramDB {
       | Set<readonly [RemoteSourceType, MediaSourceId, string]>,
     chunkSize?: number,
   ): Promise<ProgramGroupingOrmWithRelations[]>;
-
-  getProgramParent(
-    programId: string,
-  ): Promise<Maybe<ProgramGroupingWithExternalIds>>;
 
   getChildren(
     parentId: string,
@@ -132,13 +122,6 @@ export interface IProgramDB {
     chunkSize?: number,
   ): Promise<MarkRequired<ProgramWithRelationsOrm, 'externalIds'>[]>;
 
-  lookupByMediaSource(
-    sourceType: RemoteMediaSourceType,
-    sourceId: MediaSourceId,
-    mediaType?: ProgramType,
-    chunkSize?: number,
-  ): Promise<ProgramDao[]>;
-
   programIdsByExternalIds(
     ids: Set<[string, string, string]>,
     chunkSize: number,
@@ -163,11 +146,6 @@ export interface IProgramDB {
     newExternalId: NewProgramExternalId,
     oldExternalId?: MinimalProgramExternalId,
   ): Promise<void>;
-
-  upsertContentPrograms(
-    programs: ChannelProgram[],
-    programUpsertBatchSize?: number,
-  ): Promise<MarkNonNullable<ProgramDao, 'mediaSourceId'>[]>;
 
   upsertPrograms(
     program: NewProgramWithRelations,
@@ -198,7 +176,7 @@ export interface IProgramDB {
 
   getMediaSourceLibraryPrograms(
     libraryId: string,
-  ): Promise<ProgramWithRelations[]>;
+  ): Promise<ProgramOrmWithExternalIds[]>;
 
   getProgramInfoForMediaSource(
     mediaSourceId: MediaSourceId,
@@ -244,7 +222,7 @@ export interface IProgramDB {
   getProgramGroupingDescendants(
     groupId: string,
     groupTypeHint?: ProgramGroupingType,
-  ): Promise<ProgramWithRelationsOrm[]>;
+  ): Promise<MarkRequired<ProgramWithRelationsOrm, 'externalIds'>[]>;
 
   updateProgramsState(
     programIds: string[],

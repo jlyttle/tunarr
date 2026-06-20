@@ -8,8 +8,7 @@ import type {
   WithChannelIdFilter,
 } from '@/db/interfaces/IProgramDB.js';
 import { KEYS } from '@/types/inject.js';
-import type { MarkNonNullable, Maybe, PagedResult } from '@/types/util.js';
-import type { ChannelProgram } from '@tunarr/types';
+import type { Maybe, PagedResult } from '@/types/util.js';
 import { inject, injectable } from 'inversify';
 import type {
   Dictionary,
@@ -29,7 +28,6 @@ import { ProgramStateRepository } from './program/ProgramStateRepository.ts';
 import { ProgramUpsertRepository } from './program/ProgramUpsertRepository.ts';
 import type { NewArtwork } from './schema/Artwork.js';
 import type { NewGenre } from './schema/Genre.js';
-import type { RemoteMediaSourceType } from './schema/MediaSource.js';
 import type { ProgramDao, ProgramType } from './schema/Program.js';
 import type {
   MinimalProgramExternalId,
@@ -50,9 +48,8 @@ import type {
   NewProgramGroupingWithRelations,
   NewProgramWithRelations,
   ProgramGroupingOrmWithRelations,
-  ProgramGroupingWithExternalIds,
+  ProgramOrmWithExternalIds,
   ProgramWithExternalIds,
-  ProgramWithRelations,
   ProgramWithRelationsOrm,
   TvSeasonOrm,
 } from './schema/derivedTypes.js';
@@ -99,10 +96,14 @@ export class ProgramDB implements IProgramDB {
     return this.basicProg.updateProgramDuration(programId, duration);
   }
 
+  clearExtractedSubtitle(uuid: string): Promise<void> {
+    return this.metadataRepo.clearExtractedSubtitle(uuid);
+  }
+
   getProgramsByIds(
     ids: string[] | readonly string[],
     batchSize?: number,
-  ): Promise<ProgramWithRelationsOrm[]> {
+  ): Promise<MarkRequired<ProgramWithRelationsOrm, 'externalIds'>[]> {
     return this.basicProg.getProgramsByIds(ids, batchSize);
   }
 
@@ -131,12 +132,6 @@ export class ProgramDB implements IProgramDB {
     chunkSize?: number,
   ): Promise<ProgramGroupingOrmWithRelations[]> {
     return this.progGrouping.getProgramGroupingsByExternalIds(eids, chunkSize);
-  }
-
-  getProgramParent(
-    programId: string,
-  ): Promise<Maybe<ProgramGroupingWithExternalIds>> {
-    return this.progGrouping.getProgramParent(programId);
   }
 
   getChildren(
@@ -193,20 +188,6 @@ export class ProgramDB implements IProgramDB {
     return this.externalIdRepo.lookupByExternalIds(ids, chunkSize);
   }
 
-  lookupByMediaSource(
-    sourceType: RemoteMediaSourceType,
-    sourceId: MediaSourceId,
-    mediaType?: ProgramType,
-    chunkSize?: number,
-  ): Promise<ProgramDao[]> {
-    return this.externalIdRepo.lookupByMediaSource(
-      sourceType,
-      sourceId,
-      mediaType,
-      chunkSize,
-    );
-  }
-
   programIdsByExternalIds(
     ids: Set<[string, string, string]>,
     chunkSize?: number,
@@ -234,7 +215,7 @@ export class ProgramDB implements IProgramDB {
   ): Promise<ProgramExternalId> {
     return this.externalIdRepo.updateProgramPlexRatingKey(
       programId,
-      plexServerName as import('./schema/base.js').MediaSourceId,
+      plexServerName as MediaSourceId,
       details,
     );
   }
@@ -244,27 +225,20 @@ export class ProgramDB implements IProgramDB {
     newExternalId: NewProgramExternalId,
     oldExternalId?: MinimalProgramExternalId,
   ): Promise<void> {
-    return this.externalIdRepo.replaceProgramExternalId(
+    this.externalIdRepo.replaceProgramExternalId(
       programId,
       newExternalId,
       oldExternalId,
     );
+    return Promise.resolve();
   }
 
   upsertProgramExternalIds(
     externalIds: NewSingleOrMultiExternalId[],
     chunkSize?: number,
   ): Promise<Dictionary<ProgramExternalId[]>> {
-    return this.externalIdRepo.upsertProgramExternalIds(externalIds, chunkSize);
-  }
-
-  upsertContentPrograms(
-    programs: ChannelProgram[],
-    programUpsertBatchSize?: number,
-  ): Promise<MarkNonNullable<ProgramDao, 'mediaSourceId'>[]> {
-    return this.upsertRepo.upsertContentPrograms(
-      programs,
-      programUpsertBatchSize,
+    return Promise.resolve(
+      this.externalIdRepo.upsertProgramExternalIds(externalIds, chunkSize),
     );
   }
 
@@ -286,8 +260,8 @@ export class ProgramDB implements IProgramDB {
     }
   }
 
-  upsertArtwork(artwork: NewArtwork[]): Promise<void> {
-    return this.metadataRepo.upsertArtwork(artwork).then(() => {});
+  upsertArtwork(artwork: NewArtwork[]): void {
+    this.metadataRepo.upsertArtwork(artwork);
   }
 
   upsertProgramGroupingGenres(
@@ -311,7 +285,7 @@ export class ProgramDB implements IProgramDB {
 
   getMediaSourceLibraryPrograms(
     libraryId: string,
-  ): Promise<ProgramWithRelations[]> {
+  ): Promise<ProgramOrmWithExternalIds[]> {
     return this.searchRepo.getMediaSourceLibraryPrograms(libraryId);
   }
 
@@ -384,7 +358,7 @@ export class ProgramDB implements IProgramDB {
   getProgramGroupingDescendants(
     groupId: string,
     groupTypeHint?: ProgramGroupingType,
-  ): Promise<ProgramWithRelationsOrm[]> {
+  ): Promise<MarkRequired<ProgramWithRelationsOrm, 'externalIds'>[]> {
     return this.progGrouping.getProgramGroupingDescendants(
       groupId,
       groupTypeHint,

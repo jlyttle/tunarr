@@ -10,7 +10,7 @@ import {
   type FlexProgram,
   type RedirectProgram,
 } from '@tunarr/types';
-import type { MarkRequired } from 'ts-essentials';
+import type { MarkRequired, StrictOmit } from 'ts-essentials';
 import type { Emby, Imported, Jellyfin, Plex } from './MediaSource';
 
 export type UIIndex = { uiIndex: number; originalIndex: number };
@@ -24,10 +24,9 @@ export type UICondensedChannelProgram<
 export type UICondensedContentProgram = CondensedContentProgram &
   UIIndex &
   Required<MaybeHasStartTimeOffset>;
-export type UICondensedFlexProgram = UICondensedChannelProgram<FlexProgram>;
+type UICondensedFlexProgram = UICondensedChannelProgram<FlexProgram>;
 export type UICondensedCustomProgram = UICondensedChannelProgram<CustomProgram>;
-export type UICondensedRedirectProgram =
-  UICondensedChannelProgram<RedirectProgram>;
+type UICondensedRedirectProgram = UICondensedChannelProgram<RedirectProgram>;
 
 // It sucks that we have to repeat these everywhere...
 export const isUICondensedContentProgram = (
@@ -63,6 +62,12 @@ export type UIChannelProgramWithOffset<
 > = MarkRequired<UIChannelProgram<T>, 'startTimeOffset'>;
 
 export type UIContentProgram = UIChannelProgram<ContentProgram>;
+export type SpecificTypeUIContentProgram<ProgramT extends string> =
+  UIChannelProgram<
+    StrictOmit<ContentProgram, 'program'> & {
+      program: Extract<TerminalProgram, { type: ProgramT }>;
+    }
+  >;
 export type UIFlexProgram = UIChannelProgram<FlexProgram>;
 export type UICustomProgram = UIChannelProgram<CustomProgram>;
 export type UIRedirectProgram = UIChannelProgram<RedirectProgram>;
@@ -121,11 +126,10 @@ export type AddedImportedMedia = {
  * Media type going from "selected" -> "added to entity".
  */
 export type AddedMedia =
-  | AddedPlexMedia
-  | AddedJellyfinMedia
-  | AddedEmbyMedia
-  | AddedCustomShowProgram
-  | AddedImportedMedia;
+  // | AddedPlexMedia
+  // | AddedJellyfinMedia
+  // | AddedEmbyMedia
+  AddedCustomShowProgram | AddedImportedMedia;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 export type Prettify<Type> = Type extends Function

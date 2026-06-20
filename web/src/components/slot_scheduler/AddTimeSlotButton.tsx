@@ -4,17 +4,19 @@ import type {
   ProgramOption,
   ShowProgramOption,
 } from '@/helpers/slotSchedulerUtil.ts';
-import { useTimeSlotFormContext } from '@/hooks/useTimeSlotFormContext.ts';
+import { useTimeSlotFormContext } from '@/hooks/slot_scheduler/useTimeSlotFormContext.ts';
 import type {
   ShowTimeSlotViewModel,
   TimeSlotViewModel,
 } from '@/model/TimeSlotModels.ts';
+import { Trans } from '@lingui/react/macro';
 import AddIcon from '@mui/icons-material/Add';
 import { Button } from '@mui/material';
 import dayjs from 'dayjs';
 import { groupBy, isEmpty, maxBy, sortBy } from 'lodash-es';
 import { useCallback, useMemo } from 'react';
 import type { Dictionary } from 'ts-essentials';
+import { v4 } from 'uuid';
 import { OneDayMillis } from '../../helpers/constants.ts';
 
 export const AddTimeSlotButton = ({
@@ -24,7 +26,7 @@ export const AddTimeSlotButton = ({
 }: AddTimeSlotButtonProps) => {
   const {
     watch,
-    slotArray: { fields: slots, append },
+    slotArray: { fields: slots },
   } = useTimeSlotFormContext();
   const currentPeriod = watch('period');
 
@@ -67,11 +69,13 @@ export const AddTimeSlotButton = ({
         'show'
       ] as ShowProgramOption[];
       newSlot = {
+        id: v4(),
         ...baseSlot,
         type: 'show',
         showId: sortBy(opts, (opt) => opt.value)?.[0].showId,
         show: null,
         seasonFilter: [],
+        seasonExcludeFilter: [],
       } satisfies ShowTimeSlotViewModel;
     } else if (
       optionsByType['custom-show'] &&
@@ -82,6 +86,7 @@ export const AddTimeSlotButton = ({
       ] as CustomShowProgramOption[];
 
       newSlot = {
+        id: v4(),
         ...baseSlot,
         type: 'custom-show',
         customShowId: sortBy(opts, (opt) => opt.value)?.[0].customShowId,
@@ -97,6 +102,7 @@ export const AddTimeSlotButton = ({
       newSlot = {
         ...baseSlot,
         ...opt,
+        id: v4(),
         decayFactor: 0.5,
         durationWeighting: 'linear',
         recoveryFactor: 0.05,
@@ -106,6 +112,7 @@ export const AddTimeSlotButton = ({
       };
     } else if (optionsByType['movie'] && !isEmpty(optionsByType['movie'])) {
       newSlot = {
+        id: v4(),
         ...baseSlot,
         type: 'movie',
         order: 'alphanumeric',
@@ -118,8 +125,7 @@ export const AddTimeSlotButton = ({
     }
 
     onAdd(newSlot);
-    append(newSlot);
-  }, [relevantSlots, currentPeriod, dayOffset, optionsByType, onAdd, append]);
+  }, [relevantSlots, currentPeriod, dayOffset, optionsByType, onAdd]);
 
   return (
     <Button
@@ -127,7 +133,7 @@ export const AddTimeSlotButton = ({
       variant="contained"
       onClick={() => addSlot()}
     >
-      Add Slot
+      <Trans>Add Slot</Trans>
     </Button>
   );
 };

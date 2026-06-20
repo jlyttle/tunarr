@@ -51,7 +51,6 @@ function isSelectableHlsSubtitle(
 ): boolean {
   return (
     SelectableHlsModes.has(streamMode) &&
-    !isImageBasedSubtitle(subtitleStream.codec) &&
-    !!subtitleStream.path
+    !isImageBasedSubtitle(subtitleStream.codec)
   );
 }

@@ -25,6 +25,7 @@ export const SlotFillerTypes = z.enum([
   'post',
   'tail',
   'fallback',
+  'mid',
 ]);
 
 export type SlotFillerTypes = z.infer<typeof SlotFillerTypes>;
@@ -39,8 +40,107 @@ export const SlotFiller = z.object({
 
 export type SlotFiller = z.infer<typeof SlotFiller>;
 
-export const Slot = z.object({
+export const MidRollBreakRuleSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('fixed_interval'),
+    intervalMs: z.number().positive(),
+  }),
+  z.object({
+    type: z.literal('percentage'),
+    points: z.array(z.number().gt(0).lt(100)).nonempty(),
+  }),
+  z.object({
+    type: z.literal('initial_then_interval'),
+    initialDelayMs: z.number().positive(),
+    intervalMs: z.number().positive(),
+  }),
+]);
+
+export type MidRollBreakRule = z.infer<typeof MidRollBreakRuleSchema>;
+
+export const MidRollConfigSchema = z
+  .object({
+    // V1 simple field (kept for backward compat; ignored when breakRule is set)
+    intervalMs: z.number().positive().optional(),
+    // V2 structured break rule. Falls back to fixed_interval(intervalMs) if absent.
+    breakRule: MidRollBreakRuleSchema.optional(),
+    maxBreaks: z.number().int().nonnegative(),
+    minProgramDurationMs: z.number().nonnegative(),
+    tailBufferMs: z.number().nonnegative().default(0),
+    // Fixed duration (V1). Used when min/max are not set.
+    breakDurationMs: z.number().positive().optional(),
+    // Duration range (V2). System picks a random duration in [min, max] per break.
+    breakDurationMinMs: z.number().positive().optional(),
+    breakDurationMaxMs: z.number().positive().optional(),
+    programTypes: z
+      .array(
+        z.enum(['movie', 'episode', 'track', 'music_video', 'other_video']),
+      )
+      .optional(),
+    // 'eager' = resolve filler at schedule time (V1 behavior)
+    // 'lazy'  = emit offline placeholders, resolve at stream time
+    strategy: z.enum(['eager', 'lazy']).default('eager'),
+  })
+  .refine(
+    (data) => {
+      return data.intervalMs !== undefined || data.breakRule !== undefined;
+    },
+    { message: 'Either intervalMs or breakRule must be set' },
+  )
+  .refine(
+    (data) => {
+      if (
+        data.breakDurationMinMs !== undefined ||
+        data.breakDurationMaxMs !== undefined
+      ) {
+        return (
+          data.breakDurationMinMs !== undefined &&
+          data.breakDurationMaxMs !== undefined &&
+          data.breakDurationMaxMs >= data.breakDurationMinMs
+        );
+      }
+      return true;
+    },
+    {
+      message:
+        'breakDurationMinMs and breakDurationMaxMs must both be set, and max >= min',
+    },
+  )
+  .refine(
+    (data) => {
+      return (
+        data.breakDurationMs !== undefined ||
+        (data.breakDurationMinMs !== undefined &&
+          data.breakDurationMaxMs !== undefined)
+      );
+    },
+    {
+      message:
+        'At least one of breakDurationMs or breakDurationMinMs/breakDurationMaxMs must be set',
+    },
+  );
+
+export type MidRollConfig = z.infer<typeof MidRollConfigSchema>;
+
+export const LinkableSlot = z.object({
+  id: z.uuid(),
+  iterationGroup: z.uuid().optional(),
+  linkMode: z.enum(['continue', 'rerun']).default('continue').optional(),
+  rerunOverflow: z.enum(['flex', 'continue']).default('flex').optional(),
+});
+
+export type LinkableSlot = z.infer<typeof LinkableSlot>;
+
+export const SlotWithFiller = z.object({
   filler: z.array(SlotFiller).optional(),
+  midRoll: MidRollConfigSchema.optional(),
+});
+
+export type SlotWithFiller = z.infer<typeof SlotWithFiller>;
+
+export const Slot = z.object({
+  ...LinkableSlot.shape,
+  ...SlotWithFiller.shape,
 });
 
 //
@@ -61,6 +161,7 @@ export const ShowProgrammingSlotSchema = z.object({
   type: z.literal('show'),
   showId: z.string(),
   seasonFilter: z.number().array().default([]).catch([]),
+  seasonExcludeFilter: z.number().array().default([]).catch([]),
   ...BaseSlotOrdering.shape,
   ...Slot.shape,
 });
@@ -89,6 +190,7 @@ export type BaseCustomShowProgrammingSlot = z.infer<
 >;
 
 export const FillerProgrammingSlotSchema = z.object({
+  ...Slot.shape,
   type: z.literal('filler'),
   fillerListId: z.uuid(),
   order: SlotProgrammingFillerOrder,
@@ -117,3 +219,46 @@ export const BaseSlotSchema = z.discriminatedUnion('type', [
 ]);
 
 export type BaseSlot = z.infer<typeof BaseSlotSchema>;
+
+export type LinkableBaseSlot = Extract<
+  BaseSlot,
+  { type: 'movie' | 'show' | 'custom-show' | 'smart-collection' }
+>;
+
+export type BaseSlotWithFiller = Extract<
+  BaseSlot,
+  { type: 'movie' | 'show' | 'custom-show' | 'smart-collection' }
+>;
+
+export function slotIsLinkable(
+  slotType: BaseSlot['type'],
+): slotType is LinkableBaseSlot['type'];
+export function slotIsLinkable(slot: BaseSlot): slot is LinkableBaseSlot;
+export function slotIsLinkable(slot: BaseSlot | BaseSlot['type']): boolean {
+  const type = typeof slot === 'string' ? slot : slot.type;
+  switch (type) {
+    case 'custom-show':
+    case 'movie':
+    case 'show':
+    case 'smart-collection':
+      return true;
+    case 'flex':
+    case 'redirect':
+    case 'filler':
+      return false;
+  }
+}
+
+export function slotHasFiller(slot: BaseSlot): slot is BaseSlotWithFiller {
+  switch (slot.type) {
+    case 'custom-show':
+    case 'movie':
+    case 'show':
+    case 'smart-collection':
+      return true;
+    case 'flex':
+    case 'redirect':
+    case 'filler':
+      return false;
+  }
+}

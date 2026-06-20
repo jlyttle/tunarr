@@ -3,11 +3,12 @@ import {
   ReadableFfmpegSettings,
   SettingsChangeEvents,
 } from '@/db/interfaces/ISettingsDB.js';
-import { TypedEventEmitter } from '@/types/eventEmitter.js';
 import { deepCopy, isProduction } from '@/util/index.js';
 import { type Logger, LoggerFactory } from '@/util/logging/LoggerFactory.js';
 import {
   DefaultServerSettings,
+  FeatureFlags,
+  FeatureFlagsSchema,
   FfmpegSettings,
   HdhrSettings,
   LoggingSettingsSchema,
@@ -87,6 +88,7 @@ export const SettingsFileSchema = z.object({
       ),
     }),
   }),
+  featureFlags: FeatureFlagsSchema.default(() => FeatureFlagsSchema.parse({})),
 });
 
 export type SettingsFile = z.infer<typeof SettingsFileSchema>;
@@ -124,13 +126,14 @@ export const defaultSettings = (dbBasePath: string): SettingsFile => ({
     },
     server: DefaultServerSettings,
   },
+  featureFlags: FeatureFlagsSchema.parse({}),
 });
 
-abstract class ITypedEventEmitter extends (events.EventEmitter as new () => TypedEventEmitter<SettingsChangeEvents>) {}
+abstract class ITypedEventEmitter extends events.EventEmitter<SettingsChangeEvents> {}
 
 @injectable()
 export class SettingsDB extends ITypedEventEmitter implements ISettingsDB {
-  private logger: Logger;
+  private logger?: Logger;
   private db: Low<SettingsFile>;
 
   constructor(db: Low<SettingsFile>) {
@@ -186,6 +189,10 @@ export class SettingsDB extends ITypedEventEmitter implements ISettingsDB {
 
   systemSettings(): DeepReadonly<SystemSettings> {
     return this.db.data.system;
+  }
+
+  featureFlags(): DeepReadonly<FeatureFlags> {
+    return this.db.data.featureFlags;
   }
 
   globalMediaSourceSettings(): DeepReadonly<GlobalMediaSourceSettings> {

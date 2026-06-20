@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { FeatureFlagsSchema } from '../FeatureFlags.js';
 import {
   CacheSettingsSchema,
   LogCategoriesSchema,
@@ -14,10 +15,12 @@ import {
   ChannelStreamModes,
 } from '../schemas/channelSchema.js';
 import {
-  ChannelProgramSchema,
   CondensedChannelProgramSchema,
+  CondensedContentProgramSchema,
   ContentProgramSchema,
   CustomProgramSchema,
+} from '../schemas/lineups.js';
+import {
   Episode,
   ItemOrFolder,
   MusicAlbum,
@@ -83,7 +86,10 @@ export const BatchLookupExternalProgrammingSchema = z.object({
 
 export const CreateCustomShowRequestSchema = z.object({
   name: z.string(),
-  programs: z.array(ContentProgramSchema),
+  programs: z.array(CondensedContentProgramSchema).default([]),
+  syncMediaSourceId: z.string().nullable(),
+  syncMediaSourceType: z.enum(['plex']).nullable(),
+  syncExternalPlaylistId: z.string().nullable(),
 });
 
 export type CreateCustomShowRequest = z.infer<
@@ -91,7 +97,9 @@ export type CreateCustomShowRequest = z.infer<
 >;
 
 export const UpdateCustomShowRequestSchema =
-  CreateCustomShowRequestSchema.partial();
+  CreateCustomShowRequestSchema.partial().extend({
+    enableSync: z.boolean(),
+  });
 
 export type UpdateCustomShowRequest = z.infer<
   typeof UpdateCustomShowRequestSchema
@@ -124,31 +132,9 @@ export const BasicPagingSchema = z.object({
   limit: z.coerce.number().optional(),
 });
 
-const LineupLookupItemSchema = z.object({
-  type: z.literal('index'),
-  index: z.number(),
-  duration: z.number().positive().max(3.156e10).optional(), // Duration for non-content programs
-});
-
-const PersistedLineupItemSchema = z.object({
-  type: z.literal('persisted'),
-  programId: z.string(),
-  customShowId: z.string().optional(),
-  // Include this for now just to make the server-side stuff
-  // a bit easier. Eventually we'll do a big lookup and use the
-  // saved durations from the DB.
-  duration: z.number().positive().max(3.156e10),
-});
-
-const UpdateLineupItemSchema = z.union([
-  LineupLookupItemSchema,
-  PersistedLineupItemSchema,
-]);
-
 export const ManualProgramLineupSchema = z.object({
   type: z.literal('manual'),
-  programs: z.array(ChannelProgramSchema),
-  lineup: z.array(UpdateLineupItemSchema), // Array of indexes into the programming array
+  lineup: CondensedChannelProgramSchema.array(),
   append: z.boolean().default(false),
 });
 
@@ -189,9 +175,17 @@ export const UpdateMediaSourceRequestSchema = z.discriminatedUnion('type', [
   PlexServerSettingsSchema.partial({
     sendGuideUpdates: true,
     clientIdentifier: true,
-  }).omit({ libraries: true }),
-  JellyfinServerSettingsSchema.omit({ libraries: true }),
-  EmbyServerSettingsSchema.omit({ libraries: true }),
+  })
+    .omit({ libraries: true })
+    .required({
+      accessToken: true,
+    }),
+  JellyfinServerSettingsSchema.omit({ libraries: true }).required({
+    accessToken: true,
+  }),
+  EmbyServerSettingsSchema.omit({ libraries: true }).required({
+    accessToken: true,
+  }),
   LocalMediaSourceSchema.omit({ libraries: true }),
 ]);
 
@@ -214,9 +208,15 @@ export const InsertMediaSourceRequestSchema = z.discriminatedUnion('type', [
     sendGuideUpdates: true,
     index: true,
     clientIdentifier: true,
-  }).omit({ id: true, libraries: true }),
-  JellyfinServerSettingsSchema.omit({ id: true, libraries: true }),
-  EmbyServerSettingsSchema.omit({ id: true, libraries: true }),
+  })
+    .omit({ id: true, libraries: true })
+    .required({ accessToken: true }),
+  JellyfinServerSettingsSchema.omit({ id: true, libraries: true }).required({
+    accessToken: true,
+  }),
+  EmbyServerSettingsSchema.omit({ id: true, libraries: true }).required({
+    accessToken: true,
+  }),
   LocalMediaSourceSchema.omit({ id: true, libraries: true }),
 ]);
 
@@ -428,6 +428,7 @@ export const ProgramSearchRequest = z.object({
   libraryId: z.string().optional(), // Limit search to a specific library
   page: z.number().optional(),
   limit: z.number().optional(),
+  expandParents: z.boolean().optional(),
 });
 
 export const ProgramSearchResponse = z.object({
@@ -486,3 +487,30 @@ export const MaterializedSchedule = z.discriminatedUnion('type', [
 ]);
 
 export type MaterializedSchedule = z.infer<typeof MaterializedSchedule>;
+
+export const FeatureFlagResponseMetaSchema = z.object({
+  key: z.string(),
+  displayName: z.string(),
+  description: z.string(),
+  category: z.enum(['experimental', 'escape-hatch']),
+  envOverride: z.boolean(),
+});
+
+export type FeatureFlagResponseMeta = z.infer<
+  typeof FeatureFlagResponseMetaSchema
+>;
+
+export const GetFeatureFlagsResponseSchema = z.object({
+  flags: FeatureFlagsSchema,
+  metadata: z.array(FeatureFlagResponseMetaSchema),
+});
+
+export type GetFeatureFlagsResponse = z.infer<
+  typeof GetFeatureFlagsResponseSchema
+>;
+
+export const UpdateFeatureFlagsRequestSchema = FeatureFlagsSchema.partial();
+
+export type UpdateFeatureFlagsRequest = z.infer<
+  typeof UpdateFeatureFlagsRequestSchema
+>;

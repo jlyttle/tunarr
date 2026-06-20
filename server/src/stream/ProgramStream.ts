@@ -1,67 +1,233 @@
 import type { ISettingsDB } from '@/db/interfaces/ISettingsDB.js';
 import type { FfmpegTranscodeSession } from '@/ffmpeg/FfmpegTrancodeSession.js';
 import type { OutputFormat } from '@/ffmpeg/builder/constants.js';
-import type { CacheImageService } from '@/services/cacheImageService.js';
-import type { TypedEventEmitter } from '@/types/eventEmitter.js';
+import type { TranscodeSessionResult } from '@/ffmpeg/types.js';
+import { CacheImageService } from '@/services/cacheImageService.js';
 import { Result } from '@/types/result.js';
 import type { Maybe } from '@/types/util.js';
-import { LoggerFactory } from '@/util/logging/LoggerFactory.js';
+import { resolveIconUrl } from '@/util/iconUtil.js';
+import { Logger } from '@/util/logging/LoggerFactory.js';
 import { makeLocalUrl } from '@/util/serverUtil.js';
 import type { Watermark } from '@tunarr/types';
 import dayjs from 'dayjs';
 import { isUndefined } from 'lodash-es';
 import events from 'node:events';
 import { PassThrough } from 'node:stream';
-import type { FFmpegFactory } from '../ffmpeg/FFmpegModule.js';
-import type { StreamOptions } from '../ffmpeg/ffmpegBase.ts';
+import { match, P } from 'ts-pattern';
+import {
+  ContentBackedStreamLineupItem,
+  ErrorStreamLineupItem,
+  OfflineStreamLineupItem,
+} from '../db/derived_types/StreamLineup.ts';
+import { MediaSourceDB } from '../db/mediaSourceDB.ts';
+import type { FFmpegAssistedFactory } from '../ffmpeg/FFmpegModule.ts';
+import type { StreamOptions } from '../ffmpeg/types.ts';
+import { KEYS } from '../types/inject.ts';
+import { assisted, injected } from '../util/assistedInject.ts';
 import {
   attempt,
   isDefined,
   isNonEmptyString,
   isSuccess,
-} from '../util/index.js';
-import type { PlayerContext } from './PlayerStreamContext.js';
+} from '../util/index.ts';
+import { InjectLogger } from '../util/inject.ts';
+import type { PlayerContext } from './PlayerStreamContext.ts';
+import { ProgramStreamDetailsFetcher } from './ProgramStreamDetailsFetcher.ts';
+import type { StreamRenditions } from './types.ts';
 
 type ProgramStreamEvents = {
   // Emitted when the stream has reached a fatal error point
   // This means that both the program and error stream have failed to play.
-  error: () => void;
+  error: [];
 };
 
 /**
- * Base class implementing the functionality of managing an output stream
+ * Implements the functionality of managing an output stream
  * for a given program. This class is essentially a lineup item + transcode session
  */
-export abstract class ProgramStream extends (events.EventEmitter as new () => TypedEventEmitter<ProgramStreamEvents>) {
-  protected logger = LoggerFactory.child({ className: this.constructor.name });
-  private outStream: PassThrough;
+export class ProgramStream extends events.EventEmitter<ProgramStreamEvents> {
+  @InjectLogger() declare private readonly logger: Logger;
+
+  private outStream?: PassThrough;
   private hadError: boolean = false;
-  private _transcodeSession: FfmpegTranscodeSession;
+  private _transcodeSession: Maybe<FfmpegTranscodeSession>;
+  private _renditions?: StreamRenditions;
 
   constructor(
-    public context: PlayerContext,
-    protected outputFormat: OutputFormat,
-    protected settingsDB: ISettingsDB,
-    private cacheImageService: CacheImageService,
-    protected ffmpegFactory: FFmpegFactory,
+    @injected(KEYS.SettingsDB) protected settingsDB: ISettingsDB,
+    @injected(CacheImageService) private cacheImageService: CacheImageService,
+    @injected(KEYS.FFmpegFactory)
+    protected ffmpegFactory: FFmpegAssistedFactory,
+    @injected(MediaSourceDB) private mediaSourceDB: MediaSourceDB,
+    @injected(ProgramStreamDetailsFetcher)
+    private programStreamDetails: ProgramStreamDetailsFetcher,
+    @assisted public context: PlayerContext,
+    @assisted protected outputFormat: OutputFormat,
+    @assisted public opts?: Partial<StreamOptions>,
   ) {
     super();
   }
 
-  async setup(
-    opts?: Partial<StreamOptions>,
-  ): Promise<Result<FfmpegTranscodeSession>> {
+  async setup(): Promise<Result<FfmpegTranscodeSession>> {
     if (this.isInitialized()) {
-      return Result.success(this._transcodeSession);
+      return Result.success(this._transcodeSession!);
     }
 
-    const result = await this.setupInternal(opts);
+    const result = await this.setupInternal();
 
     result.forEach((value) => {
-      this.transcodeSession = value;
+      this.transcodeSession = value.session;
+      this._renditions = value.renditions;
     });
 
-    return result;
+    return result.map((r) => r.session);
+  }
+
+  protected async setupInternal(): Promise<Result<TranscodeSessionResult>> {
+    const { lineupItem } = this.context;
+    return match(lineupItem)
+      .with({ type: P.union('program', 'commercial', 'fallback') }, (item) =>
+        this.setupContentItem(item),
+      )
+      .with({ type: 'offline' }, (item) => this.setupOfflineItem(item))
+      .with({ type: 'error' }, (item) => this.setupErrorItem(item))
+      .with({ type: 'redirect' }, (item) =>
+        Result.failure<TranscodeSessionResult>(
+          `ProgramStream cannot direct play a direct item: ${JSON.stringify(item)}`,
+        ),
+      )
+      .exhaustive();
+  }
+
+  private async setupContentItem(
+    lineupItem: ContentBackedStreamLineupItem,
+  ): Promise<Result<TranscodeSessionResult>> {
+    const server = await this.mediaSourceDB.getById(
+      lineupItem.program.mediaSourceId,
+    );
+    if (!server) {
+      return Result.forError(
+        new Error(
+          `Unable to find server "${lineupItem.program.mediaSourceId}" specified by program.`,
+        ),
+      );
+    }
+
+    const streamDetailsResult = await this.programStreamDetails.getStream({
+      server,
+      lineupItem: lineupItem.program,
+    });
+
+    if (streamDetailsResult.isFailure()) {
+      return streamDetailsResult.recast();
+    }
+
+    const watermark = await this.getWatermark();
+    const ffmpeg = this.ffmpegFactory(
+      this.context.transcodeConfig,
+      this.context.sourceChannel,
+    );
+
+    // TODO: check if this was killed before actually starting.
+
+    const { streamDetails, streamSource } = streamDetailsResult.get();
+    streamDetails.duration = dayjs.duration(lineupItem.streamDuration);
+
+    const start = dayjs.duration(lineupItem.startOffset ?? 0);
+    const sessionResult = await ffmpeg.createStreamSession({
+      stream: {
+        source: streamSource,
+        details: streamDetails,
+      },
+      options: {
+        startTime: start,
+        duration: dayjs.duration(lineupItem.streamDuration),
+        watermark,
+        realtime: this.context.realtime,
+        outputFormat: this.outputFormat,
+        streamMode: this.context.streamMode,
+        encoding: this.context.encoding,
+        ...(this.opts ?? {}),
+      },
+      lineupItem,
+    });
+
+    if (!sessionResult) {
+      return Result.forError(new Error('Unable to create ffmpeg process'));
+    }
+
+    // TODO: Fire plugins.
+
+    return Result.success(sessionResult);
+  }
+
+  private async setupOfflineItem(
+    lineupItem: OfflineStreamLineupItem,
+  ): Promise<Result<TranscodeSessionResult>> {
+    const ffmpeg = this.ffmpegFactory(
+      this.context.transcodeConfig,
+      this.context.targetChannel,
+    );
+
+    let duration = dayjs.duration(lineupItem.streamDuration);
+    const start = dayjs.duration(lineupItem.startOffset ?? 0);
+    if (+duration > +start) {
+      duration = duration.subtract(start);
+    }
+
+    this.logger.debug(
+      'starting offline session of %d ms',
+      duration.asMilliseconds(),
+    );
+
+    const result = await ffmpeg.createPlaceholderSession({
+      kind: 'offline',
+      duration,
+      outputFormat: this.outputFormat,
+      ptsOffset: this.opts?.ptsOffset,
+      realtime: this.opts?.realtime,
+    });
+
+    if (isUndefined(result)) {
+      throw new Error('Unable to start ffmpeg transcode session');
+    }
+
+    return Result.success(result);
+  }
+
+  private async setupErrorItem(
+    lineupItem: ErrorStreamLineupItem,
+  ): Promise<Result<TranscodeSessionResult>> {
+    const ffmpeg = this.ffmpegFactory(
+      this.context.transcodeConfig,
+      this.context.targetChannel,
+    );
+
+    let duration = dayjs.duration(lineupItem.streamDuration);
+    const start = dayjs.duration(lineupItem.startOffset ?? 0);
+    if (+duration > +start) {
+      duration = duration.subtract(start);
+    }
+
+    this.logger.debug(
+      'starting offline session of %d ms',
+      duration.asMilliseconds(),
+    );
+
+    const result = await ffmpeg.createPlaceholderSession({
+      kind: 'error',
+      title: 'Error',
+      duration,
+      outputFormat: this.outputFormat,
+      realtime: this.opts?.realtime,
+      ptsOffset: this.opts?.ptsOffset,
+    });
+
+    if (isUndefined(result)) {
+      throw new Error('Unable to start ffmpeg transcode session');
+    }
+
+    return Result.success(result);
   }
 
   isInitialized(): boolean {
@@ -73,23 +239,23 @@ export abstract class ProgramStream extends (events.EventEmitter as new () => Ty
       await this.setup();
     }
 
-    return (this.outStream = this._transcodeSession.start(sink));
+    return (this.outStream = this._transcodeSession?.start(sink));
   }
 
   shutdown(): void {
     if (this.isInitialized()) {
-      this.transcodeSession.kill();
+      this.transcodeSession!.kill();
     }
     this.shutdownInternal();
   }
 
   protected shutdownInternal(): void {}
 
-  protected abstract setupInternal(
-    opts?: Partial<StreamOptions>,
-  ): Promise<Result<FfmpegTranscodeSession>>;
+  get renditions(): StreamRenditions | undefined {
+    return this._renditions;
+  }
 
-  get transcodeSession() {
+  get transcodeSession(): Maybe<FfmpegTranscodeSession> {
     return this._transcodeSession;
   }
 
@@ -105,10 +271,12 @@ export abstract class ProgramStream extends (events.EventEmitter as new () => Ty
       } else {
         this.hadError = true;
         const failedStream = this._transcodeSession;
-        failedStream.kill();
-        this.tryReplaceWithErrorStream(this.outStream).catch((e) => {
-          this.logger.error(e, 'Error while setting up ');
-        });
+        failedStream?.kill();
+        if (!this.opts?.disableErrorStream) {
+          this.tryReplaceWithErrorStream(this.outStream).catch((e) => {
+            this.logger.error(e, 'Error while setting up ');
+          });
+        }
       }
     });
   }
@@ -116,15 +284,15 @@ export abstract class ProgramStream extends (events.EventEmitter as new () => Ty
   private async tryReplaceWithErrorStream(sink?: PassThrough) {
     const out = sink ?? new PassThrough();
     try {
-      const errorSession = await this.getErrorStream(this.context);
+      const errorResult = await this.getErrorStream(this.context);
 
-      if (isUndefined(errorSession)) {
+      if (isUndefined(errorResult)) {
         out.push(null);
         return;
       }
 
-      errorSession.start(out);
-      this.transcodeSession = errorSession;
+      errorResult.session.start(out);
+      this.transcodeSession = errorResult.session;
 
       this.transcodeSession.on('end', () => {
         out.push(null);
@@ -139,20 +307,20 @@ export abstract class ProgramStream extends (events.EventEmitter as new () => Ty
     const ffmpeg = this.ffmpegFactory(
       context.transcodeConfig,
       context.sourceChannel,
-      context.streamMode,
     );
 
     const duration = dayjs.duration(
-      dayjs(this.transcodeSession.streamEndTime).diff(),
+      dayjs(this.transcodeSession?.streamEndTime).diff(),
     );
 
-    return ffmpeg.createErrorSession(
-      'Playback Error',
-      'Check server logs for details',
+    return ffmpeg.createPlaceholderSession({
+      kind: 'error',
+      title: 'Playback Error',
+      subtitle: 'Check server logs for details',
       duration,
-      this.outputFormat,
-      true,
-    );
+      outputFormat: this.outputFormat,
+      realtime: true,
+    });
   }
 
   protected async getWatermark(): Promise<Maybe<Watermark>> {
@@ -192,10 +360,15 @@ export abstract class ProgramStream extends (events.EventEmitter as new () => Ty
             icon = makeLocalUrl('/images/tunarr.png');
           }
         }
-      } else if (isNonEmptyString(channel.icon?.path)) {
-        icon = channel.icon.path;
       } else {
-        icon = makeLocalUrl('/images/tunarr.png');
+        const resolvedIcon = resolveIconUrl(
+          channel.icon,
+          makeLocalUrl('/images/tunarr.png'),
+        );
+        if (!resolvedIcon) {
+          return;
+        }
+        icon = resolvedIcon;
       }
 
       return {

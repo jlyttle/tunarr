@@ -1,4 +1,4 @@
-import type { InferSelectModel } from 'drizzle-orm';
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { inArray, relations } from 'drizzle-orm';
 import {
   check,
@@ -16,11 +16,11 @@ import {
   type ChannelTranscodingSettings,
   type ChannelWatermark,
 } from './base.ts';
-import { ChannelCustomShow } from './ChannelCustomShow.ts';
 import { ChannelFillerShow } from './ChannelFillerShow.ts';
 import { ChannelPrograms } from './ChannelPrograms.ts';
 import type { KyselifyBetter } from './KyselifyBetter.ts';
 import { ProgramPlayHistory } from './ProgramPlayHistory.ts';
+import { StreamSelectionProfile } from './StreamSelectionProfile.ts';
 import { TranscodeConfig } from './TranscodeConfig.ts';
 
 export const Channel = sqliteTable(
@@ -57,6 +57,10 @@ export const Channel = sqliteTable(
     })
       .default('burn')
       .notNull(),
+    streamSelectionProfileId: text().references(
+      () => StreamSelectionProfile.uuid,
+      { onDelete: 'set null' },
+    ),
   },
   (table) => [
     uniqueIndex('channel_number_unique').on(table.number),
@@ -84,10 +88,10 @@ export type Channel = Selectable<ChannelTable>;
 export type NewChannel = Insertable<ChannelTable>;
 export type ChannelUpdate = Updateable<ChannelTable>;
 export type ChannelOrm = InferSelectModel<typeof Channel>;
+export type NewChannelOrm = InferInsertModel<typeof Channel>;
 
 export const ChannelRelations = relations(Channel, ({ many, one }) => ({
   channelPrograms: many(ChannelPrograms),
-  channelCustomShows: many(ChannelCustomShow),
   channelFillerShow: many(ChannelFillerShow),
   playHistory: many(ProgramPlayHistory),
   transcodeConfig: one(TranscodeConfig, {

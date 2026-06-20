@@ -10,6 +10,7 @@ export type HlsOptions = {
   streamBaseUrl: string;
   segmentNameFormat: string;
   streamNameFormat: string;
+  subtitleStreamNameFormat: string;
   deleteThreshold: Nullable<number>;
   appendSegments: boolean;
 };
@@ -22,6 +23,7 @@ export const defaultHlsOptions: DeepRequired<HlsOptions> = {
   streamBasePath: 'stream_%v',
   segmentNameFormat: 'data%06d.ts',
   streamNameFormat: 'stream.m3u8',
+  subtitleStreamNameFormat: 'subs.m3u8',
   streamBaseUrl: 'hls/',
   deleteThreshold: 3,
   appendSegments: false,
@@ -32,13 +34,6 @@ export type MpegDashOptions = {
   segmentDuration: number; // segment duration in secodns
   segmentType: 'auto' | 'mp4' | 'webm';
   fragType: 'auto' | 'every_frame' | 'duration' | 'pframes';
-};
-
-export const defaultMpegDashOptions: DeepRequired<MpegDashOptions> = {
-  segmentDuration: 2,
-  windowSize: 3,
-  segmentType: 'auto',
-  fragType: 'auto',
 };
 
 export const VideoFormats = {
@@ -74,6 +69,8 @@ export const AudioFormats = {
   Copy: 'copy',
   PCMS16LE: 'pcm_s16le',
   Flac: 'flac',
+  Dca: 'dca',
+  TrueHd: 'truehd',
 } as const;
 
 export type StdoutOutputLocation = {

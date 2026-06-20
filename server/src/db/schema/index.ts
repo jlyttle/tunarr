@@ -1,10 +1,13 @@
+import type { RunResult } from 'better-sqlite3';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import { Artwork, ArtworkRelations } from './Artwork.ts';
 import { Channel, ChannelRelations } from './Channel.ts';
+
 import {
-  ChannelCustomShow,
-  ChannelCustomShowRelations,
-} from './ChannelCustomShow.ts';
+  ChannelFallback,
+  ChannelFallbackRelations,
+} from './ChannelFallback.ts';
 import {
   ChannelFillerShow,
   ChannelFillerShowRelations,
@@ -87,6 +90,7 @@ import {
   TagRelations,
   TagRelationSchema,
 } from './Tag.ts';
+import { StreamSelectionProfile } from './StreamSelectionProfile.ts';
 import { TranscodeConfig } from './TranscodeConfig.ts';
 
 // export { Program } from './Program.ts';
@@ -95,8 +99,8 @@ export const schema = {
   channels: Channel,
   channelRelations: ChannelRelations,
   channelPrograms: ChannelPrograms,
-  channelCustomShows: ChannelCustomShow,
-  channelCustomShowRelations: ChannelCustomShowRelations,
+  channelFallback: ChannelFallback,
+  channelFallbackRelations: ChannelFallbackRelations,
   channelFillerShow: ChannelFillerShow,
   channelFillerShowRelations: ChannelFillerShowRelations,
   channelProgramRelations: ChannelProgramsRelations,
@@ -159,6 +163,12 @@ export const schema = {
   tagJoin: TagRelations,
   tagJoinRelations: TagRelationSchema,
   transcodeConfigs: TranscodeConfig,
+  streamSelectionProfiles: StreamSelectionProfile,
 };
 
 export type DrizzleDBAccess = BetterSQLite3Database<typeof schema>;
+export type BaseDrizzleDBAccess = BaseSQLiteDatabase<
+  'sync',
+  RunResult,
+  typeof schema
+>;

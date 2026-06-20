@@ -3,22 +3,14 @@ import type { ContentProgram } from '@tunarr/types';
 import { tag } from '@tunarr/types';
 import dayjs from 'dayjs';
 import tmp from 'tmp-promise';
+import { copyPreMigratedDb } from '../testing/testDbFactory.ts';
 import { v4 } from 'uuid';
 import { test as baseTest, describe, expect, vi } from 'vitest';
 import { bootstrapTunarr } from '../bootstrap.ts';
 import { setGlobalOptionsUnchecked } from '../globals.ts';
-import { LoggerFactory } from '../util/logging/LoggerFactory.ts';
 import { CustomShowDB } from './CustomShowDB.ts';
-import { DBAccess } from './DBAccess.ts';
-import { ProgramDB } from './ProgramDB.ts';
 import { BasicProgramRepository } from './program/BasicProgramRepository.ts';
-import { ProgramExternalIdRepository } from './program/ProgramExternalIdRepository.ts';
-import { ProgramGroupingRepository } from './program/ProgramGroupingRepository.ts';
-import { ProgramGroupingUpsertRepository } from './program/ProgramGroupingUpsertRepository.ts';
-import { ProgramMetadataRepository } from './program/ProgramMetadataRepository.ts';
-import { ProgramSearchRepository } from './program/ProgramSearchRepository.ts';
-import { ProgramStateRepository } from './program/ProgramStateRepository.ts';
-import { ProgramUpsertRepository } from './program/ProgramUpsertRepository.ts';
+import { DBAccess } from './DBAccess.ts';
 import type { MediaSourceId, MediaSourceName } from './schema/base.ts';
 import { CustomShow } from './schema/CustomShow.ts';
 import type { NewCustomShowContent } from './schema/CustomShowContent.ts';
@@ -56,19 +48,20 @@ type Fixture = {
 const test = baseTest.extend<Fixture>({
   db: async ({}, use) => {
     const dbResult = await tmp.dir({ unsafeCleanup: true });
+    await copyPreMigratedDb(dbResult.path);
     const opts = setGlobalOptionsUnchecked({
       database: dbResult.path,
       log_level: 'debug',
       verbose: 0,
     });
-    await bootstrapTunarr(opts, ':memory:');
+    await bootstrapTunarr(opts);
     await use(dbResult.path);
-    // const dbPath = `${dbResult.path}/db.db`;
-    // await DBAccess.instance.closeConnection(dbPath);
+    const dbPath = `${dbResult.path}/db.db`;
+    await DBAccess.instance.closeConnection(dbPath);
     await dbResult.cleanup();
   },
   mediaSourceId: async ({ db: _ }, use) => {
-    const drizzle = DBAccess.instance.getConnection(':memory:')!.drizzle!;
+    const drizzle = DBAccess.instance.drizzle!;
     const uuid = v4() as MediaSourceId;
     const now = +dayjs();
     await drizzle.insert(MediaSource).values({
@@ -85,106 +78,20 @@ const test = baseTest.extend<Fixture>({
   },
   customShowDb: async ({ db: _ }, use) => {
     const dbAccess = DBAccess.instance;
-    const logger = LoggerFactory.child({ className: 'ProgramDB' });
 
-    const mockTaskFactory = () => ({ enqueue: async () => {} }) as any;
-
-    // Minimal stub of ProgramDaoMinter — only implements what upsertContentPrograms
-    // needs when converting non-persisted ContentPrograms to DB rows.
-    const mockMinterFactory = () => ({
-      contentProgramDtoToDao(
-        program: ContentProgram,
-      ): NewProgramDao | undefined {
-        if (!program.canonicalId) return undefined;
-        const now = +dayjs();
-        return {
-          uuid: v4(),
-          sourceType: program.externalSourceType,
-          externalSourceId: tag<MediaSourceName>(program.externalSourceName),
-          mediaSourceId: tag<MediaSourceId>(program.externalSourceId),
-          externalKey: program.externalKey,
-          canonicalId: program.canonicalId,
-          libraryId: null,
-          duration: program.duration,
-          title: program.title,
-          type: program.subtype,
-          state: 'ok',
-          createdAt: now,
-          updatedAt: now,
-          rating: program.rating ?? null,
-          summary: program.summary ?? null,
-          originalAirDate: program.date ?? null,
-          year: program.year ?? null,
-          episode: null,
-          plexRatingKey: null,
-          plexFilePath: null,
-          filePath: null,
-          parentExternalKey: null,
-          grandparentExternalKey: null,
-          showTitle: null,
-          seasonNumber: null,
-        };
-      },
-      mintExternalIds() {
-        return [];
-      },
-    });
-
-    const metadataRepo = new ProgramMetadataRepository(
-      dbAccess.getConnection(':memory:')!.drizzle!,
-    );
-    const externalIdRepo = new ProgramExternalIdRepository(
-      logger,
-      dbAccess.getKyselyDatabase(':memory:')!,
-      dbAccess.getConnection(':memory:')!.drizzle!,
-    );
-    const groupingUpsertRepo = new ProgramGroupingUpsertRepository(
-      dbAccess.getKyselyDatabase(':memory:')!,
-      dbAccess.getConnection(':memory:')!.drizzle!,
-      metadataRepo,
-    );
-    const upsertRepo = new ProgramUpsertRepository(
-      logger,
-      dbAccess.getKyselyDatabase(':memory:')!,
-      dbAccess.getConnection(':memory:')!.drizzle!,
-      mockTaskFactory,
-      mockTaskFactory,
-      mockMinterFactory as any,
-      externalIdRepo,
-      metadataRepo,
-      groupingUpsertRepo,
-    );
-    const programDb = new ProgramDB(
-      new BasicProgramRepository(
-        dbAccess.getKyselyDatabase(':memory:')!,
-        dbAccess.getConnection(':memory:')!.drizzle!,
-      ),
-      new ProgramGroupingRepository(
-        logger,
-        dbAccess.getKyselyDatabase(':memory:')!,
-        dbAccess.getConnection(':memory:')!.drizzle!,
-      ),
-      externalIdRepo,
-      upsertRepo,
-      metadataRepo,
-      groupingUpsertRepo,
-      new ProgramSearchRepository(
-        dbAccess.getKyselyDatabase(':memory:')!,
-        dbAccess.getConnection(':memory:')!.drizzle!,
-      ),
-      new ProgramStateRepository(dbAccess.getConnection(':memory:')!.drizzle!),
-    );
-
+    const kyselyDb = dbAccess.db!;
+    const drizzleDb = dbAccess.drizzle!;
+    const basicProgramRepo = new BasicProgramRepository(kyselyDb, drizzleDb);
     const customShowDb = new CustomShowDB(
-      programDb,
-      dbAccess.getKyselyDatabase(':memory:')!,
-      dbAccess.getConnection(':memory:')!.drizzle!,
+      kyselyDb,
+      drizzleDb,
+      basicProgramRepo,
     );
 
     await use(customShowDb);
   },
   drizzle: async ({ db: _ }, use) => {
-    await use(DBAccess.instance.getConnection(':memory:')!.drizzle!);
+    await use(DBAccess.instance.drizzle!);
   },
 });
 
@@ -245,39 +152,18 @@ async function insertProgram(drizzle: DrizzleDBAccess, program: NewProgramDao) {
 function makePersistedContentProgram(program: NewProgramDao): ContentProgram {
   return {
     type: 'content',
-    subtype: 'movie',
     id: program.uuid,
-    persisted: true,
-    duration: program.duration,
-    title: program.title!,
-    externalSourceType: program.sourceType as 'plex',
-    externalSourceName: String(program.externalSourceId),
-    externalSourceId: String(program.mediaSourceId),
-    externalKey: program.externalKey,
     uniqueId: program.uuid,
-    externalIds: [],
-  };
-}
-
-function makeNewContentProgram(
-  mediaSourceId: MediaSourceId,
-  overrides?: Partial<ContentProgram>,
-): ContentProgram {
-  const externalKey = faker.string.alphanumeric(10);
-  return {
-    type: 'content',
-    subtype: 'movie',
-    persisted: false,
-    duration: faker.number.int({ min: 60000, max: 7200000 }),
-    title: faker.word.words(3),
-    externalSourceType: 'plex',
-    externalSourceName: 'Test Plex Server',
-    externalSourceId: mediaSourceId,
-    externalKey,
-    uniqueId: `plex|${mediaSourceId}|${externalKey}`,
-    externalIds: [],
-    canonicalId: v4(),
-    ...overrides,
+    duration: program.duration,
+    program: {
+      type: 'movie',
+      sourceType: program.sourceType,
+      mediaSourceId: program.mediaSourceId,
+      externalId: program.externalKey,
+      canonicalId: program.canonicalId,
+      libraryId: program.libraryId ?? '',
+      title: program.title ?? '',
+    } as ContentProgram['program'],
   };
 }
 
@@ -380,7 +266,7 @@ describe('CustomShowDB', () => {
     });
   });
 
-  describe('getShowProgramsOrm', () => {
+  describe('getShowPrograms', () => {
     test('should return programs in index order', async ({
       customShowDb,
       drizzle,
@@ -408,7 +294,7 @@ describe('CustomShowDB', () => {
         { customShowUuid: show.uuid, contentUuid: programB.uuid, index: 1 },
       ]);
 
-      const programs = await customShowDb.getShowProgramsOrm(show.uuid);
+      const programs = await customShowDb.getShowPrograms(show.uuid);
 
       expect(programs).toHaveLength(3);
       expect(programs[0]!.title).toBe('Program A');
@@ -438,7 +324,7 @@ describe('CustomShowDB', () => {
         { customShowUuid: show.uuid, contentUuid: programA.uuid, index: 2 },
       ]);
 
-      const programs = await customShowDb.getShowProgramsOrm(show.uuid);
+      const programs = await customShowDb.getShowPrograms(show.uuid);
 
       expect(programs).toHaveLength(3);
       expect(programs[0]!.title).toBe('Repeat Me');
@@ -449,7 +335,7 @@ describe('CustomShowDB', () => {
     test('should return empty array for nonexistent show', async ({
       customShowDb,
     }) => {
-      const programs = await customShowDb.getShowProgramsOrm(v4());
+      const programs = await customShowDb.getShowPrograms(v4());
       expect(programs).toHaveLength(0);
     });
   });
@@ -734,76 +620,6 @@ describe('CustomShowDB', () => {
       expect(content).toHaveLength(2);
       expect(content[0]!.contentUuid).toBe(program1.uuid);
       expect(content[1]!.contentUuid).toBe(program2.uuid);
-    });
-
-    test('should upsert and save new (non-persisted) programs to a new custom show', async ({
-      customShowDb,
-      drizzle,
-      mediaSourceId,
-    }) => {
-      const programs = [
-        makeNewContentProgram(mediaSourceId, { externalKey: 'key-aaa' }),
-        makeNewContentProgram(mediaSourceId, { externalKey: 'key-bbb' }),
-      ];
-
-      const showId = await customShowDb.createShow({
-        name: 'New Programs Show',
-        programs,
-      });
-
-      const content = await drizzle.query.customShowContent.findMany({
-        where: (fields, { eq }) => eq(fields.customShowUuid, showId),
-        orderBy: (fields, { asc }) => asc(fields.index),
-      });
-
-      expect(content).toHaveLength(2);
-
-      // Both programs should now exist in the program table
-      const savedPrograms = await drizzle.query.program.findMany({
-        where: (fields, { inArray }) =>
-          inArray(
-            fields.uuid,
-            content.map((c) => c.contentUuid),
-          ),
-      });
-      expect(savedPrograms).toHaveLength(2);
-    });
-
-    test('should save both persisted and new programs to a new custom show', async ({
-      customShowDb,
-      drizzle,
-      mediaSourceId,
-    }) => {
-      const existingProgram = await insertProgram(
-        drizzle,
-        createProgram(mediaSourceId, { title: 'Already In DB' }),
-      );
-      const newProgram = makeNewContentProgram(mediaSourceId, {
-        title: 'Needs Inserting',
-        externalKey: 'brand-new-key',
-      });
-
-      const showId = await customShowDb.createShow({
-        name: 'Mixed Show',
-        programs: [makePersistedContentProgram(existingProgram), newProgram],
-      });
-
-      const content = await drizzle.query.customShowContent.findMany({
-        where: (fields, { eq }) => eq(fields.customShowUuid, showId),
-        orderBy: (fields, { asc }) => asc(fields.index),
-      });
-
-      expect(content).toHaveLength(2);
-
-      // First entry is the pre-existing program
-      expect(content[0]!.contentUuid).toBe(existingProgram.uuid);
-
-      // Second entry was newly inserted
-      const insertedProgram = await drizzle.query.program.findFirst({
-        where: (fields, { eq }) => eq(fields.uuid, content[1]!.contentUuid),
-      });
-      expect(insertedProgram).toBeDefined();
-      expect(insertedProgram!.title).toBe('Needs Inserting');
     });
   });
 });

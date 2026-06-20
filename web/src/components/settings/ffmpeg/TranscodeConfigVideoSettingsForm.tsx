@@ -1,4 +1,5 @@
 import { useTypedAppFormContext } from '@/hooks/form.ts';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { InputAdornment, Link as MuiLink, Stack } from '@mui/material';
 import { useStore } from '@tanstack/react-form';
 import { useSuspenseQuery } from '@tanstack/react-query';
@@ -11,7 +12,7 @@ import type { SupportedHardwareAccels } from '@tunarr/types/schemas';
 import { useMemo } from 'react';
 import { getApiFfmpegInfoOptions } from '../../../generated/@tanstack/react-query.gen.ts';
 import { TranscodeResolutionOptions } from '../../../helpers/constants.ts';
-import type { DropdownOption } from '../../../helpers/DropdownOption';
+import type { DropdownOption } from '../../../helpers/DropdownOption.ts';
 import {
   resolutionFromAnyString,
   resolutionToString,
@@ -87,6 +88,7 @@ const resolutionConverter: Converter<Resolution, string> = {
 export const TranscodeConfigVideoSettingsForm = ({
   initialConfig,
 }: BaseTranscodeConfigProps) => {
+  const { t } = useLingui();
   const ffmpegInfo = useSuspenseQuery({
     ...getApiFfmpegInfoOptions(),
   });
@@ -113,7 +115,7 @@ export const TranscodeConfigVideoSettingsForm = ({
         name="videoFormat"
         children={(field) => (
           <field.BasicSelectInput
-            selectProps={{ label: 'Video Format' }}
+            selectProps={{ label: t`Video Format` }}
             options={VideoFormats}
           />
         )}
@@ -123,7 +125,7 @@ export const TranscodeConfigVideoSettingsForm = ({
         children={(field) => (
           <field.BasicSelectInput
             options={hardwareAccelerationOptions}
-            selectProps={{ label: 'Hardware Acceleration' }}
+            selectProps={{ label: t`Hardware Acceleration` }}
           />
         )}
       />
@@ -157,14 +159,14 @@ export const TranscodeConfigVideoSettingsForm = ({
               children={(field) => (
                 <field.BasicTextInput
                   fullWidth
-                  label={hwAccel === 'qsv' ? 'QSV Device' : 'VA-API Device'}
+                  label={hwAccel === 'qsv' ? t`QSV Device` : t`VA-API Device`}
                   helperText={
-                    <span>
+                    <Trans>
                       Override the default{' '}
                       {hardwareAccelerationMode === 'qsv' ? 'QSV' : 'VA-API'}{' '}
                       device path (defaults to <code>/dev/dri/renderD128</code>{' '}
                       on Linux and blank otherwise)
-                    </span>
+                    </Trans>
                   }
                 />
               )}
@@ -205,7 +207,7 @@ export const TranscodeConfigVideoSettingsForm = ({
           <field.SelectInput
             options={TranscodeResolutionOptions}
             converter={resolutionConverter}
-            selectProps={{ label: 'Resolution' }}
+            selectProps={{ label: t`Resolution` }}
           />
         )}
       />
@@ -225,7 +227,7 @@ export const TranscodeConfigVideoSettingsForm = ({
           children={(field) => (
             <field.BasicTextInput
               fullWidth
-              label="Video Bitrate"
+              label={t`Video Bitrate`}
               slotProps={{
                 input: {
                   endAdornment: (
@@ -241,7 +243,7 @@ export const TranscodeConfigVideoSettingsForm = ({
           children={(field) => (
             <field.BasicTextInput
               fullWidth
-              label="Video Buffer Size"
+              label={t`Video Buffer Size`}
               slotProps={{
                 input: {
                   endAdornment: (
@@ -250,7 +252,7 @@ export const TranscodeConfigVideoSettingsForm = ({
                 },
               }}
               helperText={
-                <>
+                <Trans>
                   Buffer size effects how frequently ffmpeg reconsiders the
                   output bitrate.{' '}
                   <MuiLink
@@ -259,7 +261,7 @@ export const TranscodeConfigVideoSettingsForm = ({
                   >
                     Read more
                   </MuiLink>
-                </>
+                </Trans>
               }
             />
           )}
@@ -270,9 +272,9 @@ export const TranscodeConfigVideoSettingsForm = ({
           name="deinterlaceVideo"
           children={(field) => (
             <field.BasicCheckboxInput
-              label="Auto Deinterlace Video"
+              label={t`Auto Deinterlace Video`}
               formControlProps={{ fullWidth: true }}
-              helperText="If set, all watermark overlays will be disabled for channels assigned this transcode config."
+              helperText={t`If set, all watermark overlays will be disabled for channels assigned this transcode config.`}
             />
           )}
         />
@@ -280,9 +282,9 @@ export const TranscodeConfigVideoSettingsForm = ({
           name="normalizeFrameRate"
           children={(field) => (
             <field.BasicCheckboxInput
-              label="Normalize Frame Rate"
+              label={t`Normalize Frame Rate`}
               formControlProps={{ fullWidth: true }}
-              helperText="Output video at a constant frame rate."
+              helperText={t`Output video at a constant frame rate.`}
             />
           )}
         />

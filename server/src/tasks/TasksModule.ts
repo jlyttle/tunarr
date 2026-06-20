@@ -7,24 +7,21 @@ import {
 } from '@/db/backup/ArchiveDatabaseBackup.js';
 import { CleanupSessionsTask } from '@/tasks/CleanupSessionsTask.js';
 import { OnDemandChannelStateTask } from '@/tasks/OnDemandChannelStateTask.js';
-import type { ReconcileProgramDurationsTaskRequest } from '@/tasks/ReconcileProgramDurationsTask.js';
 import { ReconcileProgramDurationsTask } from '@/tasks/ReconcileProgramDurationsTask.js';
-import { ScheduleDynamicChannelsTask } from '@/tasks/ScheduleDynamicChannelsTask.js';
 import { UpdateXmlTvTask } from '@/tasks/UpdateXmlTvTask.js';
 import { autoFactoryKey, factoryKey, KEYS } from '@/types/inject.js';
-import type { interfaces } from 'inversify';
+import type { BackupConfiguration } from '@tunarr/types/schemas';
+import type { Factory } from 'inversify';
 import { ContainerModule } from 'inversify';
+import type { DeepReadonly } from 'ts-essentials';
 import type { ISettingsDB } from '../db/interfaces/ISettingsDB.ts';
 import type { MediaSourceWithRelations } from '../db/schema/derivedTypes.js';
 import { MediaSourceApiFactory } from '../external/MediaSourceApiFactory.ts';
-import { bindFactoryFunc } from '../util/inject.ts';
+import { bindAutoFactory, bindFactoryFunc } from '../util/inject.ts';
 import { LoggerFactory } from '../util/logging/LoggerFactory.ts';
-import type { BackupTaskFactory } from './BackupTask.ts';
 import { BackupTask } from './BackupTask.ts';
 import { ClearM3uCacheTask } from './ClearM3uCacheTask.ts';
-import { SaveJellyfinProgramExternalIdsTask } from './jellyfin/SaveJellyfinProgramExternalIdsTask.ts';
 import { NoopTask } from './NoopTask.ts';
-import { SavePlexProgramExternalIdsTask } from './plex/SavePlexProgramExternalIdsTask.ts';
 import type {
   UpdatePlexPlayStatusScheduledTaskFactory,
   UpdatePlexPlayStatusScheduleRequest,
@@ -35,96 +32,79 @@ import { RemoveDanglingProgramsFromSearchTask } from './RemoveDanglingProgramsFr
 import { RollLogFileTask } from './RollLogFileTask.ts';
 import { ScanLibrariesTask } from './ScanLibrariesTask.ts';
 import { SubtitleExtractorTask } from './SubtitleExtractorTask.ts';
+import { SyncCollectionsTask } from './SyncCollectionsTask.ts';
+import { SyncCustomShowsTask } from './SyncCustomShowsTask.ts';
 
-export type ReconcileProgramDurationsTaskFactory = (
-  request?: ReconcileProgramDurationsTaskRequest,
-) => ReconcileProgramDurationsTask;
-
-const TasksModule = new ContainerModule((bind) => {
+const TasksModule = new ContainerModule(({ bind }) => {
   bind(UpdateXmlTvTask).toSelf();
-  bind<interfaces.Factory<UpdateXmlTvTask>>(
-    KEYS.UpdateXmlTvTaskFactory,
-  ).toAutoFactory(UpdateXmlTvTask);
+  bindAutoFactory(bind, KEYS.UpdateXmlTvTaskFactory, UpdateXmlTvTask);
 
   bind(OnDemandChannelStateTask).toSelf();
-  bind<interfaces.Factory<OnDemandChannelStateTask>>(
-    OnDemandChannelStateTask.KEY,
-  ).toAutoFactory(OnDemandChannelStateTask);
-
-  bind(ScheduleDynamicChannelsTask).toSelf();
-  bind<interfaces.Factory<ScheduleDynamicChannelsTask>>(
-    ScheduleDynamicChannelsTask.KEY,
-  ).toAutoFactory(ScheduleDynamicChannelsTask);
+  bindAutoFactory(bind, OnDemandChannelStateTask.KEY, OnDemandChannelStateTask);
 
   bind(CleanupSessionsTask).toSelf();
-  bind<interfaces.Factory<CleanupSessionsTask>>(
-    CleanupSessionsTask.KEY,
-  ).toAutoFactory(CleanupSessionsTask);
+  bindAutoFactory(bind, CleanupSessionsTask.KEY, CleanupSessionsTask);
 
   bind(ScanLibrariesTask).toSelf();
-  bind<interfaces.Factory<ScanLibrariesTask>>(
-    ScanLibrariesTask.KEY,
-  ).toAutoFactory(ScanLibrariesTask);
+  bindAutoFactory(bind, ScanLibrariesTask.KEY, ScanLibrariesTask);
+
+  bind(SyncCollectionsTask).toSelf();
+  bindAutoFactory(bind, SyncCollectionsTask.KEY, SyncCollectionsTask);
 
   bind(KEYS.Task).toService(RemoveDanglingProgramsFromSearchTask);
 
   bind(ReconcileProgramDurationsTask).toSelf();
-  bind<interfaces.AutoFactory<ReconcileProgramDurationsTask>>(
+  bindAutoFactory(
+    bind,
     autoFactoryKey(ReconcileProgramDurationsTask),
-  ).toAutoFactory(ReconcileProgramDurationsTask);
-
-  bind(SavePlexProgramExternalIdsTask).toSelf();
-  bind<interfaces.AutoFactory<SavePlexProgramExternalIdsTask>>(
-    autoFactoryKey(SavePlexProgramExternalIdsTask),
-  ).toAutoFactory(SavePlexProgramExternalIdsTask);
-
-  bind(SaveJellyfinProgramExternalIdsTask).toSelf();
-  bind<interfaces.AutoFactory<SaveJellyfinProgramExternalIdsTask>>(
-    autoFactoryKey(SaveJellyfinProgramExternalIdsTask),
-  ).toAutoFactory(SaveJellyfinProgramExternalIdsTask);
+    ReconcileProgramDurationsTask,
+  );
 
   bind(ClearM3uCacheTask).toSelf();
 
-  bind<ArchiveDatabaseBackupFactory>(ArchiveDatabaseBackupKey).toAutoFactory(
+  bindAutoFactory<ArchiveDatabaseBackupFactory>(
+    bind,
+    ArchiveDatabaseBackupKey,
     ArchiveDatabaseBackup,
   );
 
   bind(RollLogFileTask).toSelf();
 
-  bindFactoryFunc<BackupTaskFactory>(
-    bind,
+  bind<Factory<() => BackupTask, [DeepReadonly<BackupConfiguration>]>>(
     factoryKey(BackupTask),
+  ).toFactory(
     (ctx) => (conf) => () =>
       new BackupTask(
         conf,
-        ctx.container.get<ArchiveDatabaseBackupFactory>(
-          ArchiveDatabaseBackupKey,
-        ),
+        ctx.get<ArchiveDatabaseBackupFactory>(ArchiveDatabaseBackupKey),
       ),
   );
 
-  bind(autoFactoryKey(BackupTask)).toFactory((ctx) => {
-    return () => {
-      const backupConfs = ctx.container.get<ISettingsDB>(KEYS.SettingsDB).backup
-        .configurations;
-      const firstEnabledConf = backupConfs.find((conf) => conf.enabled);
-      if (!firstEnabledConf) {
-        LoggerFactory.root.info(
-          'There are no enabled backup configurations. Skipping task.',
+  bind<Factory<BackupTask | NoopTask>>(autoFactoryKey(BackupTask)).toFactory(
+    (ctx) => {
+      return () => {
+        const backupConfs = ctx.get<ISettingsDB>(KEYS.SettingsDB).backup
+          .configurations;
+        const firstEnabledConf = backupConfs.find((conf) => conf.enabled);
+        if (!firstEnabledConf) {
+          LoggerFactory.root.info(
+            'There are no enabled backup configurations. Skipping task.',
+          );
+          return new NoopTask();
+        }
+
+        return new BackupTask(
+          firstEnabledConf,
+          ctx.get<ArchiveDatabaseBackupFactory>(ArchiveDatabaseBackupKey),
         );
-        return new NoopTask();
-      }
+      };
+    },
+  );
 
-      return new BackupTask(
-        firstEnabledConf,
-        ctx.container.get<ArchiveDatabaseBackupFactory>(
-          ArchiveDatabaseBackupKey,
-        ),
-      );
-    };
-  });
-
-  bindFactoryFunc<UpdatePlexPlayStatusScheduledTaskFactory>(
+  bindFactoryFunc<
+    UpdatePlexPlayStatusScheduledTask,
+    Parameters<UpdatePlexPlayStatusScheduledTaskFactory>
+  >(
     bind,
     UpdatePlexPlayStatusScheduledTask.KEY,
     (ctx) =>
@@ -134,7 +114,7 @@ const TasksModule = new ContainerModule((bind) => {
         sessionId: string,
       ) =>
         new UpdatePlexPlayStatusScheduledTask(
-          ctx.container.get<MediaSourceApiFactory>(MediaSourceApiFactory),
+          ctx.get<MediaSourceApiFactory>(MediaSourceApiFactory),
           plexServer,
           request,
           sessionId,
@@ -142,11 +122,16 @@ const TasksModule = new ContainerModule((bind) => {
   );
 
   bind(SubtitleExtractorTask).toSelf();
-  bind(autoFactoryKey(SubtitleExtractorTask)).toAutoFactory(
+  bindAutoFactory(
+    bind,
+    autoFactoryKey(SubtitleExtractorTask),
     SubtitleExtractorTask,
   );
 
   bind<RefreshMediaSourceLibraryTask>(RefreshMediaSourceLibraryTask).toSelf();
+
+  bind(SyncCustomShowsTask).toSelf();
+  bindAutoFactory(bind, SyncCustomShowsTask.KEY, SyncCustomShowsTask);
 });
 
 export { TasksModule };

@@ -12,6 +12,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { dbOptions, GlobalOptions } from '../../globals.ts';
+import { FeatureFlagService } from '../../services/FeatureFlagService.ts';
 import { FileSystemService } from '../../services/FileSystemService.ts';
 import { MeilisearchService } from '../../services/MeilisearchService.ts';
 import { KEYS } from '../../types/inject.ts';
@@ -22,10 +23,6 @@ import {
   SearchSnapshotsFolderName,
   SettingsJsonFilename,
 } from '../../util/constants.ts';
-import {
-  DISABLE_SEARCH_SNAPSHOT_IN_BACKUP,
-  getBooleanEnvVar,
-} from '../../util/env.ts';
 import { run } from '../../util/index.ts';
 import { ISettingsDB } from '../interfaces/ISettingsDB.ts';
 import type { BackupResult } from './DatabaseBackup.ts';
@@ -37,13 +34,14 @@ export type ArchiveDatabaseBackupFactory = () => ArchiveDatabaseBackup;
 @injectable()
 export class ArchiveDatabaseBackup extends DatabaseBackup<string> {
   logger = LoggerFactory.child({ className: ArchiveDatabaseBackup.name });
-  #normalizedOutputPath: string;
+  #normalizedOutputPath?: string;
 
   constructor(
     @inject(KEYS.SettingsDB) settings: ISettingsDB,
     @inject(KEYS.GlobalOptions) private globalOptions: GlobalOptions,
     @inject(FileSystemService) private fileSystemService: FileSystemService,
     @inject(MeilisearchService) private searchService: MeilisearchService,
+    @inject(FeatureFlagService) private featureFlagService: FeatureFlagService,
   ) {
     super(settings);
   }
@@ -119,7 +117,7 @@ export class ArchiveDatabaseBackup extends DatabaseBackup<string> {
     );
 
     const searchSnapshotPromise = run(async () => {
-      if (getBooleanEnvVar(DISABLE_SEARCH_SNAPSHOT_IN_BACKUP, false)) {
+      if (this.featureFlagService.get('disableSearchSnapshotInBackup')) {
         const snapshotTaskId = await this.searchService.createSnapshot();
         return this.searchService.monitorTask(snapshotTaskId);
       } else {
@@ -171,7 +169,7 @@ export class ArchiveDatabaseBackup extends DatabaseBackup<string> {
       return;
     }
 
-    const listings = await fs.readdir(this.#normalizedOutputPath);
+    const listings = await fs.readdir(this.#normalizedOutputPath!);
     const relevantListings = sortBy(
       compact(
         map(listings, (file) => {
@@ -211,7 +209,7 @@ export class ArchiveDatabaseBackup extends DatabaseBackup<string> {
 
       for await (const result of asyncPool(
         listingsToDelete,
-        async ([file]) => fs.rm(path.join(this.#normalizedOutputPath, file)),
+        async ([file]) => fs.rm(path.join(this.#normalizedOutputPath!, file)),
         { concurrency: 3 },
       )) {
         if (result.isFailure()) {

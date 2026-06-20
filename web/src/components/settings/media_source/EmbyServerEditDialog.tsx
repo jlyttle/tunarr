@@ -1,6 +1,8 @@
 import { isNonEmptyString, isValidUrlWithError, toggle } from '@/helpers/util';
 
 import { RotatingLoopIcon } from '@/components/base/LoadingIcon.tsx';
+import { t } from '@lingui/core/macro';
+import { Trans } from '@lingui/react/macro';
 import { useMediaSourceBackendStatus } from '@/hooks/media-sources/useMediaSourceBackendStatus';
 import {
   CloudDoneOutlined,
@@ -49,7 +51,7 @@ type Props = {
   server?: EmbyServerSettings;
 };
 
-export type EmbyServerSettingsForm = MarkOptional<
+type EmbyServerSettingsForm = MarkOptional<
   StrictOmit<EmbyServerSettings, 'libraries'>,
   'id'
 > & {
@@ -73,7 +75,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
 
   const [showAccessToken, setShowAccessToken] = useState(false);
 
-  const title = server ? `Editing "${server.name}"` : 'New Emby Media Source';
+  const title = server ? t`Editing "${server.name}"` : t`New Emby Media Source`;
 
   const handleClose = () => {
     setShowAccessToken(false);
@@ -110,15 +112,23 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
 
   const updateSourceMutation = useMutation({
     mutationFn: async (newOrUpdatedServer: EmbyServerSettingsForm) => {
+      const at = newOrUpdatedServer.accessToken;
+      if (!isNonEmptyString(at)) {
+        return;
+      }
       if (isNonEmptyString(newOrUpdatedServer.id)) {
         await putApiMediaSourcesById({
-          body: { ...newOrUpdatedServer, id: newOrUpdatedServer.id },
+          body: {
+            ...newOrUpdatedServer,
+            id: newOrUpdatedServer.id,
+            accessToken: at,
+          },
           path: { id: newOrUpdatedServer.id },
         });
         return { id: newOrUpdatedServer.id };
       } else {
         return postApiMediaSources({
-          body: newOrUpdatedServer,
+          body: { ...newOrUpdatedServer, accessToken: at },
         });
       }
     },
@@ -133,8 +143,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
   const showErrorSnack = (e: unknown) => {
     snackbar.enqueueSnackbar({
       variant: 'error',
-      message:
-        'Error saving new Emby server. See browser console and server logs for details',
+      message: t`Error saving new Emby server. See browser console and server logs for details`,
     });
     console.error(e);
   };
@@ -268,18 +277,18 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
 
                     switch (err) {
                       case 'empty':
-                        return 'Cannot be empty';
+                        return t`Cannot be empty`;
                       case 'not_parseable':
-                        return 'Not a valid URL';
+                        return t`Not a valid URL`;
                       case 'wrong_protocol':
-                        return 'Protocol must be HTTP or HTTPS';
+                        return t`Protocol must be HTTP or HTTPS`;
                     }
                   },
                 },
               }}
               render={({ field, fieldState: { error } }) => (
                 <TextField
-                  label="URL"
+                  label={t`URL`}
                   fullWidth
                   {...field}
                   error={
@@ -293,7 +302,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                       !serverStatus.healthy &&
                       isNonEmptyString(field.value) ? (
                       <>
-                        <span>Server is unreachable</span>
+                        <span><Trans>Server is unreachable</Trans></span>
                         <br />
                       </>
                     ) : null
@@ -318,20 +327,19 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                 minLength: 1,
                 pattern: {
                   value: /[A-z0-9_-]+/,
-                  message:
-                    'Name can only contain alphanumeric characters, dashes, and underscores',
+                  message: t`Name can only contain alphanumeric characters, dashes, and underscores`,
                 },
               }}
               render={({ field, fieldState: { error } }) => (
                 <TextField
-                  label="Name"
+                  label={t`Name`}
                   fullWidth
                   {...field}
                   error={!isUndefined(error)}
                   helperText={
                     error && isNonEmptyString(error.message)
                       ? error.message
-                      : 'Enter a name for your Emby Server'
+                      : t`Enter a name for your Emby Server`
                   }
                 />
               )}
@@ -346,12 +354,12 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                 }}
                 render={({ field, fieldState: { error } }) => (
                   <FormControl sx={{ flex: 1 }} variant="outlined">
-                    <InputLabel htmlFor="emby-username">Username </InputLabel>
+                    <InputLabel htmlFor="emby-username"><Trans>Username</Trans> </InputLabel>
                     <OutlinedInput
                       id="emby-username"
                       type="text"
                       error={!isUndefined(error)}
-                      label="Access Token"
+                      label={t`Access Token`}
                       {...field}
                     />
                     <FormHelperText>
@@ -371,7 +379,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                 }}
                 render={({ field, fieldState: { error } }) => (
                   <FormControl sx={{ flex: 1 }} variant="outlined">
-                    <InputLabel htmlFor="emby-password">Password </InputLabel>
+                    <InputLabel htmlFor="emby-password"><Trans>Password</Trans> </InputLabel>
                     <OutlinedInput
                       id="emby-password"
                       type={showPassword ? 'text' : 'password'}
@@ -379,7 +387,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                       endAdornment={
                         <InputAdornment position="end">
                           <IconButton
-                            aria-label="toggle access token visibility"
+                            aria-label={t`toggle access token visibility`}
                             onClick={() => setShowPassword(toggle)}
                             edge="end"
                           >
@@ -387,7 +395,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                           </IconButton>
                         </InputAdornment>
                       }
-                      label="Access Token"
+                      label={t`Access Token`}
                       {...field}
                     />
                     <FormHelperText>
@@ -402,12 +410,12 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                 )}
               />
               <FormHelperText sx={{ ml: '14px', mt: -1, flexBasis: '100%' }}>
-                Enter your Emby password to generate a new access token.
+                <Trans>Enter your Emby password to generate a new access token.</Trans>
               </FormHelperText>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Divider sx={{ flex: 1 }} />
-              <Typography variant="caption">OR</Typography>
+              <Typography variant="caption"><Trans>OR</Trans></Typography>
               <Divider sx={{ flex: 1 }} />
             </Box>
             <Controller
@@ -428,7 +436,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                   //   // isNonEmptyString(username) && isNonEmptyString(password)
                   // }
                 >
-                  <InputLabel htmlFor="access-token">Access Token </InputLabel>
+                  <InputLabel htmlFor="access-token"><Trans>Access Token</Trans> </InputLabel>
                   <OutlinedInput
                     id="access-token"
                     type={showAccessToken ? 'text' : 'password'}
@@ -436,7 +444,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                     endAdornment={
                       <InputAdornment position="end">
                         <IconButton
-                          aria-label="toggle access token visibility"
+                          aria-label={t`toggle access token visibility`}
                           onClick={() => setShowAccessToken(toggle)}
                           edge="end"
                         >
@@ -444,7 +452,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                         </IconButton>
                       </InputAdornment>
                     }
-                    label="Access Token"
+                    label={t`Access Token`}
                     {...field}
                   />
                   <FormHelperText>
@@ -456,7 +464,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                         </>
                       )}
                       <span>
-                        Manually add an access token from your Emby server
+                        <Trans>Manually add an access token from your Emby server</Trans>
                       </span>
                     </>
                   </FormHelperText>
@@ -475,7 +483,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
         <Button onClick={() => handleClose()} autoFocus>
-          Cancel
+          <Trans>Cancel</Trans>
         </Button>
         <Button
           variant="contained"
@@ -488,7 +496,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
           type="submit"
           onClick={onSubmit}
         >
-          {server?.id ? 'Update' : 'Add'}
+          {server?.id ? <Trans>Update</Trans> : <Trans>Add</Trans>}
         </Button>
       </DialogActions>
     </Dialog>

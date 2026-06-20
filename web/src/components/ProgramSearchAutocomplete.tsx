@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro';
 import { Autocomplete, ListItem, TextField } from '@mui/material';
 import type { ProgramOrFolder } from '@tunarr/types';
 import type { SearchRequest } from '@tunarr/types/schemas';
@@ -14,6 +15,8 @@ type Props<ProgramT extends ProgramOrFolder> = {
   onChange: (value: ProgramT) => void;
   onQueryChange: (value: string) => void;
   label?: string;
+  disabled?: boolean;
+  renderOptionTitle?: (opt: ProgramT) => string;
 };
 
 type AutocompleteOpt<ProgramT extends ProgramOrFolder> =
@@ -27,8 +30,12 @@ export const ProgramSearchAutocomplete = <ProgramT extends ProgramOrFolder>({
   value,
   onChange,
   onQueryChange,
-  label = 'Program',
+  label,
+  disabled,
+  renderOptionTitle = (program) => program.title,
 }: Props<ProgramT>) => {
+  const { t } = useLingui();
+  const defaultLabel = t`Program`;
   const results = useProgramInfiniteSearch(searchQuery, enabled);
 
   const { ref } = useIntersectionObserver({
@@ -80,31 +87,34 @@ export const ProgramSearchAutocomplete = <ProgramT extends ProgramOrFolder>({
     <Autocomplete
       options={options}
       getOptionLabel={(value) =>
-        value.type === 'sentinel' ? 'Loading...' : value.title
+        value.type === 'sentinel' ? t`Loading...` : renderOptionTitle(value)
       }
       value={value}
       isOptionEqualToValue={optionEqualToValue}
-      noOptionsText="Search for shows"
+      noOptionsText={t`Search for shows`}
       renderOption={(optProps, opt) => {
         if (opt.type === 'sentinel') {
           return (
             <ListItem id="sentinel" ref={ref}>
-              Loading&hellip;
+              <Trans>Loading…</Trans>
             </ListItem>
           );
         }
-        return <ListItem {...optProps}>{opt.title}</ListItem>;
+        return <ListItem {...optProps}>{renderOptionTitle(opt)}</ListItem>;
       }}
       onChange={(_, value) => {
         if (value && value.type !== 'sentinel') {
           onChange(value);
         }
       }}
-      renderInput={(params) => <TextField {...params} label={label} />}
+      renderInput={(params) => (
+        <TextField {...params} label={label ?? defaultLabel} />
+      )}
       autoComplete
       onInputChange={(_, newInputValue) => {
         onQueryChange(newInputValue);
       }}
+      disabled={disabled}
       getOptionDisabled={(opt) => opt.type === 'sentinel'}
       slotProps={{
         listbox: {

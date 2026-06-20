@@ -1,14 +1,15 @@
 import { ChannelOrm } from '@/db/schema/Channel.js';
-import type { ProgramWithRelations as RawProgramEntity } from '@/db/schema/derivedTypes.js';
+import type { ProgramOrmWithExternalIds } from '@/db/schema/derivedTypes.js';
 import { KEYS } from '@/types/inject.js';
 import { Result } from '@/types/result.js';
 import { Maybe, Nullable } from '@/types/util.js';
 import { binarySearchRange } from '@/util/binarySearch.js';
+import { InjectLogger } from '@/util/inject.js';
 import { type Logger } from '@/util/logging/LoggerFactory.js';
 import constants from '@tunarr/shared/constants';
 import dayjs from 'dayjs';
 import { inject, injectable } from 'inversify';
-import { first, inRange, isEmpty, isNil, isNull, sumBy } from 'lodash-es';
+import { inRange, isNil, isNull, sumBy } from 'lodash-es';
 import { Lineup, LineupItem } from '../db/derived_types/Lineup.ts';
 import {
   CommercialStreamLineupItem,
@@ -36,6 +37,7 @@ export type ProgramAndTimeElapsed = {
   program: StreamLineupItem;
   timeElapsed: number;
   programIndex: number;
+  contentStartOffsetMs?: number;
 };
 
 // Taking advantage of structural typing for transition
@@ -71,8 +73,9 @@ export type CurrentLineupItemResult = {
 
 @injectable()
 export class StreamProgramCalculator {
+  @InjectLogger() private declare readonly logger: Logger;
+
   constructor(
-    @inject(KEYS.Logger) private logger: Logger,
     @inject(KEYS.FillerListDB) private fillerDB: IFillerListDB,
     @inject(KEYS.ChannelDB) private channelDB: IChannelDB,
     @inject(KEYS.ProgramDB) private programDB: IProgramDB,
@@ -130,6 +133,9 @@ export class StreamProgramCalculator {
       );
 
       if (redirectChannels.includes(currentProgram.program.channel)) {
+        return Result.failure(
+          `Recursive channel redirect found: ${redirectChannels.join(' -> ')} -> ${currentProgram.program.channel}`,
+        );
       }
 
       const nextChannelId = currentProgram.program.channel;
@@ -324,11 +330,13 @@ export class StreamProgramCalculator {
         durationMs: OneDayMillis,
       };
     }
+
     let program: StreamLineupItem;
     switch (lineupItem.type) {
       case 'content': {
         // Defer program lookup
         const backingItem = await this.programDB.getProgramById(lineupItem.id);
+
         program = {
           duration: lineupItem.durationMs,
           type: 'offline',
@@ -351,12 +359,14 @@ export class StreamProgramCalculator {
               type: 'commercial',
               fillerListId: lineupItem.fillerListId,
               infiniteLoop: backingItem.duration < streamDuration,
+              startOffset: lineupItem.startOffsetMs ?? 0,
             } satisfies CommercialStreamLineupItem;
           } else {
             program = {
               ...baseItem,
               type: 'program',
               infiniteLoop: false,
+              startOffset: lineupItem.startOffsetMs ?? 0,
             } satisfies ProgramStreamLineupItem;
           }
         } else if (backingItem) {
@@ -365,12 +375,19 @@ export class StreamProgramCalculator {
             backingItem.uuid,
           );
         }
-        break;
+
+        return {
+          program,
+          timeElapsed,
+          programIndex: currentProgramIndex,
+          contentStartOffsetMs: lineupItem.startOffsetMs,
+        };
       }
       case 'offline': {
         program = {
           ...createOfflineStreamLineupItem(lineupItem.durationMs, timestamp),
           programBeginMs: timestamp - timeElapsed,
+          fillerConfig: lineupItem.fillerConfig,
         };
         break;
       }
@@ -395,7 +412,7 @@ export class StreamProgramCalculator {
   }
 
   async createLineupItem(
-    { program, timeElapsed }: ProgramAndTimeElapsed,
+    { program, timeElapsed, contentStartOffsetMs }: ProgramAndTimeElapsed,
     streamDuration: number,
     channel: ChannelOrm,
     effectiveNow: number,
@@ -426,20 +443,29 @@ export class StreamProgramCalculator {
     if (program.type === 'offline') {
       //offline case
       //look for a random filler to play
-      const fillerPrograms = await this.fillerDB.getFillersFromChannel(
+      const fillerConfig = program.fillerConfig;
+      let fillerPrograms = await this.fillerDB.getFillersFromChannel(
         channel.uuid,
       );
 
-      let filler: Nullable<RawProgramEntity> = null;
+      // Filter by allowed filler lists if configured
+      if (fillerConfig?.fillerListIds?.length) {
+        const allowedIds = new Set(fillerConfig.fillerListIds);
+        fillerPrograms = fillerPrograms.filter((f) =>
+          allowedIds.has(f.fillerShowUuid),
+        );
+      }
+
+      let filler: Nullable<ProgramOrmWithExternalIds> = null;
       let fillerListId: Nullable<string> = null;
-      let fallbackProgram: Nullable<RawProgramEntity> = null;
+      let fallbackProgram: Nullable<ProgramOrmWithExternalIds> = null;
 
       // See if we have any fallback programs set
-      const fallbackPrograms = await this.channelDB.getChannelFallbackPrograms(
+      const channelFallback = await this.channelDB.getChannelFallbackPrograms(
         channel.uuid,
       );
-      if (channel.offline?.mode === 'clip' && !isEmpty(fallbackPrograms)) {
-        fallbackProgram = first(fallbackPrograms)!;
+      if (channel.offline?.mode === 'clip' && channelFallback) {
+        fallbackProgram = channelFallback;
       }
 
       // Pick a random filler, too
@@ -448,6 +474,14 @@ export class StreamProgramCalculator {
         fillerPrograms,
         streamDuration,
         effectiveNow,
+        fillerConfig
+          ? {
+              fillerRepeatCooldownOverrideMs:
+                fillerConfig.fillerRepeatCooldownMs,
+              fillerListCooldownOverrides:
+                fillerConfig.fillerListCooldownOverrides,
+            }
+          : undefined,
       );
       this.logger.trace('Got filler picker result: %O', randomResult);
       filler = randomResult.filler;
@@ -539,10 +573,12 @@ export class StreamProgramCalculator {
       };
     }
 
+    const mediaStartOffset = timeElapsed + (contentStartOffsetMs ?? 0);
+
     if (program.type === 'commercial') {
       return {
         ...program,
-        startOffset: timeElapsed,
+        startOffset: mediaStartOffset + (program.startOffset ?? 0),
         streamDuration,
       };
     }
@@ -550,7 +586,7 @@ export class StreamProgramCalculator {
     return {
       ...program,
       type: 'program',
-      startOffset: timeElapsed,
+      startOffset: mediaStartOffset + (program.startOffset ?? 0),
       streamDuration,
     };
   }

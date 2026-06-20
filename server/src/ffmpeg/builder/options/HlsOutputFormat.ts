@@ -12,6 +12,7 @@ export class HlsOutputFormat extends OutputOption {
     private baseStreamUrl: string,
     private isFirstTranscode: boolean,
     private oneSecondGop: boolean,
+    private emitEndList: boolean = false,
   ) {
     super();
   }
@@ -42,23 +43,21 @@ export class HlsOutputFormat extends OutputOption {
       this.segmentTemplate,
       '-hls_base_url',
       this.baseStreamUrl,
+      '-master_pl_name',
+      'playlist.m3u8',
     ];
 
-    if (this.isFirstTranscode) {
-      opts.push(
-        '-hls_flags',
-        'program_date_time+append_list+omit_endlist+independent_segments',
-        this.playlistPath,
-      );
-    } else {
-      opts.push(
-        '-hls_flags',
-        'program_date_time+append_list+discont_start+omit_endlist+independent_segments',
-        '-mpegts_flags',
-        '+initial_discontinuity',
-        this.playlistPath,
-      );
+    const flags = ['program_date_time', 'append_list', 'independent_segments'];
+    if (!this.emitEndList) flags.push('omit_endlist');
+    if (!this.isFirstTranscode) flags.push('discont_start');
+
+    opts.push('-hls_flags', flags.join('+'));
+
+    if (!this.isFirstTranscode) {
+      opts.push('-mpegts_flags', '+initial_discontinuity');
     }
+
+    opts.push(this.playlistPath);
 
     return opts;
   }

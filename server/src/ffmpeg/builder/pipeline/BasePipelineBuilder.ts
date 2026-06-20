@@ -35,6 +35,7 @@ import type { WatermarkInputSource } from '@/ffmpeg/builder/input/WatermarkInput
 import { HlsConcatOutputFormat } from '@/ffmpeg/builder/options/HlsConcatOutputFormat.js';
 import { HlsDirectOutputFormat } from '@/ffmpeg/builder/options/HlsDirectOutputFormat.js';
 import { HlsOutputFormat } from '@/ffmpeg/builder/options/HlsOutputFormat.js';
+import { HlsSubtitleOutputFormat } from '@/ffmpeg/builder/options/HlsSubtitleOutputFormat.js';
 import { LogLevelOption } from '@/ffmpeg/builder/options/LogLevelOption.js';
 import { NoStatsOption } from '@/ffmpeg/builder/options/NoStatsOption.js';
 import { ConcatHttpReconnectOptions } from '@/ffmpeg/builder/options/input/ConcatHttpReconnectOptions.js';
@@ -61,8 +62,11 @@ import type { Logger } from '@/util/logging/LoggerFactory.js';
 import { LoggerFactory } from '@/util/logging/LoggerFactory.js';
 import { getTunarrVersion } from '@/util/version.js';
 import { filter, first, isNil, isNull, isUndefined, merge } from 'lodash-es';
+import path from 'node:path';
 import type { DeepReadonly, MarkRequired } from 'ts-essentials';
 import { match, P } from 'ts-pattern';
+import type { FeatureFlagService } from '../../../services/FeatureFlagService.ts';
+import { resolveFeatureFlagFromEnv } from '../../../services/FeatureFlagService.ts';
 import {
   AudioFormats,
   OutputFormatTypes,
@@ -104,6 +108,7 @@ import {
   DoNotMapMetadataOutputOption,
   FastStartOutputOption,
   makeConstantOutputOption,
+  MapAllNonSubtitleStreamsOutputOption,
   MapAllStreamsOutputOption,
   MatroskaOutputFormatOption,
   MetadataServiceNameOutputOption,
@@ -153,17 +158,17 @@ export class PipelineBuilderContext {
   videoStream?: VideoStream;
   audioStream?: AudioStream;
   subtitleStream?: SubtitleStream;
-  ffmpegState: FfmpegState;
-  desiredState: FrameState;
+  ffmpegState!: FfmpegState;
+  desiredState!: FrameState;
   desiredAudioState?: AudioState;
-  pipelineOptions: DeepReadonly<PipelineOptions>;
+  pipelineOptions!: DeepReadonly<PipelineOptions>;
 
-  pipelineSteps: PipelineStep[];
-  filterChain: FilterChain;
-  hasWatermark: boolean;
-  shouldDeinterlace: boolean;
-  is10BitOutput: boolean;
-  isIntelVaapiOrQsv: boolean;
+  pipelineSteps!: PipelineStep[];
+  filterChain!: FilterChain;
+  hasWatermark!: boolean;
+  shouldDeinterlace!: boolean;
+  is10BitOutput!: boolean;
+  isIntelVaapiOrQsv!: boolean;
 
   constructor(props: PipelineBuilderContextProps) {
     merge(this, props);
@@ -202,7 +207,7 @@ export function isVideoPipelineContext(
   return !isUndefined(context.videoStream);
 }
 
-export function isAudioPipelineContext(
+function isAudioPipelineContext(
   context: PipelineBuilderContext,
 ): context is PipelineBuilderContextWithAudio {
   return (
@@ -216,7 +221,15 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
     className: this.constructor.name,
   });
   protected decoder: Nullable<Decoder> = null;
-  protected context: PipelineBuilderContext;
+  protected context!: PipelineBuilderContext;
+  protected featureFlagService: Pick<FeatureFlagService, 'get'> = {
+    get: resolveFeatureFlagFromEnv,
+  };
+
+  setFeatureFlagService(svc: FeatureFlagService): this {
+    this.featureFlagService = svc;
+    return this;
+  }
 
   constructor(
     protected nullableVideoInputSource: Nullable<VideoInputSource>,
@@ -279,8 +292,9 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
     return new Pipeline(pipelineSteps, {
       videoInput: null,
       audioInput: null,
-      concatInput: input,
       watermarkInput: null,
+      subtitleInput: null,
+      concatInput: input,
     });
   }
 
@@ -322,8 +336,9 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
     return new Pipeline(pipelineSteps, {
       videoInput: null,
       audioInput: null,
-      concatInput: input,
       watermarkInput: null,
+      subtitleInput: null,
+      concatInput: input,
     });
   }
 
@@ -415,6 +430,10 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
       this.videoInputSource.addOption(new HttpReconnectOptions());
     }
 
+    if (this.ffmpegState.copyAllStreams) {
+      return this.buildCopyAllPipeline();
+    }
+
     if (
       this.audioInputSource?.path &&
       this.audioInputSource.protocol === 'http' &&
@@ -454,7 +473,7 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
     }
 
     // metadata
-    if (this.ffmpegState.doNotMapMetadata) {
+    if (this.ffmpegState.stripMetadata) {
       this.pipelineSteps.push(DoNotMapMetadataOutputOption());
     }
 
@@ -503,6 +522,57 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
       videoInput: this.videoInputSource,
       audioInput: this.audioInputSource,
       watermarkInput: this.watermarkInputSource,
+      subtitleInput: this.subtitleInputSource,
+      concatInput: this.concatInputSource,
+    });
+  }
+
+  /**
+   * Builds a pipeline that maps all input streams and copies them directly
+   * to the output without re-encoding. Used for passthrough modes
+   * (hls_direct_v2).
+   */
+  private buildCopyAllPipeline(): Pipeline {
+    this.pipelineSteps.push(
+      MapAllNonSubtitleStreamsOutputOption(),
+      new CopyVideoEncoder(),
+      new CopyAudioEncoder(),
+    );
+
+    // Per-stream audio codec overrides for incompatible codecs
+    // (e.g. DTS/TrueHD cannot be muxed into MPEG-TS).
+    for (const override of this.ffmpegState.audioCodecOverrides) {
+      this.pipelineSteps.push(
+        makeConstantOutputOption([
+          `-c:a:${override.outputIndex}`,
+          override.codec,
+        ]),
+      );
+    }
+
+    this.setRealtime();
+
+    if (isNonEmptyString(this.ffmpegState.metadataServiceProvider)) {
+      this.pipelineSteps.push(
+        MetadataServiceProviderOutputOption(
+          this.ffmpegState.metadataServiceProvider,
+        ),
+      );
+    }
+
+    if (isNonEmptyString(this.ffmpegState.metadataServiceName)) {
+      this.pipelineSteps.push(
+        MetadataServiceNameOutputOption(this.ffmpegState.metadataServiceName),
+      );
+    }
+
+    this.setOutputFormat();
+
+    return new Pipeline(this.pipelineSteps, {
+      videoInput: this.videoInputSource,
+      audioInput: null,
+      watermarkInput: null,
+      subtitleInput: this.subtitleInputSource,
       concatInput: this.concatInputSource,
     });
   }
@@ -832,6 +902,10 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
           isNonEmptyString(this.ffmpegState.hlsSegmentTemplate) &&
           isNonEmptyString(this.ffmpegState.hlsBaseStreamUrl)
         ) {
+          const isFirst =
+            this.ffmpegState.isFirstTranscode ??
+            (isNil(this.ffmpegState.ptsOffset) ||
+              this.ffmpegState.ptsOffset === 0);
           this.pipelineSteps.push(
             new HlsOutputFormat(
               this.desiredState,
@@ -839,12 +913,29 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
               this.ffmpegState.hlsPlaylistPath,
               this.ffmpegState.hlsSegmentTemplate,
               this.ffmpegState.hlsBaseStreamUrl,
-              isNil(this.ffmpegState.ptsOffset) ||
-                this.ffmpegState.ptsOffset === 0,
+              isFirst,
               this.ffmpegState.encoderHwAccelMode ===
                 HardwareAccelerationMode.Qsv,
+              this.ffmpegState.emitEndList,
             ),
           );
+          if (this.subtitleInputSource?.method === SubtitleMethods.Convert) {
+            this.pipelineSteps.push(
+              new HlsSubtitleOutputFormat(
+                path.join(
+                  path.dirname(this.ffmpegState.hlsPlaylistPath),
+                  'subs.m3u8',
+                ),
+                path.join(
+                  path.dirname(this.ffmpegState.hlsSegmentTemplate),
+                  'sub%06d.vtt',
+                ),
+                this.ffmpegState.hlsBaseStreamUrl,
+                this.computeSubtitleMapRef(),
+                this.computeSubtitlePtsOffsetSeconds(),
+              ),
+            );
+          }
         }
         break;
       }
@@ -854,15 +945,36 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
           isNonEmptyString(this.ffmpegState.hlsSegmentTemplate) &&
           isNonEmptyString(this.ffmpegState.hlsBaseStreamUrl)
         ) {
+          const isFirst =
+            this.ffmpegState.isFirstTranscode ??
+            (isNil(this.ffmpegState.ptsOffset) ||
+              this.ffmpegState.ptsOffset === 0);
           this.pipelineSteps.push(
             new HlsDirectOutputFormat(
               this.ffmpegState.hlsPlaylistPath,
               this.ffmpegState.hlsSegmentTemplate,
               this.ffmpegState.hlsBaseStreamUrl,
-              isNil(this.ffmpegState.ptsOffset) ||
-                this.ffmpegState.ptsOffset === 0,
+              isFirst,
+              this.ffmpegState.emitEndList,
             ),
           );
+          if (this.subtitleInputSource?.method === SubtitleMethods.Convert) {
+            this.pipelineSteps.push(
+              new HlsSubtitleOutputFormat(
+                path.join(
+                  path.dirname(this.ffmpegState.hlsPlaylistPath),
+                  'subs.m3u8',
+                ),
+                path.join(
+                  path.dirname(this.ffmpegState.hlsSegmentTemplate),
+                  'sub%06d.vtt',
+                ),
+                this.ffmpegState.hlsBaseStreamUrl,
+                this.computeSubtitleMapRef(),
+                this.computeSubtitlePtsOffsetSeconds(),
+              ),
+            );
+          }
         }
         break;
       }
@@ -961,10 +1073,51 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
       return currentState;
     }
 
-    const cropFilter = new CropFilter(
+    return this.addFilterToVideoChain(
       currentState,
-      this.desiredState.croppedSize,
+      new CropFilter(currentState, this.desiredState.croppedSize),
     );
-    return this.addFilterToVideoChain(currentState, cropFilter);
+  }
+
+  // Returns the subtitle PTS offset in seconds matching the video -output_ts_offset,
+  // so subtitle cue timestamps stay aligned with the video MPEG-TS PTS across
+  // transcode boundaries (enabling a constant X-TIMESTAMP-MAP=MPEGTS:0,LOCAL:00:00:00.000).
+  private computeSubtitlePtsOffsetSeconds(): number {
+    const ptsOffset = this.ffmpegState.ptsOffset ?? 0;
+    const timescale = this.desiredState.videoTrackTimescale;
+    if (
+      this.desiredState.videoFormat === 'copy' ||
+      ptsOffset <= 0 ||
+      timescale === null
+    ) {
+      return 0;
+    }
+    return ptsOffset / timescale;
+  }
+
+  private computeSubtitleMapRef(): string {
+    const subtitleInput = this.subtitleInputSource!;
+    const stream = first(subtitleInput.streams)!;
+
+    const includedPaths: string[] = [this.videoInputSource.path];
+    if (
+      this.audioInputSource?.path &&
+      !includedPaths.includes(this.audioInputSource.path)
+    ) {
+      includedPaths.push(this.audioInputSource.path);
+    }
+    if (
+      this.watermarkInputSource?.path &&
+      !includedPaths.includes(this.watermarkInputSource.path)
+    ) {
+      includedPaths.push(this.watermarkInputSource.path);
+    }
+
+    const subtitlePath = subtitleInput.path;
+    const existingIndex = includedPaths.indexOf(subtitlePath);
+    const inputIndex =
+      existingIndex >= 0 ? existingIndex : includedPaths.length;
+
+    return `${inputIndex}:${stream.index}`;
   }
 }
