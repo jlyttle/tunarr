@@ -18,6 +18,7 @@ import type { PipelineBuilder } from '@/ffmpeg/builder/pipeline/PipelineBuilder.
 import type { PipelineBuilderFactory } from '@/ffmpeg/builder/pipeline/PipelineBuilderFactory.ts';
 import { FrameState } from '@/ffmpeg/builder/state/FrameState.ts';
 import { FfmpegState } from '@/ffmpeg/builder/state/FfmpegState.ts';
+import type { AudioInputSource } from '@/ffmpeg/builder/input/AudioInputSource.ts';
 import type { FfmpegInfo, FfmpegVersionResult } from '@/ffmpeg/ffmpegInfo.ts';
 import type { StreamSelector } from '@/ffmpeg/StreamSelector.ts';
 import type { FeatureFlagService } from '@/services/FeatureFlagService.ts';
@@ -180,22 +181,30 @@ function createCapturingPipelineBuilderFactory(): {
   getCapturedFfmpegState: () => FfmpegState | undefined;
   getCapturedHwAccel: () => string | undefined;
   getCapturedSubtitleInput: () => SubtitlesInputSource | null | undefined;
+  getCapturedAudioInput: () => AudioInputSource | null | undefined;
 } {
   let capturedFrameState: FrameState | undefined;
   let capturedFfmpegState: FfmpegState | undefined;
   let capturedHwAccel: string | undefined;
   let capturedSubtitleInput: SubtitlesInputSource | null | undefined;
+  let capturedAudioInput: AudioInputSource | null | undefined;
 
   const factory: PipelineBuilderFactory = () => {
     const builderProxy: Record<string, unknown> = {};
     for (const method of [
       'setVideoInputSource',
-      'setAudioInputSource',
       'setWatermarkInputSource',
       'setConcatInputSource',
     ]) {
       builderProxy[method] = vi.fn().mockReturnValue(builderProxy);
     }
+
+    builderProxy.setAudioInputSource = vi.fn(
+      (input: AudioInputSource | null) => {
+        capturedAudioInput = input;
+        return builderProxy;
+      },
+    );
 
     builderProxy.setSubtitleInputSource = vi.fn(
       (input: SubtitlesInputSource | null) => {
@@ -232,6 +241,7 @@ function createCapturingPipelineBuilderFactory(): {
     getCapturedFfmpegState: () => capturedFfmpegState,
     getCapturedHwAccel: () => capturedHwAccel,
     getCapturedSubtitleInput: () => capturedSubtitleInput,
+    getCapturedAudioInput: () => capturedAudioInput,
   };
 }
 
@@ -468,6 +478,72 @@ describe('FfmpegStreamFactory', () => {
       expect(frameState).toBeDefined();
       // calculateForErrorStream (used by offline) doesn't set videoPreset
       expect(frameState!.videoPreset).toBeNull();
+    });
+
+    test('createPlaceholderSession (offline) uses channel soundtrack as audio input', async () => {
+      const config = makeTranscodeConfig({
+        errorScreenAudio: 'whitenoise',
+      });
+      const { factory, getCapturedAudioInput } =
+        createCapturingPipelineBuilderFactory();
+      const soundtrack = 'https://radio.example.com/live.mp3';
+
+      const sut = new FfmpegStreamFactory(
+        makeMockFfmpegInfo(),
+        makeMockSettingsDB(makeFfmpegSettings()),
+        factory,
+        makeMockChannelDB(),
+        makeMockFeatureFlagService(),
+        makeMockStreamSelector(),
+        config,
+        makeChannel({
+          offline: { mode: 'pic', soundtrack },
+        }),
+      );
+
+      await sut.createPlaceholderSession({
+        kind: 'offline',
+        duration: dayjs.duration({ seconds: 10 }),
+        outputFormat: MpegTsOutputFormat,
+      });
+
+      const audioInput = getCapturedAudioInput();
+      expect(audioInput).toBeDefined();
+      expect(audioInput!.source).toBeInstanceOf(HttpStreamSource);
+      expect(audioInput!.path).toBe(soundtrack);
+      expect(audioInput!.continuity).toBe('infinite');
+    });
+
+    test('createPlaceholderSession (offline) uses global placeholder audio when channel soundtrack is blank', async () => {
+      const config = makeTranscodeConfig({
+        errorScreenAudio: 'whitenoise',
+      });
+      const { factory, getCapturedAudioInput } =
+        createCapturingPipelineBuilderFactory();
+
+      const sut = new FfmpegStreamFactory(
+        makeMockFfmpegInfo(),
+        makeMockSettingsDB(makeFfmpegSettings()),
+        factory,
+        makeMockChannelDB(),
+        makeMockFeatureFlagService(),
+        makeMockStreamSelector(),
+        config,
+        makeChannel({
+          offline: { mode: 'pic', soundtrack: '' },
+        }),
+      );
+
+      await sut.createPlaceholderSession({
+        kind: 'offline',
+        duration: dayjs.duration({ seconds: 10 }),
+        outputFormat: MpegTsOutputFormat,
+      });
+
+      const audioInput = getCapturedAudioInput();
+      expect(audioInput).toBeDefined();
+      expect(audioInput!.source.type).toBe('filter');
+      expect(audioInput!.path).toBe('anoisesrc=c=white:a=0.7');
     });
   });
 

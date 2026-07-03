@@ -552,8 +552,7 @@ export class FfmpegStreamFactory {
           subtitleDelivery === 'hls' &&
           !this.featureFlagService.get('webvttSidecarEnabled')
         ) {
-          subtitleDelivery =
-            this.channel.subtitleUnsupportedFallback ?? 'burn';
+          subtitleDelivery = this.channel.subtitleUnsupportedFallback ?? 'burn';
         }
         const useSidecar = subtitleDelivery === 'hls';
         const method = useSidecar
@@ -945,7 +944,7 @@ export class FfmpegStreamFactory {
       duration.asMilliseconds(),
     );
 
-    const audioInput = this.createPlaceholderAudioInput(audioState);
+    const audioInput = this.createOfflineAudioInput(audioState);
 
     const builder = await this.pipelineBuilderFactory(this.transcodeConfig)
       .setHardwareAccelerationMode(
@@ -1042,6 +1041,24 @@ export class FfmpegStreamFactory {
       case 'whitenoise':
         return AudioInputFilterSource.noise(audioState);
     }
+  }
+
+  private createOfflineAudioInput(audioState: AudioState): AudioInputSource {
+    const soundtrack = this.channel.offline?.soundtrack;
+    if (!isNonEmptyString(soundtrack)) {
+      return this.createPlaceholderAudioInput(audioState);
+    }
+
+    const source = match(soundtrack)
+      .with(P.string.startsWith('http'), (path) => new HttpStreamSource(path))
+      .otherwise((path) => new FileStreamSource(path));
+
+    return AudioInputSource.withStream(
+      source,
+      AudioStream.create({ index: 0, channels: -1, codec: 'unknown' }),
+      audioState,
+      'infinite',
+    );
   }
 
   private buildVideoInput(
