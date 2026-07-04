@@ -328,7 +328,7 @@ msgstr ""
 msgid "Add {0}"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:291
+#: src/components/channel_config/ChannelFlexConfig.tsx:307
 msgid "Add a Filler List"
 msgstr ""
 
@@ -496,7 +496,7 @@ msgstr ""
 #~ msgid "All linked slots show the same episode, advancing only after all have played."
 #~ msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:290
+#: src/components/channel_config/ChannelFlexConfig.tsx:306
 msgid "All lists are used"
 msgstr ""
 
@@ -512,7 +512,7 @@ msgstr ""
 msgid "Allow Image Based"
 msgstr ""
 
-#: src/pages/channels/TimeSlotEditorPage.tsx:383
+#: src/pages/channels/TimeSlotEditorPage.tsx:385
 msgid "Allows programs to play a bit late if the previous program took longer than usual. If a program is too late, Flex is scheduled instead."
 msgstr ""
 
@@ -663,7 +663,7 @@ msgid "Back"
 msgstr ""
 
 #: src/pages/channels/RandomSlotEditorPage.tsx:261
-#: src/pages/channels/TimeSlotEditorPage.tsx:529
+#: src/pages/channels/TimeSlotEditorPage.tsx:531
 msgid "Back to Programming"
 msgstr ""
 
@@ -752,7 +752,7 @@ msgstr ""
 msgid "By default, saves backups in the server's run directory, or, if running in Docker, to /config/tunarr/backups"
 msgstr ""
 
-#: src/pages/channels/TimeSlotEditorPage.tsx:352
+#: src/pages/channels/TimeSlotEditorPage.tsx:354
 msgid "By default, time slots are time of the day-based, you can change it to time of the day + day of the week. That means scheduling 7x the number of time slots. If you change from daily to weekly, the current schedule will be repeated 7 times. If you change from weekly to daily, many of the slots will be deleted."
 msgstr ""
 
@@ -760,7 +760,7 @@ msgstr ""
 msgid "Caching"
 msgstr ""
 
-#: src/hooks/slot_scheduler/useScheduleSlots.ts:71
+#: src/hooks/slot_scheduler/useScheduleSlots.ts:88
 msgid "Calculated {humanizedDuration} ({numShows} programs) of programming in {duration}ms"
 msgstr ""
 
@@ -842,7 +842,7 @@ msgstr ""
 msgid "Channel #{0}"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:382
+#: src/components/channel_config/ChannelFlexConfig.tsx:398
 msgid "Channel Fallback"
 msgstr ""
 
@@ -983,7 +983,7 @@ msgstr ""
 msgid "Configure transcoding settings for Tunarr's streams. Each channel is assigned one transcode configuration."
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:385
+#: src/components/channel_config/ChannelFlexConfig.tsx:401
 msgid "Configure what appears on your channel when there is no suitable filler content available. Using channel fallbacks requires ffmpeg transcoding."
 msgstr ""
 
@@ -1032,9 +1032,13 @@ msgstr ""
 msgid "Cooldown"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:218
-msgid "Cooldown (seconds)"
+#: src/components/channel_config/ChannelFlexConfig.tsx:229
+msgid "Cooldown (s)"
 msgstr ""
+
+#: src/components/channel_config/ChannelFlexConfig.tsx:218
+#~ msgid "Cooldown (seconds)"
+#~ msgstr ""
 
 #. placeholder {0}: navItem.name
 #: src/components/TopBar.tsx:136
@@ -1151,7 +1155,7 @@ msgstr ""
 msgid "Cyclic Shuffle randomly shuffles groups of programming."
 msgstr ""
 
-#: src/pages/channels/TimeSlotEditorPage.tsx:343
+#: src/pages/channels/TimeSlotEditorPage.tsx:345
 msgid "Daily"
 msgstr ""
 
@@ -1171,8 +1175,8 @@ msgstr ""
 
 #: src/components/slot_scheduler/RandomSlotSettingsForm.tsx:200
 #: src/components/slot_scheduler/RandomSlotSettingsForm.tsx:202
-#: src/pages/channels/TimeSlotEditorPage.tsx:453
 #: src/pages/channels/TimeSlotEditorPage.tsx:455
+#: src/pages/channels/TimeSlotEditorPage.tsx:457
 msgid "Days to Precalculate"
 msgstr ""
 
@@ -1283,7 +1287,7 @@ msgstr ""
 msgid "Description"
 msgstr ""
 
-#: src/components/channels/ChannelNowPlayingCard.tsx:259
+#: src/components/channels/ChannelNowPlayingCard.tsx:223
 msgid "Details"
 msgstr ""
 
@@ -1566,7 +1570,7 @@ msgstr ""
 msgid "End Time"
 msgstr ""
 
-#: src/pages/channels/TimeSlotEditorPage.tsx:411
+#: src/pages/channels/TimeSlotEditorPage.tsx:413
 msgid "Ensures programs have a nice-looking start time, it will add Flex time to fill the gaps."
 msgstr ""
 
@@ -1739,8 +1743,8 @@ msgstr ""
 msgid "Fallback"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:408
-#: src/components/channel_config/ChannelFlexConfig.tsx:409
+#: src/components/channel_config/ChannelFlexConfig.tsx:424
+#: src/components/channel_config/ChannelFlexConfig.tsx:425
 msgid "Fallback Mode"
 msgstr ""
 
@@ -1852,11 +1856,11 @@ msgstr ""
 msgid "Filler - {0}"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:318
+#: src/components/channel_config/ChannelFlexConfig.tsx:334
 msgid "Filler Content"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:349
+#: src/components/channel_config/ChannelFlexConfig.tsx:365
 msgid "Filler cooldown must be a number"
 msgstr ""
 
@@ -1868,14 +1872,14 @@ msgstr ""
 msgid "Filler is resolved at schedule time. The guide shows specific filler titles."
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:298
-#: src/components/channel_config/ChannelFlexConfig.tsx:301
+#: src/components/channel_config/ChannelFlexConfig.tsx:314
+#: src/components/channel_config/ChannelFlexConfig.tsx:317
 #: src/components/slot_scheduler/SlotFillerDialogPanel.tsx:131
 #: src/components/slot_scheduler/SlotSchedulerCyclicShuffleDialog.tsx:242
 msgid "Filler List"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:345
+#: src/components/channel_config/ChannelFlexConfig.tsx:361
 msgid "Filler List Cooldown (seconds)"
 msgstr ""
 
@@ -1894,7 +1898,7 @@ msgstr ""
 msgid "Filler lists are collections of videos that you may want to play during 'flex' time segments. Flex is time within a channel that does not have a program scheduled (usually used for padding)."
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:335
+#: src/components/channel_config/ChannelFlexConfig.tsx:351
 msgid "Filler Options"
 msgstr ""
 
@@ -1941,8 +1945,8 @@ msgstr ""
 
 #: src/components/slot_scheduler/RandomSlotSettingsForm.tsx:142
 #: src/components/slot_scheduler/RandomSlotSettingsForm.tsx:147
-#: src/pages/channels/TimeSlotEditorPage.tsx:422
-#: src/pages/channels/TimeSlotEditorPage.tsx:428
+#: src/pages/channels/TimeSlotEditorPage.tsx:424
+#: src/pages/channels/TimeSlotEditorPage.tsx:430
 msgid "Flex Style"
 msgstr ""
 
@@ -2038,7 +2042,7 @@ msgstr ""
 msgid "Hide Advanced"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:374
+#: src/components/channel_config/ChannelFlexConfig.tsx:390
 msgid "Hide watermark during filler"
 msgstr ""
 
@@ -2112,11 +2116,11 @@ msgstr ""
 msgid "If you proceed, all unsaved changes will be lost. Are you sure you want to proceed?"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:410
+#: src/components/channel_config/ChannelFlexConfig.tsx:427
 msgid "Image"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:425
+#: src/components/channel_config/ChannelFlexConfig.tsx:443
 msgid "Image URL"
 msgstr ""
 
@@ -2165,7 +2169,7 @@ msgstr ""
 msgid "Item was not present during the last scan"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:359
+#: src/components/channel_config/ChannelFlexConfig.tsx:375
 msgid "Items from any filler list will not be chosen more frequently than this cooldown setting."
 msgstr ""
 
@@ -2247,7 +2251,7 @@ msgstr ""
 msgid "Library"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:412
+#: src/components/channel_config/ChannelFlexConfig.tsx:430
 msgid "Library Clip (not yet implemented)"
 msgstr ""
 
@@ -2429,8 +2433,8 @@ msgstr ""
 msgid "Max file size (bytes)"
 msgstr ""
 
-#: src/pages/channels/TimeSlotEditorPage.tsx:366
-#: src/pages/channels/TimeSlotEditorPage.tsx:372
+#: src/pages/channels/TimeSlotEditorPage.tsx:368
+#: src/pages/channels/TimeSlotEditorPage.tsx:374
 msgid "Max Lateness"
 msgstr ""
 
@@ -2446,7 +2450,7 @@ msgstr ""
 msgid "Maximum number of days to precalculate the schedule. Note that the length of the schedule is also bounded by the maximum number of programs allowed in a channel."
 msgstr ""
 
-#: src/pages/channels/TimeSlotEditorPage.tsx:462
+#: src/pages/channels/TimeSlotEditorPage.tsx:464
 msgid "Maximum number of days to precalculate the schedule. Note that the length of the schedule is also bounded by the maximum number of programs allowed in a channel.<0/><1>Note: Previewing the schedule in the browser for long lengths of time can cause UI performance issues</1>"
 msgstr ""
 
@@ -2717,7 +2721,7 @@ msgstr ""
 msgid "Not found!"
 msgstr ""
 
-#: src/components/channels/ChannelNowPlayingCard.tsx:244
+#: src/components/channels/ChannelNowPlayingCard.tsx:208
 msgid "Now Playing:"
 msgstr ""
 
@@ -2849,8 +2853,8 @@ msgstr ""
 #: src/components/slot_scheduler/RandomSlotSettingsForm.tsx:92
 #: src/components/slot_scheduler/TimeSlotConfigDialogPanel.tsx:21
 #: src/components/slot_scheduler/TimeSlotConfigDialogPanel.tsx:26
-#: src/pages/channels/TimeSlotEditorPage.tsx:394
-#: src/pages/channels/TimeSlotEditorPage.tsx:400
+#: src/pages/channels/TimeSlotEditorPage.tsx:396
+#: src/pages/channels/TimeSlotEditorPage.tsx:402
 msgid "Pad Times"
 msgstr ""
 
@@ -2876,8 +2880,8 @@ msgstr ""
 msgid "Percentage-Based"
 msgstr ""
 
-#: src/pages/channels/TimeSlotEditorPage.tsx:331
-#: src/pages/channels/TimeSlotEditorPage.tsx:338
+#: src/pages/channels/TimeSlotEditorPage.tsx:333
+#: src/pages/channels/TimeSlotEditorPage.tsx:340
 msgid "Period"
 msgstr ""
 
@@ -2986,12 +2990,12 @@ msgid "Programming"
 msgstr ""
 
 #: src/pages/channels/RandomSlotEditorPage.tsx:222
-#: src/pages/channels/TimeSlotEditorPage.tsx:494
+#: src/pages/channels/TimeSlotEditorPage.tsx:496
 msgid "Programming Preview"
 msgstr ""
 
 #: src/components/channel_config/ChannelPropertiesEditor.tsx:181
-#: src/pages/channels/TimeSlotEditorPage.tsx:498
+#: src/pages/channels/TimeSlotEditorPage.tsx:500
 msgid "Programming Start"
 msgstr ""
 
@@ -3101,7 +3105,7 @@ msgid "Refresh Page"
 msgstr ""
 
 #: src/components/slot_scheduler/RandomSlotSettingsForm.tsx:247
-#: src/pages/channels/TimeSlotEditorPage.tsx:488
+#: src/pages/channels/TimeSlotEditorPage.tsx:490
 msgid "Refresh Preview"
 msgstr ""
 
@@ -3233,7 +3237,7 @@ msgstr ""
 
 #: src/components/settings/general/GeneralSettingsForm.tsx:488
 #: src/pages/channels/RandomSlotEditorPage.tsx:266
-#: src/pages/channels/TimeSlotEditorPage.tsx:534
+#: src/pages/channels/TimeSlotEditorPage.tsx:536
 msgid "Reset Options"
 msgstr ""
 
@@ -3333,7 +3337,7 @@ msgstr ""
 #: src/components/smart_collections/CreateSmartCollectionDialog.tsx:196
 #: src/components/smart_collections/EditSmartCollectionDialog.tsx:121
 #: src/pages/channels/RandomSlotEditorPage.tsx:270
-#: src/pages/channels/TimeSlotEditorPage.tsx:542
+#: src/pages/channels/TimeSlotEditorPage.tsx:544
 #: src/pages/settings/FeaturesSettingsPage.tsx:170
 #: src/pages/settings/FfmpegSettingsPage.tsx:417
 #: src/pages/settings/HdhrSettingsPage.tsx:152
@@ -3485,7 +3489,7 @@ msgstr ""
 
 #: src/components/slot_scheduler/RandomSlotSettingsForm.tsx:83
 #: src/hooks/useNavItems.tsx:129
-#: src/pages/channels/TimeSlotEditorPage.tsx:313
+#: src/pages/channels/TimeSlotEditorPage.tsx:315
 #: src/pages/settings/SettingsLayout.tsx:16
 msgid "Settings"
 msgstr ""
@@ -3635,7 +3639,7 @@ msgstr ""
 msgid "Sorts the list by TV Show and the episodes in each TV show by their season/episode number. Movies are moved to the bottom of the schedule."
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:439
+#: src/components/channel_config/ChannelFlexConfig.tsx:457
 msgid "Soundtrack"
 msgstr ""
 
@@ -3665,7 +3669,7 @@ msgstr ""
 msgid "Start Time"
 msgstr ""
 
-#: src/components/channels/ChannelNowPlayingCard.tsx:251
+#: src/components/channels/ChannelNowPlayingCard.tsx:215
 msgid "Started {startedAgo} - {remainingTime}remaining"
 msgstr ""
 
@@ -3848,7 +3852,7 @@ msgstr ""
 msgid "Theme Settings"
 msgstr ""
 
-#: src/hooks/slot_scheduler/useScheduleSlots.ts:122
+#: src/hooks/slot_scheduler/useScheduleSlots.ts:139
 msgid "There was an error generating time slots. Check the browser console log for more information"
 msgstr ""
 
@@ -3969,7 +3973,7 @@ msgstr ""
 msgid "Time Slot Editor"
 msgstr ""
 
-#: src/pages/channels/TimeSlotEditorPage.tsx:301
+#: src/pages/channels/TimeSlotEditorPage.tsx:303
 msgid "Time Slots"
 msgstr ""
 
@@ -4149,7 +4153,7 @@ msgstr ""
 msgid "Username"
 msgstr ""
 
-#: src/pages/channels/TimeSlotEditorPage.tsx:438
+#: src/pages/channels/TimeSlotEditorPage.tsx:440
 msgid "Usually slots need to add flex time to ensure that the next slot starts at the correct time. When there are multiple videos in the slot, you might prefer to distribute the flex time between the videos or to place most of the flex time at the end of the slot."
 msgstr ""
 
@@ -4208,7 +4212,7 @@ msgstr ""
 msgid "Video Streams"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:321
+#: src/components/channel_config/ChannelFlexConfig.tsx:337
 msgid "Videos from the filler list will be randomly picked to play unless there are cooldown restrictions to place or if no videos are short enough for the remaining Flex time.<0/>Each filler can be assigned a cooldown, which restricts how frequently the list will be chosen during flex time."
 msgstr ""
 
@@ -4223,7 +4227,7 @@ msgstr ""
 
 #. placeholder {0}: capitalize(firstProgram.program.sourceType)
 #. placeholder {0}: capitalize(program.sourceType)
-#: src/components/channels/ChannelNowPlayingCard.tsx:277
+#: src/components/channels/ChannelNowPlayingCard.tsx:241
 #: src/components/ProgramMetadataDialogContent.tsx:144
 msgid "View in {0}"
 msgstr ""
@@ -4262,15 +4266,15 @@ msgstr ""
 msgid "Week"
 msgstr ""
 
-#: src/pages/channels/TimeSlotEditorPage.tsx:346
+#: src/pages/channels/TimeSlotEditorPage.tsx:348
 msgid "Weekly"
 msgstr ""
 
+#: src/components/channel_config/ChannelFlexConfig.tsx:251
 #: src/components/slot_scheduler/RandomSlotTable.tsx:340
 msgid "Weight"
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:243
 #: src/components/slot_scheduler/EditRandomSlotDialogContent.tsx:544
 msgid "Weight %"
 msgstr ""
@@ -4336,7 +4340,7 @@ msgstr ""
 msgid "You haven't created any channels yet."
 msgstr ""
 
-#: src/components/channel_config/ChannelFlexConfig.tsx:270
+#: src/components/channel_config/ChannelFlexConfig.tsx:286
 msgid "You haven't created any filler lists yet! Go to the <0>Filler Lists</0> page to create one."
 msgstr ""
 
