@@ -9,7 +9,6 @@ import { UpdateXmlTvTask } from '@/tasks/UpdateXmlTvTask.js';
 import { OpenDateTimeRange } from '@/types/OpenDateTimeRange.js';
 import type { RouterPluginAsyncCallback } from '@/types/serverType.js';
 import { deleteIfLocalAndCleared } from '@/util/iconUtil.js';
-import { isDefined } from '@/util/index.js';
 import { LoggerFactory } from '@/util/logging/LoggerFactory.js';
 import { timeNamedAsync } from '@/util/perf.js';
 import { type ChannelSession, type CreateChannelRequest } from '@tunarr/types';
@@ -20,7 +19,7 @@ import {
   PagedResult,
   RandomSlotScheduleSchema,
   SlotScheduleWithPrograms,
-  TimeSlotScheduleSchema,
+  StrictTimeSlotScheduleSchema,
   TimeSlotScheduleWithPrograms,
   UpdateChannelProgrammingRequestSchema,
 } from '@tunarr/types/api';
@@ -64,14 +63,18 @@ import { transcodeConfigOrmToDto } from '../db/converters/transcodeConfigConvert
 import type { ChannelAndLineup } from '../db/interfaces/IChannelDB.ts';
 import type { ChannelOrmWithRelations } from '../db/schema/derivedTypes.ts';
 import { Result } from '../types/result.ts';
-import { PagingParams } from '../types/schemas.ts';
+import { PagingParams, TruthyQueryParam } from '../types/schemas.ts';
 
 dayjs.extend(duration);
 
 const ChannelLineupQuery = z.object({
-  from: z.iso.datetime().optional().pipe(z.coerce.date()),
-  to: z.iso.datetime().optional().pipe(z.coerce.date()),
-  includePrograms: z.coerce.boolean().default(false),
+  // `.optional()` must sit outside the pipe. Inside, it only lets `undefined`
+  // through the left half and `z.coerce.date()` still runs on it; and because
+  // the pipe's output is non-optional, zod does not treat the key as optional
+  // either, so omitting the query string is a 400.
+  from: z.iso.datetime().pipe(z.coerce.date()).optional(),
+  to: z.iso.datetime().pipe(z.coerce.date()).optional(),
+  includePrograms: TruthyQueryParam.default(false),
 });
 
 // eslint-disable-next-line @typescript-eslint/require-await
@@ -275,6 +278,10 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
             .send({ error: `Channel with ID ${req.params.id} not found.` });
         }
 
+        const lineupConfig = await req.serverCtx.channelDB.loadLineupConfig(
+          channel.uuid,
+        );
+
         const transcodeConfig = await req.serverCtx.transcodeConfigDB.getById(
           req.body.transcodeConfigId,
         );
@@ -312,9 +319,14 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
           channel.guideMinimumDuration !==
             updatedChannel.channel.guideMinimumDuration ||
           channel.startTime !== updatedChannel.channel.startTime ||
-          isDefined(req.body.onDemand);
+          isNil(lineupConfig.onDemandConfig) !==
+            isNil(updatedChannel.lineup.onDemandConfig);
 
         if (needsGuideRegen) {
+          logger.debug(
+            'Regenerating lineup for channel %s after property change',
+            channel.uuid,
+          );
           await container
             .get<RegenerateChannelLineupCommand>(RegenerateChannelLineupCommand)
             .execute({ channelId: channel.uuid });
@@ -524,6 +536,7 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
         body: UpdateChannelProgrammingRequestSchema,
         response: {
           200: CondensedChannelProgrammingSchema,
+          400: z.string(),
           404: z.void(),
           500: z.void(),
           501: z.void(),
@@ -535,9 +548,46 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
         return res.status(404).send();
       }
 
+      // The schedule-time-slots / schedule-slots preview endpoints validate
+      // slot groups, but this save path persisted whatever schedule it was
+      // given verbatim. Run the same validation here and persist the
+      // sanitized slots (linkMode stripped from slots without an
+      // iterationGroup) so an invalid or unsanitized group can't be saved
+      // and then regenerated badly by RegenerateChannelLineupCommand.
+      let programmingRequest = req.body;
+      if (req.body.type === 'time') {
+        const groupValidation = validateSlotGroups(req.body.schedule.slots, {
+          scheduleType: 'time',
+        });
+        if (!groupValidation.valid) {
+          return res.status(400).send(groupValidation.errors.join('; '));
+        }
+        programmingRequest = {
+          ...req.body,
+          schedule: {
+            ...req.body.schedule,
+            slots: groupValidation.sanitizedSlots,
+          },
+        };
+      } else if (req.body.type === 'random') {
+        const groupValidation = validateSlotGroups(req.body.schedule.slots, {
+          scheduleType: 'random',
+        });
+        if (!groupValidation.valid) {
+          return res.status(400).send(groupValidation.errors.join('; '));
+        }
+        programmingRequest = {
+          ...req.body,
+          schedule: {
+            ...req.body.schedule,
+            slots: groupValidation.sanitizedSlots,
+          },
+        };
+      }
+
       const result = await req.serverCtx.channelDB.updateLineup(
         req.params.id,
-        req.body,
+        programmingRequest,
       );
 
       if (isNil(result)) {
@@ -731,7 +781,7 @@ export const channelsApi: RouterPluginAsyncCallback = async (fastify) => {
           channelId: z.string(),
         }),
         body: z.object({
-          schedule: TimeSlotScheduleSchema,
+          schedule: StrictTimeSlotScheduleSchema,
         }),
         response: {
           200: TimeSlotScheduleWithPrograms,

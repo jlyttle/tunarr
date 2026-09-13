@@ -8,6 +8,11 @@ import {
   parseIntOrNull,
 } from '@/util/index.js';
 import { LoggerFactory } from '@/util/logging/LoggerFactory.js';
+import {
+  BlockedOutboundUrlError,
+  checkOutboundUrl,
+  outboundRequestGuard,
+} from '@/util/outboundRequests.js';
 import { getTunarrVersion } from '@/util/version.js';
 import { seq } from '@tunarr/shared/util';
 import type {
@@ -51,6 +56,7 @@ import {
   isNil,
   isNull,
   isNumber,
+  isUndefined,
   mapValues,
   omitBy,
   orderBy,
@@ -156,6 +162,11 @@ export type JellyfinGetItemsQuery = {
   contributingArtistIds?: string[];
   excludeItemIds?: string[];
   albumArtistIds?: string[];
+  // Jellyfin defaults this to the connected user's own "Group movies into
+  // collections" display preference when omitted. Library scans need this to
+  // be explicitly false, or movies inside a BoxSet are silently collapsed
+  // into their parent collection and never returned as individual items.
+  collapseBoxSetItems?: boolean;
 };
 
 type JellyfinItemTypes = {
@@ -194,6 +205,13 @@ export class JellyfinApiClient extends MediaSourceApiClient<JellyfinItemTypes> {
     password: string,
     clientId: string = v4(),
   ) {
+    // serverUrl comes straight from an unauthenticated API caller, so refuse the
+    // one class of destination that is never a media server.
+    const rejection = await checkOutboundUrl(serverUrl);
+    if (rejection) {
+      throw new BlockedOutboundUrlError(rejection);
+    }
+
     try {
       const response = await axios.post(
         `${serverUrl}/Users/AuthenticateByName`,
@@ -205,6 +223,7 @@ export class JellyfinApiClient extends MediaSourceApiClient<JellyfinItemTypes> {
           headers: {
             Authorization: getJellyfinAuthorization(undefined, clientId),
           },
+          ...outboundRequestGuard,
         },
       );
 
@@ -502,6 +521,7 @@ export class JellyfinApiClient extends MediaSourceApiClient<JellyfinItemTypes> {
             ids: extraParams.ids?.join(','),
             genres: extraParams.genres?.join('|'),
           },
+          excludeLocationTypes: 'Virtual', // prevent pulling in placeholders for missing episodes
           contributingArtistIds: extraParams.contributingArtistIds?.join(','),
           excludeItemIds: extraParams.excludeItemIds?.join(','),
           albumArtistIds: extraParams.albumArtistIds?.join(','),
@@ -580,7 +600,7 @@ export class JellyfinApiClient extends MediaSourceApiClient<JellyfinItemTypes> {
       'Movie',
       (movie) => this.jellyfinApiMovieInjection(movie),
       [],
-      {},
+      { collapseBoxSetItems: false },
       pageSize,
     );
   }
@@ -901,6 +921,11 @@ export class JellyfinApiClient extends MediaSourceApiClient<JellyfinItemTypes> {
         limit: 0,
         recursive: true,
         includeItemTypes: itemType,
+        // See comment on JellyfinGetItemsQuery#collapseBoxSetItems — without
+        // this, counts (and therefore pagination) silently undercount any
+        // library containing BoxSet collections whenever the connected
+        // account has "Group movies into collections" enabled.
+        collapseBoxSetItems: false,
       },
     }).then((_) => _.map((response) => response.TotalRecordCount));
   }
@@ -1159,7 +1184,11 @@ export class JellyfinApiClient extends MediaSourceApiClient<JellyfinItemTypes> {
     const source = find(sources, { Protocol: 'File' }) ?? sources[0]!;
 
     if (isEmpty(source.MediaStreams)) {
-      this.logger.warn('No media streams!');
+      this.logger.warn(
+        'No media streams for program %s (%s)',
+        source.Name,
+        source.Id,
+      );
       return;
     }
 
@@ -1292,6 +1321,11 @@ export class JellyfinApiClient extends MediaSourceApiClient<JellyfinItemTypes> {
         heightPx: height,
       },
       chapters,
+      scanKind: isUndefined(videoStream?.IsInterlaced)
+        ? 'unknown'
+        : videoStream.IsInterlaced
+          ? 'interlaced'
+          : 'progressive',
     };
   }
 
@@ -1862,7 +1896,8 @@ type PersonMapping = Partial<{
   director: Director[];
 }>;
 
-function getJellyfinItemPersonMap(
+// Exported for testing only
+export function getJellyfinItemPersonMap(
   item: ApiJellyfinItem,
   mediaSourceUrl: string,
 ): PersonMapping {
@@ -1872,41 +1907,44 @@ function getJellyfinItemPersonMap(
     (people, key) => {
       switch (key) {
         case 'actor':
-          mapping[key] = people.map(
-            (person, idx) =>
-              ({
-                name: person.Name,
-                role: person.Role ?? undefined,
-                thumb: new URL(
-                  `/Items/${person.Id}/Images/Primary`,
-                  mediaSourceUrl,
-                ).href,
-                order: idx,
-              }) satisfies Actor,
+          mapping[key] = seq.collect(people, (person, idx) =>
+            isNonEmptyString(person.Name)
+              ? ({
+                  name: person.Name,
+                  role: person.Role ?? undefined,
+                  thumb: new URL(
+                    `/Items/${person.Id}/Images/Primary`,
+                    mediaSourceUrl,
+                  ).href,
+                  order: idx,
+                } satisfies Actor)
+              : null,
           );
           break;
         case 'writer':
-          mapping[key] = people.map(
-            (person) =>
-              ({
-                name: person.Name,
-                thumb: new URL(
-                  `/Items/${person.Id}/Images/Primary`,
-                  mediaSourceUrl,
-                ).href,
-              }) satisfies Writer,
+          mapping[key] = seq.collect(people, (person) =>
+            isNonEmptyString(person.Name)
+              ? ({
+                  name: person.Name,
+                  thumb: new URL(
+                    `/Items/${person.Id}/Images/Primary`,
+                    mediaSourceUrl,
+                  ).href,
+                } satisfies Writer)
+              : null,
           );
           break;
         case 'director': {
-          mapping[key] = people.map(
-            (person) =>
-              ({
-                name: person.Name,
-                thumb: new URL(
-                  `/Items/${person.Id}/Images/Primary`,
-                  mediaSourceUrl,
-                ).href,
-              }) satisfies Director,
+          mapping[key] = seq.collect(people, (person) =>
+            isNonEmptyString(person.Name)
+              ? ({
+                  name: person.Name,
+                  thumb: new URL(
+                    `/Items/${person.Id}/Images/Primary`,
+                    mediaSourceUrl,
+                  ).href,
+                } satisfies Director)
+              : null,
           );
           return;
         }

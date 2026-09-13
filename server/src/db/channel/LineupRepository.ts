@@ -7,7 +7,7 @@ import { Nullable } from '@/types/util.js';
 import { Timer } from '@/util/Timer.js';
 import { asyncPool } from '@/util/asyncPool.js';
 import dayjs from '@/util/dayjs.js';
-import { fileExists } from '@/util/fsUtil.js';
+import { fileExists, writeFileAtomic } from '@/util/fsUtil.js';
 import { LoggerFactory } from '@/util/logging/LoggerFactory.js';
 import { MutexMap } from '@/util/mutexMap.js';
 import { seq } from '@tunarr/shared/util';
@@ -33,7 +33,6 @@ import {
   isEmpty,
   isNil,
   isString,
-  isUndefined,
   map,
   mapValues,
   omit,
@@ -70,9 +69,9 @@ import {
   isOfflineItem,
   isRedirectItem,
   Lineup,
+  LineupConfig,
   LineupItem,
   LineupSchema,
-  PendingProgram,
 } from '../derived_types/Lineup.ts';
 import {
   ChannelAndLineup,
@@ -206,7 +205,7 @@ export class LineupRepository {
   // Bypasses Low
   async saveChannelLineupDirect(channelId: string, lineup: Lineup) {
     const outPath = this.fileSystemService.getChannelLineupPath(channelId);
-    await fs.writeFile(outPath, JSON.stringify(lineup));
+    await writeFileAtomic(outPath, JSON.stringify(lineup));
   }
 
   async markLineupFileForDeletion(
@@ -319,13 +318,6 @@ export class LineupRepository {
       }
     }
 
-    if (isDefined(newLineup.pendingPrograms)) {
-      data.pendingPrograms =
-        newLineup.pendingPrograms === null
-          ? undefined
-          : newLineup.pendingPrograms;
-    }
-
     if (isDefined(newLineup.onDemandConfig)) {
       data.onDemandConfig =
         newLineup.onDemandConfig === null
@@ -427,24 +419,6 @@ export class LineupRepository {
       }
 
       return updatedChannel ?? null;
-    });
-  }
-
-  async addPendingPrograms(
-    channelId: string,
-    pendingPrograms: PendingProgram[],
-  ): Promise<void> {
-    if (pendingPrograms.length === 0) {
-      return;
-    }
-
-    const db = await this.getFileDb(channelId);
-    return await db.update((data) => {
-      if (isUndefined(data.pendingPrograms)) {
-        data.pendingPrograms = [...pendingPrograms];
-      } else {
-        data.pendingPrograms.push(...pendingPrograms);
-      }
     });
   }
 
@@ -587,6 +561,16 @@ export class LineupRepository {
   ): Promise<Lineup> {
     const db = await this.getFileDb(channelId, forceRead);
     return db.data;
+  }
+
+  async loadLineupConfig(channelId: string): Promise<LineupConfig> {
+    const db = await this.getFileDb(channelId);
+    return {
+      lastUpdated: db.data.lastUpdated,
+      version: db.data.version,
+      onDemandConfig: db.data.onDemandConfig,
+      schedule: db.data.schedule,
+    };
   }
 
   async loadChannelAndLineup(
