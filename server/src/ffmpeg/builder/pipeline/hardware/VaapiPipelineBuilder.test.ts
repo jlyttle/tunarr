@@ -1672,6 +1672,15 @@ describe('VaapiPipelineBuilder scale', () => {
     // Software frames → ScaleVaapiFilter prepends format+hwupload before scale_vaapi
     expect(args).toContain('hwupload');
     expect(args).toContain('scale_vaapi=');
+    expect(args).toContain('yadif=');
+  });
+
+  test('uses VAAPI deinterlacing when hardware decoding is enabled', () => {
+    const pipeline = buildWithScale({
+      videoStream: create43VideoStream(),
+      deinterlace: true,
+    });
+    expect(pipeline.getCommandArgs().join(' ')).toContain('deinterlace_vaapi');
   });
 
   // ─── Condition 2: decoder != VAAPI, frame data location decides ──────────────

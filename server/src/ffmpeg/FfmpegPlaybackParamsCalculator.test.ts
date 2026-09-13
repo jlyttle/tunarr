@@ -79,6 +79,26 @@ function makeStreamDetails(
 
 describe('FfmpegPlaybackParamsCalculator', () => {
   describe('calculateForStream', () => {
+    test.each([
+      ['interlaced', true, true],
+      ['interlaced', false, false],
+      ['progressive', true, false],
+      ['unknown', true, false],
+    ] as const)(
+      'scan type %s with deinterlace enabled=%s produces deinterlace=%s',
+      (scanType, enabled, expected) => {
+        const details = makeStreamDetails();
+        details.videoDetails![0]!.scanType = scanType;
+        const calculator = new FfmpegPlaybackParamsCalculator(
+          makeTranscodeConfig({ deinterlaceVideo: enabled }),
+          'hls',
+        );
+        expect(calculator.calculateForStream(details).deinterlace).toBe(
+          expected,
+        );
+      },
+    );
+
     test('sets videoPreset to veryfast for software h264 encoding', () => {
       const config = makeTranscodeConfig({
         hardwareAccelerationMode: 'none',

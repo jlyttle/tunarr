@@ -1,3 +1,6 @@
+import z from 'zod/v4';
+import type { StreamSource } from '../stream/types.ts';
+import { videoScanKind } from '../stream/videoScanKind.ts';
 import { FfprobeMediaInfoSchema } from '@/types/ffmpeg.js';
 import { KEYS } from '@/types/inject.js';
 import { Result } from '@/types/result.js';
@@ -74,7 +77,7 @@ export class FfmpegInfo {
 
   private childProcessHelper = new ChildProcessHelper();
 
-  @InjectLogger() private declare readonly logger: Logger;
+  @InjectLogger() declare private readonly logger: Logger;
 
   constructor(
     @inject(KEYS.FFmpegPath) private ffmpegPath: string,
@@ -304,6 +307,53 @@ export class FfmpegInfo {
         ? new Set()
         : new Set(hwAccelResult.value),
     );
+  }
+
+  // Read only stream metadata; do not decode frames or expose source credentials in logs.
+  async probeScanKind(source: StreamSource, streamIndex: number) {
+    if (source.type !== 'file' && source.type !== 'http') {
+      return 'unknown' as const;
+    }
+    const headers =
+      source.type === 'http'
+        ? Object.entries(source.extraHeaders)
+            .map(([key, value]) => `${key}: ${value}\r\n`)
+            .join('')
+        : '';
+    const output = await this.getFfprobeStdout(
+      [
+        '-v',
+        'error',
+        ...(headers ? ['-headers', headers] : []),
+        '-show_entries',
+        'stream=index,codec_type,field_order:stream_disposition=attached_pic',
+        '-of',
+        'json',
+        source.path,
+      ],
+      { timeout: 30_000, swallowError: false, logCommand: false },
+    );
+    const result = z
+      .object({
+        streams: z.array(
+          z.object({
+            index: z.number(),
+            codec_type: z.string().optional(),
+            field_order: z.string().optional(),
+            disposition: z
+              .object({ attached_pic: z.number().optional() })
+              .optional(),
+          }),
+        ),
+      })
+      .parse(JSON.parse(output));
+    const stream = result.streams.find(
+      (stream) =>
+        stream.index === streamIndex &&
+        stream.codec_type === 'video' &&
+        stream.disposition?.attached_pic !== 1,
+    );
+    return videoScanKind(stream?.field_order);
   }
 
   async probeFile(path: string, timeout?: number) {

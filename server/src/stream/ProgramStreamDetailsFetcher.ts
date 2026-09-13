@@ -1,30 +1,18 @@
 import { nullToUndefined, seq } from '@tunarr/shared/util';
 import dayjs from 'dayjs';
 import { inject, injectable } from 'inversify';
-import {
-  groupBy,
-  head,
-  isEmpty,
-  mapValues,
-  orderBy,
-  trimEnd,
-  trimStart,
-} from 'lodash-es';
-import { match } from 'ts-pattern';
+import { groupBy, head, isEmpty, mapValues, orderBy } from 'lodash-es';
 import { IProgramDB } from '../db/interfaces/IProgramDB.ts';
-import { MediaSourceWithRelations } from '../db/schema/derivedTypes.ts';
 import { KEYS } from '../types/inject.ts';
 import { Result } from '../types/result.ts';
-import { Nilable } from '../types/util.ts';
 import { fileExists } from '../util/fsUtil.ts';
 import { isNonEmptyArray, isNonEmptyString } from '../util/index.ts';
 import { InjectLogger } from '../util/inject.ts';
 import { Logger } from '../util/logging/LoggerFactory.ts';
 import { StreamFetchRequest } from './ExternalStreamDetailsFetcher.ts';
-import { PathCalculator } from './PathCalculator.ts';
+import { resolveProgramStreamSource } from './resolveProgramStreamSource.ts';
 import {
   AudioStreamDetails,
-  HttpStreamSource,
   ProgramStreamResult,
   StreamDetails,
   StreamSource,
@@ -131,8 +119,7 @@ export class ProgramStreamDetailsFetcher {
     const usableSubtitles = await Promise.all(
       (program.subtitles ?? []).map(async (subtitle) => {
         const pathOnDisk =
-          isNonEmptyString(subtitle.path) &&
-          (await fileExists(subtitle.path));
+          isNonEmptyString(subtitle.path) && (await fileExists(subtitle.path));
         if (subtitle.subtitleType === 'sidecar') {
           return pathOnDisk ? subtitle : null;
         }
@@ -159,8 +146,7 @@ export class ProgramStreamDetailsFetcher {
         return {
           ...subtitle,
           index: nullToUndefined(subtitle.streamIndex),
-          type:
-            subtitle.subtitleType === 'embedded' ? 'embedded' : 'external',
+          type: subtitle.subtitleType === 'embedded' ? 'embedded' : 'external',
           languageCodeISO6392: subtitle.language,
           sdh: subtitle.sdh,
           path: nullToUndefined(subtitle.path),
@@ -203,91 +189,12 @@ export class ProgramStreamDetailsFetcher {
         program.externalIds.find(
           (eid) => eid.sourceType === server.type,
         )?.externalFilePath;
-      const streamSource = await this.getStreamSource(
+      const streamSource = await resolveProgramStreamSource(
         server,
         filePath,
         serverPath,
       );
       return Result.success({ streamDetails, streamSource });
-    }
-  }
-
-  private async getStreamSource(
-    server: MediaSourceWithRelations,
-    potentialFilePath: Nilable<string>,
-    serverPath: Nilable<string>,
-  ): Promise<StreamSource> {
-    if (isNonEmptyString(potentialFilePath)) {
-      if (await fileExists(potentialFilePath)) {
-        this.logger.debug(
-          'Found item locally at path reported by server, playing from disk. Path: %s',
-          potentialFilePath,
-        );
-        return {
-          type: 'file',
-          path: potentialFilePath,
-        };
-      } else {
-        const replacedPath = await PathCalculator.findFirstValidPath(
-          potentialFilePath,
-          server.replacePaths,
-        );
-        if (replacedPath) {
-          this.logger.debug(
-            'Found valid path replacement, playing from disk. Original path: "%s" Replace path: "%s',
-            potentialFilePath,
-            replacedPath,
-          );
-          return {
-            type: 'file',
-            path: replacedPath,
-          };
-        }
-      }
-    }
-
-    if (isNonEmptyString(serverPath)) {
-      this.logger.debug(
-        'Did not find %s file on disk relative to Tunarr. Using network path: %s',
-        server.type,
-        serverPath,
-      );
-
-      return match(server)
-        .with(
-          { type: 'plex' },
-          (server) =>
-            new HttpStreamSource(
-              `${trimEnd(server.uri, '/')}/${trimStart(serverPath, '/')}?X-Plex-Token=${
-                server.accessToken
-              }`,
-            ),
-        )
-        .with(
-          { type: 'jellyfin' },
-          (server) =>
-            new HttpStreamSource(
-              `${trimEnd(server.uri, '/')}/Videos/${trimStart(serverPath, '/')}/stream?static=true`,
-              {
-                'X-Emby-Token': server.accessToken,
-              },
-            ),
-        )
-        .with(
-          { type: 'emby' },
-          (server) =>
-            new HttpStreamSource(
-              `${trimEnd(server.uri, '/')}/Videos/${trimStart(serverPath, '/')}/stream?X-Emby-Token=${
-                server.accessToken
-              }&static=true`,
-            ),
-        )
-        .with({ type: 'local' }, () => {
-          throw new Error(`Remote paths are not supported for local media`);
-        })
-        .exhaustive();
-    } else {
-      throw new Error('Could not resolve stream URL');
     }
   }
 }

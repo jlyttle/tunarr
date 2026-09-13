@@ -1,3 +1,4 @@
+import { VideoScanDetectionService } from '../services/VideoScanDetectionService.ts';
 import { faker } from '@faker-js/faker';
 import { tag } from '@tunarr/types';
 import dayjs from 'dayjs';
@@ -130,6 +131,15 @@ const test = baseTest.extend<Fixture>({
       groupingUpsertRepo,
       new ProgramSearchRepository(dbAccess.db!, dbAccess.drizzle!),
       new ProgramStateRepository(dbAccess.drizzle!),
+      {
+        detectMissing: async () => ({
+          examined: 0,
+          updated: 0,
+          skipped: 0,
+          inconclusive: 0,
+          failed: 0,
+        }),
+      } as VideoScanDetectionService,
     );
 
     await use(programDb);

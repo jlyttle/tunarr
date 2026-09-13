@@ -1,3 +1,6 @@
+import { VideoScanDetectionService } from '../services/VideoScanDetectionService.ts';
+import { InjectLogger } from '../util/inject.ts';
+import type { Logger } from '../util/logging/LoggerFactory.ts';
 import type {
   IProgramDB,
   ProgramCanonicalIdLookupResult,
@@ -56,6 +59,7 @@ import type {
 
 @injectable()
 export class ProgramDB implements IProgramDB {
+  @InjectLogger() declare private readonly logger: Logger;
   constructor(
     @inject(KEYS.BasicProgramRepository)
     private readonly basicProg: BasicProgramRepository,
@@ -73,6 +77,8 @@ export class ProgramDB implements IProgramDB {
     private readonly searchRepo: ProgramSearchRepository,
     @inject(KEYS.ProgramStateRepository)
     private readonly stateRepo: ProgramStateRepository,
+    @inject(VideoScanDetectionService)
+    private readonly scanDetection: VideoScanDetectionService,
   ) {}
 
   getProgramById(
@@ -249,15 +255,25 @@ export class ProgramDB implements IProgramDB {
     programs: NewProgramWithRelations[],
     programUpsertBatchSize?: number,
   ): Promise<ProgramWithExternalIds[]>;
-  upsertPrograms(
+  async upsertPrograms(
     programs: NewProgramWithRelations | NewProgramWithRelations[],
     programUpsertBatchSize?: number,
   ): Promise<ProgramWithExternalIds | ProgramWithExternalIds[]> {
-    if (Array.isArray(programs)) {
-      return this.upsertRepo.upsertPrograms(programs, programUpsertBatchSize);
-    } else {
-      return this.upsertRepo.upsertPrograms(programs);
+    const result = Array.isArray(programs)
+      ? await this.upsertRepo.upsertPrograms(programs, programUpsertBatchSize)
+      : await this.upsertRepo.upsertPrograms(programs);
+    try {
+      await this.scanDetection.detectMissing(
+        (Array.isArray(result) ? result : [result]).map(
+          (program) => program.uuid,
+        ),
+      );
+    } catch {
+      this.logger.warn(
+        'Interlace metadata detection failed after import; retry with Detect Missing Interlace Metadata',
+      );
     }
+    return result;
   }
 
   upsertArtwork(artwork: NewArtwork[]): void {

@@ -26,7 +26,8 @@ const FfprobeVideoStreamSchema = BaseFfprobeMediaStreamSchema.extend({
   color_transfer: z.string().optional(),
   color_primaries: z.string().optional(),
   chroma_location: z.string().optional(),
-  field_order: z.string().optional(), // enum??
+  field_order: z.string().optional(),
+  disposition: z.object({ attached_pic: z.number().optional() }).optional(),
   is_avc: z
     .string()
     .optional()

@@ -127,20 +127,21 @@ export type GetStdoutOptions = {
   env?: NodeJS.ProcessEnv;
   isPath?: boolean;
   timeout?: number;
+  logCommand?: boolean;
 };
 
 @injectable()
 export class ChildProcessHelper {
   private execQueue = new PQueue({ concurrency: 3 });
 
-  @InjectLogger() private declare readonly logger: Logger;
+  @InjectLogger() declare private readonly logger: Logger;
 
   getStdout(
     executable: string,
     args: string[],
     opts: GetStdoutOptions = { swallowError: false, isPath: true },
   ): Promise<string> {
-    const { timeout, env, swallowError, isPath } = opts;
+    const { timeout, env, swallowError, isPath, logCommand } = opts;
     return this.execQueue.add(
       async () => {
         const sanitizedPath = sanitizeForExec(executable);
@@ -157,9 +158,11 @@ export class ChildProcessHelper {
           opts.env = env;
         }
 
-        this.logger.debug(
-          `Executing child process: "${sanitizedPath}" ${args.join(' ')}`,
-        );
+        if (logCommand !== false) {
+          this.logger.debug(
+            `Executing child process: "${sanitizedPath}" ${args.join(' ')}`,
+          );
+        }
 
         return await new Promise((resolve, reject) => {
           execFile(sanitizedPath, args, opts, function (error, stdout, stderr) {

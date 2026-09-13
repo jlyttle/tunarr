@@ -1,3 +1,4 @@
+import { VideoScanDetectionService } from './VideoScanDetectionService.ts';
 import { MediaSourceType } from '@/db/schema/base.js';
 import type { ProgramLike } from '@tunarr/types';
 import type { EmbyItem } from '@tunarr/types/emby';
@@ -61,6 +62,7 @@ import { ArtworkService } from './ArtworkService.ts';
 import { StreamSelectionProfileResolver } from './StreamSelectionProfileResolver.ts';
 
 export const ServicesModule = new ContainerModule(({ bind }) => {
+  bind(VideoScanDetectionService).toSelf().inSingletonScope();
   bind<Canonicalizer<PlexMedia>>(KEYS.PlexCanonicalizer)
     .to(PlexMediaCanonicalizer)
     .inSingletonScope();

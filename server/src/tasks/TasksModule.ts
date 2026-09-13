@@ -1,3 +1,4 @@
+import { DetectMissingInterlaceMetadataTask } from './DetectMissingInterlaceMetadataTask.ts';
 import 'reflect-metadata';
 
 import type { ArchiveDatabaseBackupFactory } from '@/db/backup/ArchiveDatabaseBackup.js';
@@ -36,6 +37,7 @@ import { SyncCollectionsTask } from './SyncCollectionsTask.ts';
 import { SyncCustomShowsTask } from './SyncCustomShowsTask.ts';
 
 const TasksModule = new ContainerModule(({ bind }) => {
+  bind(DetectMissingInterlaceMetadataTask).toSelf();
   bind(UpdateXmlTvTask).toSelf();
   bindAutoFactory(bind, KEYS.UpdateXmlTvTaskFactory, UpdateXmlTvTask);
 

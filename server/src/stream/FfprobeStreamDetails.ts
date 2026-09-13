@@ -1,3 +1,4 @@
+import { videoScanKind } from './videoScanKind.ts';
 import { FfmpegInfo } from '@/ffmpeg/ffmpegInfo.js';
 import type {
   FfprobeAudioStream,
@@ -53,7 +54,8 @@ export class FfprobeStreamDetails
 
     const videoStream = find(
       probeDetails.streams,
-      (stream): stream is FfprobeVideoStream => stream.codec_type === 'video',
+      (stream): stream is FfprobeVideoStream =>
+        stream.codec_type === 'video' && stream.disposition?.attached_pic !== 1,
     );
 
     let videoDetails: Maybe<VideoStreamDetails>;
@@ -65,12 +67,7 @@ export class FfprobeStreamDetails
         sampleAspectRatio: isNonEmptyString(videoStream?.sample_aspect_ratio)
           ? videoStream.sample_aspect_ratio
           : '1:1',
-        scanType:
-          videoStream.field_order === 'interlaced'
-            ? 'interlaced'
-            : videoStream.field_order === 'progressive'
-              ? 'progressive'
-              : 'unknown',
+        scanType: videoScanKind(videoStream.field_order),
         width: videoStream.width,
         height: videoStream.height,
         framerate: videoStream.r_frame_rate ?? undefined,
