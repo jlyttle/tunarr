@@ -209,21 +209,14 @@ export class BreakAnalysisService {
       .where('programVersionId', '=', id)
       .execute();
     const margin = config.chapterMarginMs;
-    const exclusions = chapters.flatMap((c) =>
-      c.chapterType === 'chapter'
-        ? [
-            {
-              startMs: Math.max(0, c.startTime - margin),
-              endMs: c.startTime + margin,
-            },
-          ]
-        : [
-            {
-              startMs: Math.max(0, c.startTime - margin),
-              endMs: c.endTime + margin,
-            },
-          ],
-    );
+    // Generic DVD chapters describe navigation, not whether an ad break is safe.
+    // Only semantically identified intro/outro regions are exclusions.
+    const exclusions = chapters
+      .filter((c) => c.chapterType === 'intro' || c.chapterType === 'outro')
+      .map((c) => ({
+        startMs: Math.max(0, c.startTime - margin),
+        endMs: c.endTime + margin,
+      }));
     return {
       source,
       runtimeMs: version.duration,
@@ -326,24 +319,13 @@ export class BreakAnalysisService {
         options.config,
         { ...options, signal, timeoutMs: Math.max(1, deadline - Date.now()) },
       );
-      const chapterGuards =
-        probe?.chapters.map((c) => ({
-          startMs: Math.max(
-            0,
-            Math.round((c.start_time - probe.format.start_time) * 1000) -
-              options.config.chapterMarginMs,
-          ),
-          endMs:
-            Math.round((c.start_time - probe.format.start_time) * 1000) +
-            options.config.chapterMarginMs,
-        })) ?? [];
       result.videoStreamIndex = probe?.video.index;
       result.audioStreamIndex = probe?.audio.index;
       result.candidates = evaluateBreaks(
         features,
         input.runtimeMs,
         options.config,
-        [...input.exclusions, ...chapterGuards],
+        input.exclusions,
       );
       const current = input.programVersionId
         ? await this.resolveVersion(input.programVersionId, options.config)

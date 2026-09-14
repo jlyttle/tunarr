@@ -4,7 +4,7 @@ import type {
 } from '@tunarr/types/schemas';
 import { createHash } from 'node:crypto';
 
-export const BREAK_DETECTOR_VERSION = 'conservative-fade-v4';
+export const BREAK_DETECTOR_VERSION = 'conservative-fade-v5';
 export const SAMPLE_MS = 100;
 export type Interval = { startMs: number; endMs: number };
 export type VideoSample = {

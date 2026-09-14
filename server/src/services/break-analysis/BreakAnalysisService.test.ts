@@ -8,6 +8,8 @@ import { CamelCasePlugin, Kysely, SqliteDialect } from 'kysely';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
+import { inflateSync } from 'node:zlib';
+import mst3k from '../../testing/resources/break-analysis/mst3k-chapter-transition.json' with { type: 'json' };
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { MediaSourceDB } from '../../db/mediaSourceDB.ts';
@@ -102,6 +104,69 @@ describe('analysis orchestration', () => {
     await db.destroy();
     await rm(directory, { recursive: true, force: true });
   });
+  test.each(['embedded', 'stored', 'both', 'intro', 'outro'])(
+    'MST3K confirmed break respects %s metadata through persisted analysis',
+    async (kind) => {
+      const encoded = JSON.parse(
+        inflateSync(Buffer.from(mst3k.features, 'base64')).toString(),
+      ) as {
+        startMs: number;
+        audioDb: number[];
+        video: { mean: number; blackRatio: number; pixels: string }[];
+      };
+      sqlite
+        .prepare('UPDATE program_version SET duration = ? WHERE uuid = ?')
+        .run(mst3k.runtimeMs, versionId);
+      if (kind !== 'embedded') {
+        sqlite
+          .prepare('INSERT INTO program_chapter VALUES (?, ?, ?, ?, ?)')
+          .run(
+            'chapter',
+            versionId,
+            1507900,
+            1988800,
+            kind === 'intro' || kind === 'outro' ? kind : 'chapter',
+          );
+      }
+      vi.mocked(BreakFeatureExtractor.prototype.extract).mockResolvedValue({
+        features: {
+          ...encoded,
+          video: encoded.video.map((v) => ({
+            ...v,
+            pixels: Buffer.from(v.pixels, 'base64'),
+          })),
+        },
+        probe: {
+          ...extraction().probe,
+          format: { start_time: 0, duration: mst3k.runtimeMs / 1000 },
+          chapters:
+            kind === 'embedded' || kind === 'both' ? mst3k.chapters : [],
+        },
+      });
+      const [result] = await service.batch(
+        BreakAnalysisRequestSchema.parse({ programIds: [programId] }),
+      );
+      expect(result!.status).toBe('completed');
+      expect(result!.candidates).toHaveLength(1);
+      const candidate = result!.candidates[0]!;
+      expect(
+        Math.abs(candidate.timestampMs - mst3k.expectedMs),
+      ).toBeLessThanOrEqual(2000);
+      if (kind === 'intro' || kind === 'outro') {
+        expect(candidate.accepted).toBe(false);
+        expect(candidate.reasons).toContain('excluded-region');
+      } else {
+        expect(candidate, JSON.stringify(candidate)).toMatchObject({
+          accepted: true,
+          confidence: 'high',
+          reasons: [],
+        });
+      }
+      expect((await service.history(programId))[0]!.candidates).toEqual(
+        result!.candidates,
+      );
+    },
+  );
   test('persists successful zero results, caches, forces reruns, and preserves programming', async () => {
     const request = BreakAnalysisRequestSchema.parse({
       programIds: [programId],
@@ -137,7 +202,7 @@ describe('analysis orchestration', () => {
     });
     const [result] = await service.batch(request);
     expect(result).toMatchObject({
-      detectorVersion: 'conservative-fade-v4',
+      detectorVersion: 'conservative-fade-v5',
       scanWindow: { startMs: 240000, endMs: 1200000 },
       config: {
         startExclusionMs: 240000,

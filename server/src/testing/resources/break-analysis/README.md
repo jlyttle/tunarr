@@ -32,3 +32,9 @@ The original v1 archive remains unchanged. V3 uses relative fades, spatial compa
 To replay the entire eligible interval from the original episode, set `TUNARR_BREAK_REGRESSION_MEDIA` to its local path when running `BreakMediaRegression.test.ts`. Without that variable, the media-dependent test is skipped and portable feature tests still run.
 
 V4 additionally tests both confirmed transitions with black pixels clamped to floors of 2, 3, and 5 out of 255, recomputing frame measurements. These controlled variants reproduce the failure of the v3 near-zero hold without claiming to reproduce the server decoder: its exact black-level measurements were not present in the payload. The redundant near-zero hold is removed, and fade decrease is measured relative to the observed black level; the combined fade, black-duration, silence, spatial-change, and context requirements remain.
+
+## MST3K chapter-aligned transition
+
+`mst3k-chapter-transition.json` contains a production-extracted window from 24:50–25:25 of S08E12, runtime 5522416 ms, plus the file's ordinary chapter timestamps. The user confirmed 25:07 (1507000 ms, ±2000 ms) as a real break. Labels are partial; other episode transitions remain unverified. Encoding matches the compressed feature fixture above.
+
+V4 found this candidate at 25:07.350 and passed all audiovisual checks, but the analysis service rejected it because every embedded/stored chapter marker was treated as an exclusion. V5 treats generic chapters as neutral and retains typed intro/outro and explicit exclusions. Service tests use these real features with embedded chapters, stored chapters, both sources, and intro/outro metadata; they verify persisted candidate acceptance as well as rejection of explicit protected regions. No other candidate is promoted to ground truth, and this development fixture cannot qualify the detector.
