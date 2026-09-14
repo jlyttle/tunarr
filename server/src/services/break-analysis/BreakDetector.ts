@@ -4,7 +4,7 @@ import type {
 } from '@tunarr/types/schemas';
 import { createHash } from 'node:crypto';
 
-export const BREAK_DETECTOR_VERSION = 'conservative-fade-v5';
+export const BREAK_DETECTOR_VERSION = 'conservative-fade-v6';
 export const SAMPLE_MS = 100;
 export type Interval = { startMs: number; endMs: number };
 export type VideoSample = {
@@ -263,6 +263,82 @@ export function evaluateBreaks(
       },
     };
   });
+  // A repeated animated bumper is independent evidence for a return to the
+  // same scene. Never infer a boundary from recurrence or placement alone.
+  const signatures = candidates.map((c) => {
+    const start = Math.round((c.evidence.blackStartMs - offsetMs) / SAMPLE_MS);
+    const samples = [50, 45, 40, 35, 30, 25, 20, 15, 10].map(
+      (n) => video[start - n],
+    );
+    if (samples.some((v) => !v)) return undefined;
+    const frames = samples.map((v) => v!.pixels);
+    const texture = average(
+      samples.map((v) => {
+        const mean = average(Array.from(v!.pixels));
+        return average(Array.from(v!.pixels, (p) => Math.abs(p - mean))) / 255;
+      }),
+    );
+    const motion = average(
+      frames.slice(1).map((v, i) => pixelDifference(v, frames[i]!)),
+    );
+    const duration = c.evidence.blackEndMs - c.evidence.blackStartMs;
+    return c.evidence.fade &&
+      c.evidence.completeContext &&
+      c.evidence.silenceOverlapMs >= 800 &&
+      duration >= 500 &&
+      duration <= config.maxBlackMs &&
+      !c.reasons.includes('excluded-region') &&
+      texture >= 0.02 &&
+      motion >= 0.008
+      ? frames
+      : undefined;
+  });
+  const contextReasons = new Set([
+    'silent-surroundings',
+    'scene-continuity',
+    'static-context',
+    'dark-context',
+    'extended-scene-continuity',
+  ]);
+  // Bound pairwise work on unusually repetitive or corrupt inputs.
+  const eligible = signatures.flatMap((s, i) => (s ? [i] : []));
+  for (const i of eligible.length <= 256 ? eligible : []) {
+    const signature = signatures[i];
+    if (!signature) continue;
+    const peers: number[] = [];
+    for (const j of eligible) {
+      const other = signatures[j];
+      if (
+        !other ||
+        i === j ||
+        Math.abs(candidates[i]!.timestampMs - candidates[j]!.timestampMs) <
+          Math.max(180000, config.minimumSpacingMs)
+      )
+        continue;
+      if (
+        peers.some(
+          (k) =>
+            Math.abs(candidates[k]!.timestampMs - candidates[j]!.timestampMs) <
+            Math.max(180000, config.minimumSpacingMs),
+        )
+      )
+        continue;
+      // Every frame must match, not just a logo or a shared black background.
+      if (
+        signature.every(
+          (v, n) =>
+            pixelDifference(v, other[n]!) <= config.bumperVisualDifference,
+        )
+      )
+        peers.push(j);
+    }
+    candidates[i]!.evidence.repeatedBumperMatches = peers.length;
+    if (peers.length < 2) continue;
+    const candidate = candidates[i]!;
+    candidate.reasons = candidate.reasons.filter((r) => !contextReasons.has(r));
+    candidate.accepted = candidate.reasons.length === 0;
+    if (candidate.accepted) candidate.confidence = 'high';
+  }
   // Bound the entire cluster span; chained detections cannot bridge unrelated transitions.
   const clusters: BreakCandidate[][] = [];
   for (const candidate of candidates) {

@@ -38,3 +38,21 @@ V4 additionally tests both confirmed transitions with black pixels clamped to fl
 `mst3k-chapter-transition.json` contains a production-extracted window from 24:50–25:25 of S08E12, runtime 5522416 ms, plus the file's ordinary chapter timestamps. The user confirmed 25:07 (1507000 ms, ±2000 ms) as a real break. Labels are partial; other episode transitions remain unverified. Encoding matches the compressed feature fixture above.
 
 V4 found this candidate at 25:07.350 and passed all audiovisual checks, but the analysis service rejected it because every embedded/stored chapter marker was treated as an exclusion. V5 treats generic chapters as neutral and retains typed intro/outro and explicit exclusions. Service tests use these real features with embedded chapters, stored chapters, both sources, and intro/outro metadata; they verify persisted candidate acceptance as well as rejection of explicit protected regions. No other candidate is promoted to ground truth, and this development fixture cannot qualify the detector.
+
+## MST3K repeated bumper regression (v6)
+
+`mst3k-repeated-bumpers.json` contains all v5 candidate regions with 15 seconds of real production-extracted context on either side, captured from the full eligible interval of the same S08E12 file. Its `windows` field uses base64/zlib JSON encoding. Tests insert non-candidate padding into unobserved gaps; every evaluated transition and its context come from actual samples. A comparison against the full extraction verified identical candidate results. `TUNARR_MST3K_FEATURES` optionally points to the uncompressed full feature JSON for replaying that comparison.
+
+User-confirmed development labels and v6 results (±2000 ms):
+
+| Confirmed | Detected | Absolute error |
+| --- | --- | --- |
+| 15:13 | 15:13.150 | 150 ms |
+| 25:07 | 25:07.350 | 350 ms |
+| 33:09 | 33:08.950 | 50 ms |
+| 42:30 | 42:30.650 | 650 ms |
+| 61:45 | 61:44.450 | 550 ms |
+| 71:34 | 71:33.300 | 700 ms |
+| 80:26 | 80:25.550 | 450 ms |
+
+All seven pass with high heuristic confidence; no other extracted candidates are accepted. Labels remain partial. In particular 53:15.350 is **unlabeled**, not a confirmed negative; it does not match the recurring bumper and remains diagnostic. This is development evidence, not held-out qualification. Counterfactual tests retain rejections when silence, fade, motion, independent recurrence, or explicit permission to consider a region is absent. A six-break configured cap still restricts output to six; the new runtime defaults allow all seven without targeting a count.

@@ -202,7 +202,7 @@ describe('analysis orchestration', () => {
     });
     const [result] = await service.batch(request);
     expect(result).toMatchObject({
-      detectorVersion: 'conservative-fade-v5',
+      detectorVersion: 'conservative-fade-v6',
       scanWindow: { startMs: 240000, endMs: 1200000 },
       config: {
         startExclusionMs: 240000,

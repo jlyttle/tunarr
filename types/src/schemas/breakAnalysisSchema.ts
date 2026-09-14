@@ -17,6 +17,7 @@ export const BreakDetectorConfigSchema = z
     contextMs: time.min(5000).max(30000).default(10000),
     visualDifference: z.number().min(0.05).max(1).default(0.18),
     spatialDifference: z.number().min(0.1).max(1).default(0.2),
+    bumperVisualDifference: z.number().min(0).max(0.05).default(0.03),
     minMotion: z.number().min(0).max(1).default(0.008),
     startExclusionMs: time.default(240000),
     // Retained for parsing historical results. New analyses use fixed durations.
@@ -34,7 +35,9 @@ export const BreakDetectorConfigSchema = z
         { belowMs: 1200000, maxBreaks: 1 },
         { belowMs: 1800000, maxBreaks: 3 },
         { belowMs: 3600000, maxBreaks: 5 },
-        { belowMs: 14400001, maxBreaks: 6 },
+        { belowMs: 5400000, maxBreaks: 8 },
+        { belowMs: 7200000, maxBreaks: 10 },
+        { belowMs: 14400001, maxBreaks: 12 },
       ]),
   })
   .strict()
@@ -70,6 +73,7 @@ export const BreakCandidateSchema = z.object({
     fade: z.boolean(),
     visualDifference: z.number(),
     spatialDifference: z.number().optional(),
+    repeatedBumperMatches: time.optional(),
     motionBefore: z.number(),
     motionAfter: z.number(),
     audioContext: z.boolean(),
