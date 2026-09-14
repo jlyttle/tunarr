@@ -4,7 +4,7 @@ import type {
 } from '@tunarr/types/schemas';
 import { createHash } from 'node:crypto';
 
-export const BREAK_DETECTOR_VERSION = 'conservative-fade-v2';
+export const BREAK_DETECTOR_VERSION = 'conservative-fade-v3';
 export const SAMPLE_MS = 100;
 export type Interval = { startMs: number; endMs: number };
 export type VideoSample = {
@@ -54,6 +54,42 @@ export function pixelDifference(a: Uint8Array, b: Uint8Array): number {
   let sum = 0;
   for (let i = 0; i < a.length; i++) sum += Math.abs(a[i]! - b[i]!);
   return sum / a.length / 255;
+}
+
+// Compare spatial brightness patterns independently of overall scene brightness.
+export function spatialDifference(a: Uint8Array, b: Uint8Array): number {
+  if (a.length !== b.length || !a.length) return 0;
+  let dot = 0,
+    aa = 0,
+    bb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i]! * b[i]!;
+    aa += a[i]! ** 2;
+    bb += b[i]! ** 2;
+  }
+  return aa && bb ? Math.max(0, 1 - dot / Math.sqrt(aa * bb)) : 0;
+}
+
+function hasFade(video: VideoSample[], start: number): boolean {
+  // Include the first black sample. Relative drop supports dark scenes;
+  // three declining steps reject abrupt cuts, with little upward tolerance.
+  const samples = video
+    .slice(Math.max(0, start - 15), start + 1)
+    .map((v) => v.mean);
+  for (let i = 0; i < samples.length - 3; i++) {
+    const tail = samples.slice(i);
+    const first = tail[0]!;
+    const last = tail.at(-1)!;
+    const changes = tail.slice(1).map((v, j) => v - tail[j]!);
+    if (
+      first >= 0.04 &&
+      last <= first * 0.2 &&
+      changes.filter((v) => v < -first * 0.04).length >= 3 &&
+      changes.every((v) => v <= first * 0.03)
+    )
+      return true;
+  }
+  return false;
 }
 
 function intervals(values: boolean[]): Interval[] {
@@ -122,16 +158,14 @@ export function evaluateBreaks(
       return a && b ? pixelDifference(a.pixels, b.pixels) : 0;
     });
     const visualDifference = Math.min(...differences);
-    const fadeSamples = video
-      .slice(Math.max(0, start - 8), start)
-      .map((v) => v.mean);
-    const descending = fadeSamples
-      .slice(1)
-      .filter((v, i) => v < fadeSamples[i]! - 0.005).length;
-    const fade =
-      fadeSamples.length === 8 &&
-      descending >= 4 &&
-      fadeSamples[0]! - fadeSamples[7]! >= 0.12;
+    const spatialChange = Math.min(
+      ...[20, 40, 60].map((offset) => {
+        const a = video[start - offset];
+        const b = video[end + offset];
+        return a && b ? spatialDifference(a.pixels, b.pixels) : 0;
+      }),
+    );
+    const fade = hasFade(video, start);
     const audioWindow = (from: number, to: number) => {
       const samples = audioDb.slice(Math.max(0, from), Math.max(0, to));
       return (
@@ -180,9 +214,26 @@ export function evaluateBreaks(
     if (silenceOverlapMs < config.minSilenceMs)
       reasons.push('insufficient-silence-overlap');
     if (!fade) reasons.push('no-fade');
+    // Long transitions need stronger evidence than black plus quiet audio.
+    if (duration > 2000) {
+      const holds = intervals(
+        video
+          .slice(start, end)
+          .map((v) => v.mean <= 0.005 && v.blackRatio >= 0.99),
+      );
+      if (!holds.some((v) => v.endMs - v.startMs >= 1000))
+        reasons.push('insufficient-black-hold');
+      if (silenceOverlapMs < 1000)
+        reasons.push('insufficient-extended-silence');
+      if (spatialChange < config.spatialDifference)
+        reasons.push('extended-scene-continuity');
+    }
     if (!completeContext) reasons.push('incomplete-context');
     if (!audioContext) reasons.push('silent-surroundings');
-    if (visualDifference < config.visualDifference)
+    if (
+      visualDifference < config.visualDifference &&
+      spatialChange < config.spatialDifference
+    )
       reasons.push('scene-continuity');
     if (motionBefore < config.minMotion || motionAfter < config.minMotion)
       reasons.push('static-context');
@@ -207,6 +258,7 @@ export function evaluateBreaks(
         silenceOverlapMs,
         fade,
         visualDifference,
+        spatialDifference: spatialChange,
         motionBefore,
         motionAfter,
         audioContext,
