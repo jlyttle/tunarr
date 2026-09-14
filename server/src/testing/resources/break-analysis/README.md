@@ -56,3 +56,9 @@ User-confirmed development labels and v6 results (±2000 ms):
 | 80:26 | 80:25.550 | 450 ms |
 
 All seven pass with high heuristic confidence; no other extracted candidates are accepted. Labels remain partial. In particular 53:15.350 is **unlabeled**, not a confirmed negative; it does not match the recurring bumper and remains diagnostic. This is development evidence, not held-out qualification. Counterfactual tests retain rejections when silence, fade, motion, independent recurrence, or explicit permission to consider a region is absent. A six-break configured cap still restricts output to six; the new runtime defaults allow all seven without targeting a count.
+
+## Pod People short bumper pauses (v7)
+
+`pod-people-bumpers.json` holds three production-extracted windows covering all six candidates in the provided S03E03 v6 analysis, with more than ten seconds of real context around every candidate. Window/pixel encoding matches the other bumper fixture. Gaps are non-candidate padding in tests; the full episode was not decoded for this regression.
+
+The user confirmed **26:38**. V6 captured it at **26:37.900** but rejected it for quiet/dark surroundings; the recurrence alternative was ineligible because its 500 ms black interval contained only 400 ms silence, below the fixed 800 ms floor. V7 scales that requirement to the pause length while retaining matching animated sequences at three independent transitions. The confirmed point passes with 100 ms error. Matching points **45:38.150** and **74:53.500** are accepted review candidates, **not confirmed labels**; this partial development fixture does not establish whole-episode precision or qualify the detector. Negative mutations cover insufficient silence, abrupt cuts, only two matching occurrences, and explicit exclusions.

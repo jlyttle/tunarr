@@ -4,7 +4,7 @@ import type {
 } from '@tunarr/types/schemas';
 import { createHash } from 'node:crypto';
 
-export const BREAK_DETECTOR_VERSION = 'conservative-fade-v6';
+export const BREAK_DETECTOR_VERSION = 'conservative-fade-v7';
 export const SAMPLE_MS = 100;
 export type Interval = { startMs: number; endMs: number };
 export type VideoSample = {
@@ -284,8 +284,9 @@ export function evaluateBreaks(
     const duration = c.evidence.blackEndMs - c.evidence.blackStartMs;
     return c.evidence.fade &&
       c.evidence.completeContext &&
-      c.evidence.silenceOverlapMs >= 800 &&
-      duration >= 500 &&
+      c.evidence.silenceOverlapMs >=
+        Math.max(config.minSilenceMs, Math.min(800, duration * 0.75)) &&
+      duration >= Math.max(250, config.minBlackMs) &&
       duration <= config.maxBlackMs &&
       !c.reasons.includes('excluded-region') &&
       texture >= 0.02 &&
