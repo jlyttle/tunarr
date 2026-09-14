@@ -1,4 +1,5 @@
 import type { BreakAnalysisResult } from '@tunarr/types/schemas';
+import { breakScanWindow } from './BreakDetector.ts';
 import { and, desc, eq, lt } from 'drizzle-orm';
 import type { DrizzleDBAccess } from '../../db/schema/index.ts';
 import {
@@ -175,6 +176,7 @@ export class BreakAnalysisRepository {
         ),
       )
       .get();
+    const window = breakScanWindow(result.runtimeMs, result.config);
     return {
       ...result,
       qualified,
@@ -182,7 +184,11 @@ export class BreakAnalysisRepository {
       usableBreaks:
         qualified && !stale && result.status === 'completed'
           ? result.candidates.filter(
-              (c) => c.accepted && c.confidence === 'high',
+              (c) =>
+                c.accepted &&
+                c.confidence === 'high' &&
+                c.evidence.blackStartMs >= window.startMs &&
+                c.evidence.blackEndMs <= window.endMs,
             )
           : [],
     };

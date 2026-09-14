@@ -44,7 +44,7 @@ For a smaller first run, replace the body with `{"programIds":["EPISODE_UUID"]}`
 - `GET /api/programs/:id/break-analysis?limit=20&offset=0` returns analysis history with current qualification and source freshness. Versions and media files are identified explicitly. An empty array means no stored analysis.
 - `DELETE /api/break-analysis/:id` cancels active decoding owned by that server process; `cancelled: false` means it is not active there. Use Ctrl-C for a separate CLI process.
 
-Results include `candidates` with `timestampMs`, `confidence`, `accepted`, `reasons`, and measured `evidence`; `usableBreaks` is a separate projection. A completed result with `candidates: []` is valid. Results also record detector/configuration versions, fingerprint, selected streams, and status. Never consume an old exported `usableBreaks` list without checking file identity; a later playout feature must implement that check.
+Results include `candidates` with `timestampMs`, `confidence`, `accepted`, `reasons`, and measured `evidence`; `usableBreaks` is a separate projection. A completed result with `candidates: []` is valid. Results also record detector/configuration versions, fingerprint, selected streams, status, and `scanWindow: {startMs, endMs}`. Equal scan endpoints mean there was no eligible interval to decode. Never consume an old exported `usableBreaks` list without checking file identity; a later playout feature must implement that check.
 
 ## Rules and tuning
 
@@ -54,13 +54,19 @@ Black plus silence alone is insufficient. Continued imagery, long darkness, sile
 
 Defaults: 99% pixels at or below 0.08 normalized brightness; black duration 250–2000 ms; silence below −45 dBFS for at least 200 ms; ten seconds of context; minimum visual difference 0.18; minimum motion 0.008. Fade detection requires four descending luminance steps over eight samples and at least 0.12 total luminance decrease. Surrounding audio must exceed the silence threshold by 10 dB in at least 60% of each context window. These fixed extraction/rule details are versioned with the detector.
 
-Exclude the first max(120 seconds, 10%) and last max(90 seconds, 5%). Existing intro/outro intervals and ordinary chapter starts have five-second exclusion margins. A chapter is never positive break evidence. This intentionally misses some legitimate chapter-aligned breaks, including potential boundaries between cartoons.
+Starting with `conservative-fade-v2`, the first and last **four minutes** are protected regardless of runtime. FFmpeg seeks to the eligible interval and stops decoding at its end, rather than analyzing the whole episode and filtering afterward. Codec seeking may require a little keyframe preroll. Reported timestamps still refer to the original file. The scan interval is rounded inward to the 100 ms sampling grid. An episode of fifteen minutes or less produces a completed empty analysis without launching FFmpeg or ffprobe.
+
+The ten-second context requirement still applies entirely inside the scan interval, so candidates too near its edges cannot be accepted with incomplete context. `startExclusionMs` and `endExclusionMs` can increase the protected durations; values below 240000 are clamped to that floor. Legacy percentage settings remain readable in historical results but are normalized to zero for new analyses. Existing intro/outro intervals and ordinary chapter starts retain five-second exclusion margins. A chapter is never positive break evidence. This intentionally misses some legitimate chapter-aligned breaks, including potential boundaries between cartoons.
+
+Rerunning the task after updating creates v2 results; v1 cached results are not reused and v1 qualification does not qualify v2. This change narrows the scanned region; it does not relax black-duration, fade, or scene-difference requirements.
 
 Cluster spans are limited to three seconds; the strongest actual transition is retained, not an average of unrelated times. Breaks have three-minute minimum spacing. Runtime caps are 0 below 10 minutes, 1 below 20, 3 below 30, 5 below 60, and 6 thereafter. Caps only remove candidates. Defaults and validation live in `BreakDetectorConfigSchema`; a partial JSON object overrides defaults. Runtime cap bands must be increasing. Cross-episode inference is deferred.
 
 The database stores historical runs, separate from chapter metadata. Matching source/configuration/version results can be reused unless forced. Local identity includes path, size, modification time, and file change time. Remote identity uses provider/file metadata plus available HTTP validators. Sources without validators are reanalyzed and remain diagnostic-only. Authenticated URLs and headers are neither persisted nor logged. Readable local/path-replaced media is preferred. Remote sources are direct original streams; ambiguous version selection is rejected rather than silently analyzing another edit.
 
 ## Ground truth and qualification
+
+A partially labeled real-episode baseline is saved in `server/src/testing/resources/break-analysis/extended-black-1503.json`: the user-confirmed breaks at 9:24 and 15:03 were found but rejected by v1. See the README in that directory for their measurements and the distinction between archived-output regression tests and replaying the original media.
 
 Copy `server/src/testing/resources/break-analysis/manifest.example.json` and replace the paths/labels. Real media should stay outside the repository. Label every legitimate break in an episode, including zero-break examples. Use explicit exclusion intervals only for known intro/outro/segment regions, never to hide detector errors. Include the known mouth example, scene fades, dark animation, silent scenes, title cards, theme/cold-open transitions, credits, dramatic cuts, and multiple-short-cartoon files.
 

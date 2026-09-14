@@ -1,0 +1,289 @@
+{
+  "caseId": "extended-black-1503",
+  "provenance": "Real episode analysis supplied by the user; no media or frame/audio samples included.",
+  "labelCoverage": "partial",
+  "confirmedBreaksMs": [
+    564000,
+    903000
+  ],
+  "toleranceMs": 2000,
+  "unverifiedReviewPointsMs": [
+    89100,
+    150050
+  ],
+  "analysis": {
+    "id": "extended-black-1503-v1",
+    "status": "completed",
+    "createdAt": 1789387661924,
+    "finishedAt": 1789387693327,
+    "detectorVersion": "conservative-fade-v1",
+    "configHash": "8718952bb2346d0c6f240abd547733b14ae978582104f45cae88abf6d5bf7263",
+    "config": {
+      "blackPixelThreshold": 0.08,
+      "blackRatio": 0.99,
+      "minBlackMs": 250,
+      "maxBlackMs": 2000,
+      "silenceDb": -45,
+      "minSilenceMs": 200,
+      "contextMs": 10000,
+      "visualDifference": 0.18,
+      "minMotion": 0.008,
+      "startExclusionMs": 120000,
+      "startExclusionFraction": 0.1,
+      "endExclusionMs": 90000,
+      "endExclusionFraction": 0.05,
+      "chapterMarginMs": 5000,
+      "clusterMs": 3000,
+      "minimumSpacingMs": 180000,
+      "runtimeCaps": [
+        {
+          "belowMs": 600000,
+          "maxBreaks": 0
+        },
+        {
+          "belowMs": 1200000,
+          "maxBreaks": 1
+        },
+        {
+          "belowMs": 1800000,
+          "maxBreaks": 3
+        },
+        {
+          "belowMs": 3600000,
+          "maxBreaks": 5
+        },
+        {
+          "belowMs": 14400001,
+          "maxBreaks": 6
+        }
+      ]
+    },
+    "sourceFingerprint": "redacted-real-episode-source",
+    "runtimeMs": 1275258,
+    "videoStreamIndex": 0,
+    "audioStreamIndex": 1,
+    "candidates": [
+      {
+        "timestampMs": 350,
+        "confidence": "medium",
+        "accepted": false,
+        "reasons": [
+          "no-fade",
+          "incomplete-context",
+          "silent-surroundings",
+          "scene-continuity",
+          "static-context",
+          "dark-context",
+          "excluded-region"
+        ],
+        "evidence": {
+          "blackStartMs": 0,
+          "blackEndMs": 1000,
+          "silenceOverlapMs": 700,
+          "fade": false,
+          "visualDifference": 0,
+          "motionBefore": 0,
+          "motionAfter": 0.017772667743751684,
+          "audioContext": false,
+          "completeContext": false
+        }
+      },
+      {
+        "timestampMs": 4450,
+        "confidence": "medium",
+        "accepted": false,
+        "reasons": [
+          "black-duration",
+          "no-fade",
+          "incomplete-context",
+          "silent-surroundings",
+          "scene-continuity",
+          "dark-context",
+          "excluded-region"
+        ],
+        "evidence": {
+          "blackStartMs": 2900,
+          "blackEndMs": 5200,
+          "silenceOverlapMs": 1300,
+          "fade": false,
+          "visualDifference": 0,
+          "motionBefore": 0.017986716291454853,
+          "motionAfter": 0.028369486059092792,
+          "audioContext": false,
+          "completeContext": false
+        }
+      },
+      {
+        "timestampMs": 89100,
+        "confidence": "medium",
+        "accepted": false,
+        "reasons": [
+          "scene-continuity",
+          "excluded-region"
+        ],
+        "evidence": {
+          "blackStartMs": 87800,
+          "blackEndMs": 89500,
+          "silenceOverlapMs": 800,
+          "fade": true,
+          "visualDifference": 0.15820397603485836,
+          "motionBefore": 0.06048826834104431,
+          "motionAfter": 0.06659169910161315,
+          "audioContext": true,
+          "completeContext": true
+        }
+      },
+      {
+        "timestampMs": 150050,
+        "confidence": "medium",
+        "accepted": false,
+        "reasons": [
+          "excluded-region"
+        ],
+        "evidence": {
+          "blackStartMs": 149300,
+          "blackEndMs": 150500,
+          "silenceOverlapMs": 900,
+          "fade": true,
+          "visualDifference": 0.24333469498910676,
+          "motionBefore": 0.047804827299209283,
+          "motionAfter": 0.04168655602066043,
+          "audioContext": true,
+          "completeContext": true
+        }
+      },
+      {
+        "timestampMs": 387800,
+        "confidence": "low",
+        "accepted": false,
+        "reasons": [
+          "insufficient-silence-overlap",
+          "no-fade",
+          "scene-continuity"
+        ],
+        "evidence": {
+          "blackStartMs": 387400,
+          "blackEndMs": 388200,
+          "silenceOverlapMs": 0,
+          "fade": false,
+          "visualDifference": 0.08732979302832243,
+          "motionBefore": 0.07673328070304278,
+          "motionAfter": 0.02735849489608576,
+          "audioContext": true,
+          "completeContext": true
+        }
+      },
+      {
+        "timestampMs": 464450,
+        "confidence": "low",
+        "accepted": false,
+        "reasons": [
+          "insufficient-silence-overlap",
+          "no-fade",
+          "scene-continuity"
+        ],
+        "evidence": {
+          "blackStartMs": 464200,
+          "blackEndMs": 464700,
+          "silenceOverlapMs": 0,
+          "fade": false,
+          "visualDifference": 0.06969635076252723,
+          "motionBefore": 0.02048297471298133,
+          "motionAfter": 0.008130461922596756,
+          "audioContext": true,
+          "completeContext": true
+        }
+      },
+      {
+        "timestampMs": 564100,
+        "confidence": "medium",
+        "accepted": false,
+        "reasons": [
+          "black-duration",
+          "no-fade",
+          "scene-continuity"
+        ],
+        "evidence": {
+          "blackStartMs": 562300,
+          "blackEndMs": 565200,
+          "silenceOverlapMs": 1600,
+          "fade": false,
+          "visualDifference": 0.0914556100217865,
+          "motionBefore": 0.010237891973268706,
+          "motionAfter": 0.0409189034540158,
+          "audioContext": true,
+          "completeContext": true
+        }
+      },
+      {
+        "timestampMs": 903550,
+        "confidence": "medium",
+        "accepted": false,
+        "reasons": [
+          "black-duration",
+          "no-fade",
+          "scene-continuity"
+        ],
+        "evidence": {
+          "blackStartMs": 901100,
+          "blackEndMs": 904600,
+          "silenceOverlapMs": 1100,
+          "fade": false,
+          "visualDifference": 0.08387118736383442,
+          "motionBefore": 0.03415705857873739,
+          "motionAfter": 0.028470692271915003,
+          "audioContext": true,
+          "completeContext": true
+        }
+      },
+      {
+        "timestampMs": 1243950,
+        "confidence": "medium",
+        "accepted": false,
+        "reasons": [
+          "scene-continuity",
+          "static-context",
+          "excluded-region"
+        ],
+        "evidence": {
+          "blackStartMs": 1243300,
+          "blackEndMs": 1244400,
+          "silenceOverlapMs": 700,
+          "fade": true,
+          "visualDifference": 0.149734477124183,
+          "motionBefore": 0.032039224865976344,
+          "motionAfter": 0.0007720129250201951,
+          "audioContext": true,
+          "completeContext": true
+        }
+      },
+      {
+        "timestampMs": 1274750,
+        "confidence": "medium",
+        "accepted": false,
+        "reasons": [
+          "no-fade",
+          "incomplete-context",
+          "silent-surroundings",
+          "scene-continuity",
+          "static-context",
+          "excluded-region"
+        ],
+        "evidence": {
+          "blackStartMs": 1274500,
+          "blackEndMs": 1275300,
+          "silenceOverlapMs": 500,
+          "fade": false,
+          "visualDifference": 0,
+          "motionBefore": 0.001714156324202589,
+          "motionAfter": 0,
+          "audioContext": false,
+          "completeContext": false
+        }
+      }
+    ],
+    "usableBreaks": [],
+    "qualified": false,
+    "stale": false
+  }
+}

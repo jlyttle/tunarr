@@ -4,6 +4,7 @@ import type { Readable } from 'node:stream';
 import { z } from 'zod/v4';
 import type { StreamSource } from '../../stream/types.ts';
 import type { ExtractedFeatures } from './BreakDetector.ts';
+import { breakScanWindow } from './BreakDetector.ts';
 
 const ProbeSchema = z.object({
   format: z.object({
@@ -213,6 +214,15 @@ export class BreakFeatureExtractor {
   ) {
     if (!Number.isFinite(runtimeMs) || runtimeMs <= 0 || runtimeMs > 14400000)
       throw new AnalysisError('unsupported-runtime');
+    if (options.signal?.aborted) throw new AnalysisError('cancelled');
+    const window = breakScanWindow(runtimeMs, config);
+    const durationMs = window.endMs - window.startMs;
+    const features: ExtractedFeatures = {
+      video: [],
+      audioDb: [],
+      startMs: window.startMs,
+    };
+    if (!durationMs) return { features, probe: undefined };
     const started = Date.now();
     const probe = await this.probe(source, options);
     if (
@@ -225,9 +235,8 @@ export class BreakFeatureExtractor {
       ) > Math.max(2000, runtimeMs * 0.01)
     )
       throw new AnalysisError('runtime-mismatch');
-    const origin = probe.format.start_time;
-    const features: ExtractedFeatures = { video: [], audioDb: [] };
-    const maxSamples = Math.ceil(runtimeMs / 100) + 20;
+    const origin = probe.format.start_time + window.startMs / 1000;
+    const maxSamples = Math.ceil(durationMs / 100) + 20;
     const args = [
       '-hide_banner',
       '-nostdin',
@@ -237,6 +246,9 @@ export class BreakFeatureExtractor {
       '-copyts',
       '-threads',
       String(options.threads),
+      // Input seeking avoids decoding the protected opening (apart from codec preroll).
+      '-ss',
+      String(window.startMs / 1000),
       ...inputArguments(source),
       '-filter_threads',
       String(options.threads),
@@ -249,6 +261,8 @@ export class BreakFeatureExtractor {
       `setpts=PTS-(${origin})/TB,fps=10:start_time=0,scale=32:18:flags=area,format=gray`,
       '-threads',
       String(options.threads),
+      '-t',
+      String(durationMs / 1000),
       '-f',
       'rawvideo',
       'pipe:3',
@@ -263,6 +277,8 @@ export class BreakFeatureExtractor {
       String(options.threads),
       '-c:a',
       'pcm_f32le',
+      '-t',
+      String(durationMs / 1000),
       '-f',
       'f32le',
       'pipe:4',
@@ -335,7 +351,8 @@ export class BreakFeatureExtractor {
     );
     if (
       [features.video.length, features.audioDb.length].some(
-        (n) => Math.abs(n * 100 - runtimeMs) > Math.max(2000, runtimeMs * 0.01),
+        (n) =>
+          Math.abs(n * 100 - durationMs) > Math.max(200, durationMs * 0.01),
       )
     ) {
       throw new AnalysisError('incomplete-decode');

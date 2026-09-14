@@ -1,6 +1,7 @@
 import {
   BreakAnalysisRequestSchema,
   BreakDetectorConfigSchema,
+  normalizeBreakDetectorConfig,
   type BreakAnalysisRequest,
   type BreakAnalysisResult,
   type BreakDetectorConfig,
@@ -25,6 +26,7 @@ import {
 } from './BreakFeatureExtractor.ts';
 import {
   BREAK_DETECTOR_VERSION,
+  breakScanWindow,
   configurationHash,
   evaluateBreaks,
   type Interval,
@@ -129,6 +131,7 @@ export class BreakAnalysisService {
       config: options.config,
       sourceFingerprint: 'unresolved',
       runtimeMs: input.runtimeMs,
+      scanWindow: breakScanWindow(input.runtimeMs, options.config),
       candidates: [],
       usableBreaks: [],
       qualified: false,
@@ -246,7 +249,9 @@ export class BreakAnalysisService {
     options: AnalyzeOptions,
     exclusions: Interval[] = [],
   ) {
-    const config = BreakDetectorConfigSchema.parse(options.config);
+    const config = normalizeBreakDetectorConfig(
+      BreakDetectorConfigSchema.parse(options.config),
+    );
     const input: Input = {
       source: new FileStreamSource(path),
       runtimeMs,
@@ -321,18 +326,19 @@ export class BreakAnalysisService {
         options.config,
         { ...options, signal, timeoutMs: Math.max(1, deadline - Date.now()) },
       );
-      const chapterGuards = probe.chapters.map((c) => ({
-        startMs: Math.max(
-          0,
-          Math.round((c.start_time - probe.format.start_time) * 1000) -
+      const chapterGuards =
+        probe?.chapters.map((c) => ({
+          startMs: Math.max(
+            0,
+            Math.round((c.start_time - probe.format.start_time) * 1000) -
+              options.config.chapterMarginMs,
+          ),
+          endMs:
+            Math.round((c.start_time - probe.format.start_time) * 1000) +
             options.config.chapterMarginMs,
-        ),
-        endMs:
-          Math.round((c.start_time - probe.format.start_time) * 1000) +
-          options.config.chapterMarginMs,
-      }));
-      result.videoStreamIndex = probe.video.index;
-      result.audioStreamIndex = probe.audio.index;
+        })) ?? [];
+      result.videoStreamIndex = probe?.video.index;
+      result.audioStreamIndex = probe?.audio.index;
       result.candidates = evaluateBreaks(
         features,
         input.runtimeMs,

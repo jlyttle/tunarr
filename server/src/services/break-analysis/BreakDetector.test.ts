@@ -1,6 +1,10 @@
 import { BreakDetectorConfigSchema } from '@tunarr/types/schemas';
 import { describe, expect, test } from 'vitest';
-import { evaluateBreaks, type ExtractedFeatures } from './BreakDetector.ts';
+import {
+  evaluateBreaks,
+  breakScanWindow,
+  type ExtractedFeatures,
+} from './BreakDetector.ts';
 
 const config = BreakDetectorConfigSchema.parse({});
 function episode(events = [450000], runtime = 1440000): ExtractedFeatures {
@@ -32,6 +36,63 @@ function episode(events = [450000], runtime = 1440000): ExtractedFeatures {
 }
 
 describe('conservative episode break rules', () => {
+  test('uses fixed four-minute floors regardless of runtime or legacy percentage settings', () => {
+    const legacy = BreakDetectorConfigSchema.parse({
+      startExclusionMs: 0,
+      endExclusionMs: 0,
+      startExclusionFraction: 0.1,
+      endExclusionFraction: 0.05,
+    });
+    for (const runtime of [960000, 1440000, 5400000]) {
+      expect(breakScanWindow(runtime, legacy)).toEqual({
+        startMs: 240000,
+        endMs: runtime - 240000,
+      });
+    }
+    expect(breakScanWindow(1275258, config)).toEqual({
+      startMs: 240000,
+      endMs: 1035200,
+    });
+  });
+  test('programs fifteen minutes or shorter have no scan window or candidates', () => {
+    for (const runtime of [60000, 480000, 899900, 900000]) {
+      const window = breakScanWindow(runtime, config);
+      expect(window.endMs).toBe(window.startMs);
+      expect(evaluateBreaks(episode([], runtime), runtime, config)).toEqual([]);
+    }
+  });
+  test('episodes just over fifteen minutes have an eligible interior window', () => {
+    expect(breakScanWindow(900001, config)).toEqual({
+      startMs: 240000,
+      endMs: 660000,
+    });
+  });
+  test('windowed features retain original file timestamps and evidence times', () => {
+    const features = episode();
+    const cropped = {
+      video: features.video.slice(2400, -2400),
+      audioDb: features.audioDb.slice(2400, -2400),
+      startMs: 240000,
+    };
+    expect(evaluateBreaks(cropped, 1440000, config)).toEqual(
+      evaluateBreaks(features, 1440000, config),
+    );
+  });
+  test('truncated surrounding context at scan edges cannot produce usable candidates', () => {
+    const features = episode([242000, 1198000]);
+    const cropped = {
+      video: features.video.slice(2400, -2400),
+      audioDb: features.audioDb.slice(2400, -2400),
+      startMs: 240000,
+    };
+    const candidates = evaluateBreaks(cropped, 1440000, config);
+    expect(candidates).toHaveLength(2);
+    expect(
+      candidates.every(
+        (c) => !c.accepted && c.reasons.includes('incomplete-context'),
+      ),
+    ).toBe(true);
+  });
   test('accepts a faded silent boundary with sustained different scenes', () => {
     const candidates = evaluateBreaks(episode(), 1440000, config);
     expect(candidates).toHaveLength(1);
@@ -79,12 +140,10 @@ describe('conservative episode break rules', () => {
       'no-fade',
     );
   });
-  test.each([60000, 120000, 1350000])(
+  test.each([60000, 120000, 239000, 1200000, 1350000])(
     'excludes intro, cold open, theme and closing regions at %s',
     (time) => {
-      expect(
-        evaluateBreaks(episode([time]), 1440000, config)[0]!.reasons,
-      ).toContain('excluded-region');
+      expect(evaluateBreaks(episode([time]), 1440000, config)).toEqual([]);
     },
   );
   test('excludes known chapter/cartoon-segment boundaries', () => {
@@ -97,7 +156,7 @@ describe('conservative episode break rules', () => {
   test('caps a 24 minute episode at three without inventing detections', () => {
     expect(
       evaluateBreaks(
-        episode([200000, 450000, 700000, 950000]),
+        episode([250000, 480000, 710000, 940000]),
         1440000,
         config,
       ).filter((c) => c.accepted),

@@ -71,6 +71,15 @@ describe('break analysis persistence', () => {
     const result = evaluationFixture().episodes[0]!.result;
     result.candidates = [
       candidateFixture(),
+      {
+        ...candidateFixture(),
+        timestampMs: 150050,
+        evidence: {
+          ...candidateFixture().evidence,
+          blackStartMs: 149300,
+          blackEndMs: 150500,
+        },
+      },
       { ...candidateFixture(), accepted: false, reasons: ['runtime-cap'] },
     ];
     expect(repository.expose(result).usableBreaks).toEqual([]);

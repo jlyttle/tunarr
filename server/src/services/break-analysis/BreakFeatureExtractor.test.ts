@@ -12,12 +12,28 @@ const available =
   spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' }).status === 0 &&
   spawnSync('ffprobe', ['-version'], { stdio: 'ignore' }).status === 0;
 const config = BreakDetectorConfigSchema.parse({
-  startExclusionMs: 0,
-  startExclusionFraction: 0,
-  endExclusionMs: 0,
-  endExclusionFraction: 0,
-  runtimeCaps: [{ belowMs: 100000, maxBreaks: 1 }],
+  startExclusionMs: 480000,
+  endExclusionMs: 480000,
+  runtimeCaps: [{ belowMs: 2000000, maxBreaks: 1 }],
 });
+test.each([60000, 480000, 899900, 900000])(
+  'does not launch media processes for a %s ms episode at or below fifteen minutes',
+  async (runtimeMs) => {
+    const extractor = new BreakFeatureExtractor(
+      'nonexistent-ffmpeg',
+      'nonexistent-ffprobe',
+    );
+    const result = await extractor.extract(
+      new FileStreamSource('/unused.mkv'),
+      runtimeMs,
+      BreakDetectorConfigSchema.parse({}),
+      { timeoutMs: 1000, threads: 1 },
+    );
+    expect(result.features.video).toEqual([]);
+    expect(result.features.audioDb).toEqual([]);
+    expect(result.probe).toBeUndefined();
+  },
+);
 describe.skipIf(!available)(
   'FFmpeg feature extraction with generated media',
   () => {
@@ -51,7 +67,7 @@ describe.skipIf(!available)(
           '-i',
           'sine=frequency=440:sample_rate=8000:duration=40.6',
           '-filter_complex',
-          "[0:v]fade=t=out:st=19.2:d=0.8[a];[2:v]negate[b];[a][1:v][b]concat=n=3:v=1:a=0[v];[3:a]volume=0:enable='between(t,20,20.6)'[audio]",
+          "[0:v]fade=t=out:st=19.2:d=0.8[a];[2:v]negate[b];[a][1:v][b]concat=n=3:v=1:a=0,tpad=start_duration=480:stop_duration=480[v];[3:a]volume=0:enable='between(t,20,20.6)',adelay=480000:all=1,apad=pad_dur=480[audio]",
           '-map',
           '[v]',
           '-map',
@@ -79,19 +95,21 @@ describe.skipIf(!available)(
         .digest('hex');
       const { features } = await extractor.extract(
         new FileStreamSource(file),
-        40600,
+        1000600,
         config,
         options,
       );
+      expect(features.startMs).toBe(480000);
       expect(features.video.length).toBeGreaterThan(400);
-      const accepted = evaluateBreaks(features, 40600, config).filter(
+      expect(features.video.length).toBeLessThanOrEqual(406);
+      const accepted = evaluateBreaks(features, 1000600, config).filter(
         (c) => c.accepted,
       );
       expect(
         accepted,
-        JSON.stringify(evaluateBreaks(features, 40600, config)),
+        JSON.stringify(evaluateBreaks(features, 1000600, config)),
       ).toHaveLength(1);
-      expect(Math.abs(accepted[0]!.timestampMs - 20300)).toBeLessThanOrEqual(
+      expect(Math.abs(accepted[0]!.timestampMs - 500300)).toBeLessThanOrEqual(
         2000,
       );
       expect((await stat(file)).mtimeMs).toBe(before.mtimeMs);
@@ -103,10 +121,10 @@ describe.skipIf(!available)(
     }, 35000);
     test('rejects a mismatched runtime and missing audio stream', async () => {
       await expect(
-        extractor.extract(new FileStreamSource(file), 90000, config, options),
+        extractor.extract(new FileStreamSource(file), 1500000, config, options),
       ).rejects.toThrow('runtime-mismatch');
       await expect(
-        extractor.extract(new FileStreamSource(file), 40600, config, {
+        extractor.extract(new FileStreamSource(file), 1000600, config, {
           ...options,
           audioStreamIndex: 99,
         }),
@@ -118,7 +136,7 @@ describe.skipIf(!available)(
       await expect(
         extractor.extract(
           new FileStreamSource('/private/secret.mkv'),
-          40600,
+          1000600,
           config,
           { ...options, signal: controller.signal },
         ),
@@ -126,7 +144,7 @@ describe.skipIf(!available)(
       await expect(
         extractor.extract(
           new FileStreamSource('/private/secret.mkv'),
-          40600,
+          1000600,
           config,
           options,
         ),
@@ -150,15 +168,15 @@ describe.skipIf(!available)(
       ).toBe(0);
       const { features } = await extractor.extract(
         new FileStreamSource(offsetFile),
-        40600,
+        1000600,
         config,
         options,
       );
-      const accepted = evaluateBreaks(features, 40600, config).filter(
+      const accepted = evaluateBreaks(features, 1000600, config).filter(
         (c) => c.accepted,
       );
       expect(accepted).toHaveLength(1);
-      expect(Math.abs(accepted[0]!.timestampMs - 20300)).toBeLessThanOrEqual(
+      expect(Math.abs(accepted[0]!.timestampMs - 500300)).toBeLessThanOrEqual(
         2000,
       );
     });
@@ -172,7 +190,7 @@ describe.skipIf(!available)(
           '-i',
           file,
           '-vf',
-          "select='if(lt(t,10),not(mod(n,3)),1)'",
+          "select='if(between(t,480,490),not(mod(n,3)),1)'",
           '-fps_mode',
           'vfr',
           '-c:v',
@@ -184,15 +202,15 @@ describe.skipIf(!available)(
       ).toBe(0);
       const { features } = await extractor.extract(
         new FileStreamSource(variableFile),
-        40600,
+        1000600,
         config,
         options,
       );
-      const accepted = evaluateBreaks(features, 40600, config).filter(
+      const accepted = evaluateBreaks(features, 1000600, config).filter(
         (c) => c.accepted,
       );
       expect(accepted).toHaveLength(1);
-      expect(Math.abs(accepted[0]!.timestampMs - 20300)).toBeLessThanOrEqual(
+      expect(Math.abs(accepted[0]!.timestampMs - 500300)).toBeLessThanOrEqual(
         2000,
       );
     });
@@ -207,7 +225,7 @@ describe.skipIf(!available)(
       await expect(
         extractor.extract(
           new FileStreamSource(truncatedFile),
-          40600,
+          1000600,
           config,
           options,
         ),
@@ -215,7 +233,7 @@ describe.skipIf(!available)(
       const controller = new AbortController();
       const pending = extractor.extract(
         new FileStreamSource(file),
-        40600,
+        1000600,
         config,
         { ...options, signal: controller.signal },
       );

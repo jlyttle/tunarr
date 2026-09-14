@@ -125,6 +125,46 @@ describe('analysis orchestration', () => {
     ]);
     expect(await service.history(programId)).toHaveLength(2);
   });
+  test('normalizes legacy exclusion settings and persists the actual scan window', async () => {
+    const request = BreakAnalysisRequestSchema.parse({
+      programIds: [programId],
+      config: {
+        startExclusionMs: 0,
+        endExclusionMs: 0,
+        startExclusionFraction: 0.1,
+        endExclusionFraction: 0.05,
+      },
+    });
+    const [result] = await service.batch(request);
+    expect(result).toMatchObject({
+      detectorVersion: 'conservative-fade-v2',
+      scanWindow: { startMs: 240000, endMs: 1200000 },
+      config: {
+        startExclusionMs: 240000,
+        endExclusionMs: 240000,
+        startExclusionFraction: 0,
+        endExclusionFraction: 0,
+      },
+    });
+  });
+  test('persists completed empty analysis for an episode exactly fifteen minutes long', async () => {
+    vi.mocked(BreakFeatureExtractor.prototype.extract).mockRestore();
+    sqlite
+      .prepare('UPDATE program_version SET duration = ? WHERE uuid = ?')
+      .run(900000, versionId);
+    const [result] = await service.batch(
+      BreakAnalysisRequestSchema.parse({ programIds: [programId] }),
+    );
+    expect(result).toMatchObject({
+      status: 'completed',
+      candidates: [],
+      usableBreaks: [],
+      scanWindow: { startMs: 240000, endMs: 240000 },
+    });
+    expect((await service.history(programId))[0]!.scanWindow).toEqual(
+      result!.scanWindow,
+    );
+  });
   test('changed source invalidates history and triggers a new run', async () => {
     const request = BreakAnalysisRequestSchema.parse({
       programIds: [programId],

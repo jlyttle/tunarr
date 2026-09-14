@@ -4,7 +4,7 @@ import type {
 } from '@tunarr/types/schemas';
 import { createHash } from 'node:crypto';
 
-export const BREAK_DETECTOR_VERSION = 'conservative-fade-v1';
+export const BREAK_DETECTOR_VERSION = 'conservative-fade-v2';
 export const SAMPLE_MS = 100;
 export type Interval = { startMs: number; endMs: number };
 export type VideoSample = {
@@ -12,7 +12,32 @@ export type VideoSample = {
   blackRatio: number;
   pixels: Uint8Array;
 };
-export type ExtractedFeatures = { video: VideoSample[]; audioDb: number[] };
+export type ExtractedFeatures = {
+  video: VideoSample[];
+  audioDb: number[];
+  startMs?: number;
+};
+
+export function breakScanWindow(
+  runtimeMs: number,
+  config: BreakDetectorConfig,
+): Interval {
+  // Align inward to the sampling grid; no samples belong to protected regions.
+  const startMs = Math.min(
+    runtimeMs,
+    Math.ceil(Math.max(240000, config.startExclusionMs) / SAMPLE_MS) *
+      SAMPLE_MS,
+  );
+  // Short episodes never qualify, even when their interior window is nonempty.
+  if (runtimeMs <= 15 * 60 * 1000) return { startMs, endMs: startMs };
+  const endMs = Math.max(
+    startMs,
+    Math.floor(
+      (runtimeMs - Math.max(240000, config.endExclusionMs)) / SAMPLE_MS,
+    ) * SAMPLE_MS,
+  );
+  return { startMs, endMs };
+}
 
 export function configurationHash(
   config: BreakDetectorConfig,
@@ -54,33 +79,24 @@ export function evaluateBreaks(
   exclusions: Interval[] = [],
 ): BreakCandidate[] {
   const { video, audioDb } = features;
-  const black = intervals(video.map((v) => v.blackRatio >= config.blackRatio));
-  const silence = intervals(audioDb.map((v) => v <= config.silenceDb)).filter(
-    (v) => v.endMs - v.startMs >= config.minSilenceMs,
-  );
-  const guards = [
-    ...exclusions,
-    {
-      startMs: 0,
-      endMs: Math.max(
-        config.startExclusionMs,
-        runtimeMs * config.startExclusionFraction,
-      ),
-    },
-    {
-      startMs:
-        runtimeMs -
-        Math.max(
-          config.endExclusionMs,
-          runtimeMs * config.endExclusionFraction,
-        ),
-      endMs: runtimeMs,
-    },
-  ];
+  const offsetMs = features.startMs ?? 0;
+  const window = breakScanWindow(runtimeMs, config);
+  if (window.endMs <= window.startMs) return [];
+  const absolute = (v: Interval): Interval => ({
+    startMs: v.startMs + offsetMs,
+    endMs: v.endMs + offsetMs,
+  });
+  const black = intervals(video.map((v) => v.blackRatio >= config.blackRatio))
+    .map(absolute)
+    .filter((v) => v.startMs >= window.startMs && v.endMs <= window.endMs);
+  const silence = intervals(audioDb.map((v) => v <= config.silenceDb))
+    .map(absolute)
+    .filter((v) => v.endMs - v.startMs >= config.minSilenceMs);
+  const guards = exclusions;
   let silenceIndex = 0;
   const candidates = black.map((event): BreakCandidate => {
-    const start = Math.round(event.startMs / SAMPLE_MS);
-    const end = Math.round(event.endMs / SAMPLE_MS);
+    const start = Math.round((event.startMs - offsetMs) / SAMPLE_MS);
+    const end = Math.round((event.endMs - offsetMs) / SAMPLE_MS);
     const context = Math.round(config.contextMs / SAMPLE_MS);
     const completeContext =
       start >= context &&

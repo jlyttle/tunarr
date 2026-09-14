@@ -17,10 +17,11 @@ export const BreakDetectorConfigSchema = z
     contextMs: time.min(5000).max(30000).default(10000),
     visualDifference: z.number().min(0.05).max(1).default(0.18),
     minMotion: z.number().min(0).max(1).default(0.008),
-    startExclusionMs: time.default(120000),
-    startExclusionFraction: z.number().min(0).max(0.5).default(0.1),
-    endExclusionMs: time.default(90000),
-    endExclusionFraction: z.number().min(0).max(0.5).default(0.05),
+    startExclusionMs: time.default(240000),
+    // Retained for parsing historical results. New analyses use fixed durations.
+    startExclusionFraction: z.number().min(0).max(0.5).default(0),
+    endExclusionMs: time.default(240000),
+    endExclusionFraction: z.number().min(0).max(0.5).default(0),
     chapterMarginMs: time.default(5000),
     clusterMs: time.min(100).default(3000),
     minimumSpacingMs: time.default(180000),
@@ -43,6 +44,18 @@ export const BreakDetectorConfigSchema = z
     'Runtime caps must be ordered',
   );
 export type BreakDetectorConfig = z.infer<typeof BreakDetectorConfigSchema>;
+
+export function normalizeBreakDetectorConfig(
+  config: BreakDetectorConfig,
+): BreakDetectorConfig {
+  return {
+    ...config,
+    startExclusionMs: Math.max(240000, config.startExclusionMs),
+    endExclusionMs: Math.max(240000, config.endExclusionMs),
+    startExclusionFraction: 0,
+    endExclusionFraction: 0,
+  };
+}
 
 export const BreakCandidateSchema = z.object({
   timestampMs: time,
@@ -77,6 +90,10 @@ export const BreakAnalysisResultSchema = z.object({
   config: BreakDetectorConfigSchema,
   sourceFingerprint: z.string(),
   runtimeMs: time.positive(),
+  scanWindow: z
+    .object({ startMs: time, endMs: time })
+    .refine((v) => v.endMs >= v.startMs, 'Invalid scan window')
+    .optional(),
   videoStreamIndex: time.optional(),
   audioStreamIndex: time.optional(),
   candidates: z.array(BreakCandidateSchema),
@@ -94,9 +111,9 @@ export const BreakAnalysisRequestSchema = z
     libraryId: z.string().uuid().optional(),
     allEpisodes: z.literal(true).optional(),
     force: z.boolean().default(false),
-    config: BreakDetectorConfigSchema.default(() =>
-      BreakDetectorConfigSchema.parse({}),
-    ),
+    config: BreakDetectorConfigSchema.transform(
+      normalizeBreakDetectorConfig,
+    ).default(() => BreakDetectorConfigSchema.parse({})),
     videoStreamIndex: time.optional(),
     audioStreamIndex: time.optional(),
     timeoutMs: time.min(1000).max(86400000).default(14400000),
