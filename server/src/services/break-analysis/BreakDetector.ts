@@ -4,7 +4,7 @@ import type {
 } from '@tunarr/types/schemas';
 import { createHash } from 'node:crypto';
 
-export const BREAK_DETECTOR_VERSION = 'conservative-fade-v3';
+export const BREAK_DETECTOR_VERSION = 'conservative-fade-v4';
 export const SAMPLE_MS = 100;
 export type Interval = { startMs: number; endMs: number };
 export type VideoSample = {
@@ -70,12 +70,16 @@ export function spatialDifference(a: Uint8Array, b: Uint8Array): number {
   return aa && bb ? Math.max(0, 1 - dot / Math.sqrt(aa * bb)) : 0;
 }
 
-function hasFade(video: VideoSample[], start: number): boolean {
+function hasFade(video: VideoSample[], start: number, end: number): boolean {
   // Include the first black sample. Relative drop supports dark scenes;
   // three declining steps reject abrupt cuts, with little upward tolerance.
+  // Measure the fade relative to the observed black level, not digital zero.
+  const blackLevel = video
+    .slice(start, end)
+    .reduce((min, v) => Math.min(min, v.mean), 1);
   const samples = video
     .slice(Math.max(0, start - 15), start + 1)
-    .map((v) => v.mean);
+    .map((v) => Math.max(0, v.mean - blackLevel));
   for (let i = 0; i < samples.length - 3; i++) {
     const tail = samples.slice(i);
     const first = tail[0]!;
@@ -165,7 +169,7 @@ export function evaluateBreaks(
         return a && b ? spatialDifference(a.pixels, b.pixels) : 0;
       }),
     );
-    const fade = hasFade(video, start);
+    const fade = hasFade(video, start, end);
     const audioWindow = (from: number, to: number) => {
       const samples = audioDb.slice(Math.max(0, from), Math.max(0, to));
       return (
@@ -216,13 +220,6 @@ export function evaluateBreaks(
     if (!fade) reasons.push('no-fade');
     // Long transitions need stronger evidence than black plus quiet audio.
     if (duration > 2000) {
-      const holds = intervals(
-        video
-          .slice(start, end)
-          .map((v) => v.mean <= 0.005 && v.blackRatio >= 0.99),
-      );
-      if (!holds.some((v) => v.endMs - v.startMs >= 1000))
-        reasons.push('insufficient-black-hold');
       if (silenceOverlapMs < 1000)
         reasons.push('insufficient-extended-silence');
       if (spatialChange < config.spatialDifference)

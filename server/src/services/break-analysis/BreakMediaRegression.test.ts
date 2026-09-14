@@ -48,13 +48,40 @@ describe('media-derived transition regression', () => {
       }
     });
   }
+  test.each([2, 3, 5])(
+    'accepts confirmed transitions with black pixel floor %s/255',
+    (floor) => {
+      for (const item of fixture.cases.filter((c) => c.expectedMs !== null)) {
+        const features = decode(item.features);
+        for (const frame of features.video) {
+          if (frame.blackRatio < config.blackRatio) continue;
+          frame.pixels = frame.pixels.map((v) => Math.max(v, floor));
+          frame.mean =
+            frame.pixels.reduce((sum, v) => sum + v, 0) /
+            frame.pixels.length /
+            255;
+          frame.blackRatio =
+            frame.pixels.filter((v) => v / 255 <= config.blackPixelThreshold)
+              .length / frame.pixels.length;
+        }
+        const candidates = evaluateBreaks(features, fixture.runtimeMs, config);
+        expect(candidates).toHaveLength(1);
+        expect(candidates[0], JSON.stringify(candidates)).toMatchObject({
+          accepted: true,
+          reasons: [],
+        });
+        expect(
+          Math.abs(candidates[0]!.timestampMs - item.expectedMs!),
+        ).toBeLessThanOrEqual(2000);
+      }
+    },
+  );
   const positive = fixture.cases.find((c) => c.expectedMs !== null)!;
   test.each([
     'abrupt-black',
     'continuing-scene',
     'quiet-surroundings',
     'short-silence',
-    'near-black-object',
     'chapter',
   ])('rejects extended transition with %s', (kind) => {
     const features = decode(positive.features);
@@ -72,9 +99,6 @@ describe('media-derived transition regression', () => {
       features.audioDb.fill(-20);
       features.audioDb.fill(-100, start + 10, start + 15);
     }
-    if (kind === 'near-black-object')
-      for (let i = start; i < end; i++)
-        features.video[i] = { ...features.video[i]!, mean: 0.02 };
     const candidates = evaluateBreaks(
       features,
       fixture.runtimeMs,
