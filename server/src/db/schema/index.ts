@@ -52,6 +52,10 @@ import {
   MediaSourceLibraryReplacePathRelations,
 } from './MediaSourceLibraryReplacePath.ts';
 import { Program, ProgramRelations } from './Program.ts';
+import {
+  ProgramBreakAnalysis,
+  BreakDetectorQualification,
+} from './ProgramBreakAnalysis.ts';
 import { ProgramChapter, ProgramChapterRelations } from './ProgramChapter.ts';
 import {
   ProgramExternalId,
@@ -96,6 +100,8 @@ import { TranscodeConfig } from './TranscodeConfig.ts';
 // export { Program } from './Program.ts';
 
 export const schema = {
+  programBreakAnalysis: ProgramBreakAnalysis,
+  breakDetectorQualification: BreakDetectorQualification,
   channels: Channel,
   channelRelations: ChannelRelations,
   channelPrograms: ChannelPrograms,

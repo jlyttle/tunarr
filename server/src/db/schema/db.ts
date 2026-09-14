@@ -13,6 +13,10 @@ import type { MediaSourceTable } from './MediaSource.ts';
 import type { MediaSourceLibraryTable } from './MediaSourceLibrary.ts';
 import type { MikroOrmMigrationsTable } from './MikroOrmMigrations.js';
 import type { ProgramTable } from './Program.ts';
+import type {
+  ProgramBreakAnalysisTable,
+  BreakDetectorQualificationTable,
+} from './ProgramBreakAnalysis.ts';
 import type { ProgramChapterTable } from './ProgramChapter.ts';
 import type { ProgramExternalIdTable } from './ProgramExternalId.ts';
 import type { ProgramGroupingTable } from './ProgramGrouping.ts';
@@ -27,6 +31,8 @@ import type {
 import type { TranscodeConfigTable } from './TranscodeConfig.ts';
 
 export interface DB {
+  programBreakAnalysis: ProgramBreakAnalysisTable;
+  breakDetectorQualification: BreakDetectorQualificationTable;
   cachedImage: CachedImageTable;
   channel: ChannelTable;
   channelPrograms: ChannelProgramsTable;

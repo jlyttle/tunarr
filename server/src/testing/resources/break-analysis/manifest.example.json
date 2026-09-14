@@ -1,0 +1,16 @@
+{
+  "datasetId": "replace-with-your-dataset-id",
+  "kind": "real",
+  "split": "development",
+  "toleranceMs": 2000,
+  "episodes": [
+    {
+      "id": "replace-with-episode-id",
+      "path": "/replace/with/episode.mkv",
+      "runtimeMs": 1440000,
+      "expectedBreaks": [],
+      "exclusions": [],
+      "labels": ["replace-with-case-labels"]
+    }
+  ]
+}

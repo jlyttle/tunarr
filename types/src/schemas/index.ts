@@ -20,3 +20,4 @@ export * from './guideApiSchemas.js';
 export * from './nativePlaybackSchemas.js';
 export * from './streamSelectionSchema.js';
 export * from './troubleshootSchemas.js';
+export * from './breakAnalysisSchema.js';

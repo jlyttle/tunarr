@@ -39,6 +39,7 @@ import { settingsApi } from './settingsApi.ts';
 import { SmartCollectionsApiController } from './smartCollectionsApi.ts';
 import { systemApiRouter } from './systemApi.js';
 import { tasksApiRouter } from './tasksApi.js';
+import { breakAnalysisApi } from './breakAnalysisApi.ts';
 import { trashApi } from './trashApi.ts';
 import { streamSelectionRouter } from './streamSelectionApi.ts';
 import { troubleshootApiRouter } from './troubleshootApi.js';
@@ -63,6 +64,7 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
       decorateReply: true,
     })
     .register(tasksApiRouter)
+    .register(breakAnalysisApi)
     .register(channelsApi)
     .register(nativePlaybackApi)
     .register(customShowsApiV2)
