@@ -45,7 +45,7 @@ CMD [ "server" ]
 # Add Tunarr sources
 FROM ffmpeg-base AS sources
 WORKDIR /tunarr
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .pnpmfile.cjs ./
 COPY scripts ./scripts
 COPY server/ ./server
 COPY shared/ ./shared
