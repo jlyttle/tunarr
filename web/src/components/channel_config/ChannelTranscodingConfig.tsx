@@ -138,7 +138,10 @@ export default function ChannelTranscodingConfig() {
             <Trans>Transcoding Settings</Trans>
           </Typography>
           <Typography variant="subtitle1">
-            <Trans>Use these settings to override global ffmpeg settings for this channel.</Trans>
+            <Trans>
+              Use these settings to override global ffmpeg settings for this
+              channel.
+            </Trans>
           </Typography>
           <Stack direction={{ sm: 'column', md: 'row' }} useFlexGap spacing={2}>
             <FormControl margin="normal">
@@ -181,7 +184,10 @@ export default function ChannelTranscodingConfig() {
                 control={control}
                 name="transcodeConfigId"
                 render={({ field }) => (
-                  <Select<string> label={t`Channel Transcode Config`} {...field}>
+                  <Select<string>
+                    label={t`Channel Transcode Config`}
+                    {...field}
+                  >
                     {transcodeConfigs.data.map((opt) => (
                       <MenuItem key={opt.id} value={opt.id}>
                         {opt.name}
@@ -209,7 +215,9 @@ export default function ChannelTranscodingConfig() {
               <Trans>Audio &amp; Subtitles</Trans>
             </Typography>
             <Typography variant="subtitle1">
-              <Trans>Override global audio and subtitle settings for this channel.</Trans>
+              <Trans>
+                Override global audio and subtitle settings for this channel.
+              </Trans>
             </Typography>
             <Divider sx={{ my: 2 }} />
             <FormControlLabel
@@ -290,7 +298,9 @@ export default function ChannelTranscodingConfig() {
           </Stack>
         </Stack>
         <Box>
-          <Typography variant="h5"><Trans>Watermark</Trans></Typography>
+          <Typography variant="h5">
+            <Trans>Watermark</Trans>
+          </Typography>
           <FormControl fullWidth>
             <FormControlLabel
               control={
@@ -408,7 +418,9 @@ export default function ChannelTranscodingConfig() {
                           value={field.value ?? ''}
                         >
                           <FormHelperText>
-                            <Trans>Leave blank to use the channel's icon.</Trans>
+                            <Trans>
+                              Leave blank to use the channel's icon.
+                            </Trans>
                           </FormHelperText>
                         </ImageUploadInput>
                       )}
@@ -470,7 +482,9 @@ export default function ChannelTranscodingConfig() {
                   </Grid>
                   <Grid size={{ xs: 12 }}>
                     <FormControl fullWidth>
-                      <Typography gutterBottom><Trans>Opacity</Trans></Typography>
+                      <Typography gutterBottom>
+                        <Trans>Opacity</Trans>
+                      </Typography>
                       <Box sx={{ px: 2 }}>
                         <Slider
                           min={0}
@@ -505,7 +519,10 @@ export default function ChannelTranscodingConfig() {
                         label={t`Disable Image Scaling`}
                       />
                       <FormHelperText>
-                        <Trans>The image will be rendered at its actual size without any scaling applied.</Trans>
+                        <Trans>
+                          The image will be rendered at its actual size without
+                          any scaling applied.
+                        </Trans>
                       </FormHelperText>
                     </FormControl>
                   </Grid>

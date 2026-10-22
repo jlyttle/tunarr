@@ -100,7 +100,7 @@ When enabled, Tunarr automatically selects the best available tonemapping method
 
 | Hardware Mode | Method | Notes |
 |---|---|---|
-| **VAAPI** | `tonemap_vaapi` → `tonemap_opencl` → software | Falls back through the chain based on what filters are supported by your hardware and FFmpeg build. |
+| **VAAPI** | `tonemap_opencl` → `tonemap_vaapi` → software | Tunarr uses `tonemap_opencl` only when FFmpeg can create an OpenCL device from the VAAPI device. It tests this when it first detects VAAPI capabilities. If the test fails (common on Intel iGPUs whose OpenCL runtime lacks VAAPI sharing, and on all AMD GPUs), Tunarr uses `tonemap_vaapi`, then software. |
 | **CUDA** | Hardware tonemapping via Vulkan | Requires Vulkan support on the host. If Vulkan is unavailable or causing stream errors, set `TUNARR_DISABLE_VULKAN=true` to fall back to software tonemapping. |
 | **QSV** | Hardware tonemapping | Experimental. May not work reliably on all hardware. |
 | **None (Software)** | Software tonemapping | Used as the final fallback for all modes. More CPU-intensive than hardware paths. |
@@ -127,6 +127,8 @@ Controls the codec used to encode the output audio stream.
 
 - **AAC** — The default and most compatible format. Widely supported by all clients and streaming devices. Recommended for most setups.
 - **AC3 (Dolby Digital)** — Good choice for surround sound (5.1) content. Supported by most TVs and AV receivers, but not all streaming clients.
+- **E-AC3 (Dolby Digital Plus)** — Supports higher bitrates and more channels than AC3 but is less supported. Use if you want to stream 7.1 (8 channel) surround sound and have compatible clients/hardware.
+- **Opus (experimental)** — Highly efficient compression with inexpensive transcode perfomance and better multi-channel support than AAC or MP3. Would be ideal for surround sound content except that it isn't officially part of the the HLS spec as it is unsupported by most A/V hardware. Offered as an experimental option as it may still function due to nearly-universal software support.
 - **MP3** — Widely compatible but lower quality than AAC at equivalent bitrates. Only use if a specific client requires it.
 - **Copy** — Passes the audio stream through unchanged without re-encoding. When Copy is selected, all other audio settings (bitrate, sample rate, volume, channels) are **ignored**, since the stream is not being processed by FFmpeg.
 

@@ -43,6 +43,7 @@ import { ConcatInputFormatOption } from '@/ffmpeg/builder/options/input/ConcatIn
 import { HttpReconnectOptions } from '@/ffmpeg/builder/options/input/HttpReconnectOptions.js';
 import { InfiniteLoopInputOption } from '@/ffmpeg/builder/options/input/InfiniteLoopInputOption.js';
 import { ReadrateInputOption } from '@/ffmpeg/builder/options/input/ReadrateInputOption.js';
+import { SeekTimestampInputOption } from '@/ffmpeg/builder/options/input/SeekTimestampInputOption.js';
 import { StreamSeekInputOption } from '@/ffmpeg/builder/options/input/StreamSeekInputOption.js';
 import { UserAgentInputOption } from '@/ffmpeg/builder/options/input/UserAgentInputOption.js';
 import type { AudioState } from '@/ffmpeg/builder/state/AudioState.js';
@@ -861,6 +862,20 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
       this.audioInputSource?.addOption(option);
       this.videoInputSource.addOption(option);
 
+      // hls_direct_v2 runs the whole process under -copyts, which keeps
+      // the (un-seeked) subtitle output on the same absolute clock as the
+      // seeked video -- they're already aligned there, so seeking the
+      // subtitle input would only break that alignment.
+      if (
+        this.subtitleInputSource?.method === SubtitleMethods.Convert &&
+        this.ffmpegState.outputFormat.type === OutputFormatTypes.Hls
+      ) {
+        this.subtitleInputSource.addOptions(
+          new SeekTimestampInputOption(),
+          option,
+        );
+      }
+
       if (this.context.hasSubtitleTextContext()) {
         this.pipelineSteps.push(new StreamSeekFilter(this.ffmpegState.start));
       }
@@ -933,6 +948,7 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
                 this.ffmpegState.hlsBaseStreamUrl,
                 this.computeSubtitleMapRef(),
                 this.computeSubtitlePtsOffsetSeconds(),
+                this.ffmpegState.subtitleSegmentStartNumber ?? 0,
               ),
             );
           }
@@ -972,6 +988,7 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
                 this.ffmpegState.hlsBaseStreamUrl,
                 this.computeSubtitleMapRef(),
                 this.computeSubtitlePtsOffsetSeconds(),
+                this.ffmpegState.subtitleSegmentStartNumber ?? 0,
               ),
             );
           }

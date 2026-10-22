@@ -227,11 +227,49 @@ export class DirectMigrationProvider implements MigrationProvider {
         migration1777908252: makeMigrationFromSqlFile(
           './sql/0044_useful_groot.sql',
         ),
-        migration1781911575: makeMigrationFromSqlFile(
-          './sql/0045_premium_misty_knight.sql',
+        migration1779655043: makeMigrationFromSqlFile(
+          './sql/0045_lean_violations.sql',
         ),
+        // Fork migration. Its key predates upstream's 0046-0053, so it sorts
+        // and runs before them; databases that already applied it keep it
+        // under this name. Its SQL file is numbered after upstream's so the
+        // drizzle-kit journal stays linear.
+        migration1781911575: makeMigrationFromSqlFile(
+          './sql/0054_premium_misty_knight.sql',
+        ),
+        // Upstream's transcode_config rebuilds (0046, 0047) do not know about
+        // the fork's aspect_ratio_mode column, so carry it across each one.
+        migration1782772646: makeMigrationFromSqlFile([
+          './sql/fork/preserve_aspect_ratio_mode_before.sql',
+          './sql/0046_melted_captain_flint.sql',
+          './sql/fork/preserve_aspect_ratio_mode_after.sql',
+        ]),
+        // Fork migration, see migration1781911575.
         migration1789257600: makeMigrationFromSqlFile(
-          './sql/0046_episode_break_analysis.sql',
+          './sql/0055_episode_break_analysis.sql',
+        ),
+        migration1789851695: makeMigrationFromSqlFile([
+          './sql/fork/preserve_aspect_ratio_mode_before.sql',
+          './sql/0047_eac3_audio_format_constraint.sql',
+          './sql/fork/preserve_aspect_ratio_mode_after.sql',
+        ]),
+        migration1790033149: makeMigrationFromSqlFile(
+          './sql/0048_old_firestar.sql',
+        ),
+        migration1790034899: makeMigrationFromSqlFile(
+          './sql/0049_slim_toad_men.sql',
+        ),
+        migration1790035117: makeMigrationFromSqlFile(
+          './sql/0050_whole_molly_hayes.sql',
+        ),
+        migration1790105123: makeMigrationFromSqlFile(
+          './sql/0051_striped_marvel_apes.sql',
+        ),
+        migration1790271998: makeMigrationFromSqlFile(
+          './sql/0052_colorful_ken_ellis.sql',
+        ),
+        migration1791321608: makeMigrationFromSqlFile(
+          './sql/0053_real_raza.sql',
         ),
       } satisfies Record<string, TunarrDatabaseMigration>,
       wrapWithTransaction,

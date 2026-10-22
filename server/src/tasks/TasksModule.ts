@@ -23,6 +23,8 @@ import { bindAutoFactory, bindFactoryFunc } from '../util/inject.ts';
 import { LoggerFactory } from '../util/logging/LoggerFactory.ts';
 import { BackupTask } from './BackupTask.ts';
 import { ClearM3uCacheTask } from './ClearM3uCacheTask.ts';
+import type { UpdateJellyfinPlayStatusScheduledTaskFactory } from './jellyfin/UpdateJellyfinPlayStatusTask.ts';
+import { UpdateJellyfinPlayStatusScheduledTask } from './jellyfin/UpdateJellyfinPlayStatusTask.ts';
 import { NoopTask } from './NoopTask.ts';
 import type {
   UpdatePlexPlayStatusScheduledTaskFactory,
@@ -123,6 +125,21 @@ const TasksModule = new ContainerModule(({ bind }) => {
           request,
           sessionId,
         ),
+  );
+
+  bindFactoryFunc<
+    UpdateJellyfinPlayStatusScheduledTask,
+    Parameters<UpdateJellyfinPlayStatusScheduledTaskFactory>
+  >(
+    bind,
+    UpdateJellyfinPlayStatusScheduledTask.KEY,
+    (ctx) => (server, request, sessionId) =>
+      new UpdateJellyfinPlayStatusScheduledTask(
+        server,
+        request,
+        ctx.get<MediaSourceApiFactory>(MediaSourceApiFactory),
+        sessionId,
+      ),
   );
 
   bind(SubtitleExtractorTask).toSelf();

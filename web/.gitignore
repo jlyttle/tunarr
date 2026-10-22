@@ -23,4 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
-src/locales/messages.pot
+# Catalogs are compiled from .po on import by @lingui/vite-plugin
+src/locales/*/messages.ts
+src/locales/*/messages.js
+storybook-static
+/story-diff

@@ -9,6 +9,7 @@ import { eq } from 'drizzle-orm';
 import type { FastifyReply } from 'fastify';
 import { inject, injectable } from 'inversify';
 import { isEmpty, trimStart } from 'lodash-es';
+import { existsSync } from 'node:fs';
 import type stream from 'node:stream';
 import { MediaSourceDB } from '../db/mediaSourceDB.ts';
 import type { Artwork } from '../db/schema/Artwork.ts';
@@ -18,6 +19,7 @@ import { KEYS } from '../types/inject.ts';
 import { extractAxiosHeaders } from '../util/axios.ts';
 import { InjectLogger } from '../util/inject.ts';
 import type { Logger } from '../util/logging/LoggerFactory.ts';
+import { buildArtworkSourcePath } from './artworkSourcePath.ts';
 import { FeatureFlagService } from './FeatureFlagService.ts';
 import { ImageCache } from './ImageCache.ts';
 
@@ -25,6 +27,14 @@ export type ArtworkResult =
   | { kind: 'file'; path: string; artworkType: ArtworkType }
   | { kind: 'url'; url: string; headers?: Record<string, string> }
   | { kind: 'not-found' };
+
+const AnyArtworkFallbackOrder = [
+  'poster',
+  'thumbnail',
+  'fanart',
+  'landscape',
+  'banner',
+] as const satisfies ArtworkType[];
 
 @injectable()
 export class ArtworkService {
@@ -117,6 +127,8 @@ export class ArtworkService {
       type?: string;
       tvShowUuid?: string | null;
       albumUuid?: string | null;
+      externalKey?: string | null;
+      sourceType?: string | null;
     }> = await this.programDB.getProgramById(entityId);
 
     if (!entity) {
@@ -137,11 +149,85 @@ export class ArtworkService {
       art = await this.resolveParentArtwork(entity, artworkType, fallbackTypes);
     }
 
-    if (!art) {
+    if (art) {
+      return this.artworkToResult(art, entity.mediaSourceId);
+    }
+
+    const derived = await this.deriveArtworkFromSource(entity, artworkType);
+    if (derived.kind !== 'not-found') {
+      return derived;
+    }
+
+    // Serve any stored display image rather than nothing. Callers can't always
+    // know which types an item has, e.g. local other videos only carry a
+    // thumbnail.
+    const anyArt = this.findArtworkByType(
+      entity.artwork,
+      AnyArtworkFallbackOrder[0],
+      AnyArtworkFallbackOrder.slice(1),
+    );
+    if (anyArt) {
+      return this.artworkToResult(anyArt, entity.mediaSourceId);
+    }
+
+    return derived;
+  }
+
+  /**
+   * Builds the remote artwork URL from the item's own media source when no
+   * artwork row is stored.
+   *
+   * Without this an item that has never been through
+   * `BackfillProgramArtworkFixer` resolves to 404, and `XmlTvWriter` drops its
+   * `<icon>` and `<image>` entirely. The backfill stays useful as a way to
+   * persist and cache these paths, but nothing depends on it having finished.
+   */
+  private async deriveArtworkFromSource(
+    entity: {
+      mediaSourceId: MediaSourceId | null;
+      externalKey?: string | null;
+      sourceType?: string | null;
+    },
+    artworkType: ArtworkType,
+  ): Promise<ArtworkResult> {
+    const { mediaSourceId, externalKey, sourceType } = entity;
+
+    if (!mediaSourceId || !externalKey || !sourceType) {
       return { kind: 'not-found' };
     }
 
-    return this.artworkToResult(art, entity.mediaSourceId);
+    const mediaSource = await this.mediaSourceDB.getById(mediaSourceId);
+    if (!mediaSource) {
+      return { kind: 'not-found' };
+    }
+
+    const sourcePath = buildArtworkSourcePath(
+      mediaSource.uri,
+      externalKey,
+      sourceType,
+      this.logger,
+    );
+
+    if (sourcePath === undefined) {
+      return { kind: 'not-found' };
+    }
+
+    return this.artworkToResult(
+      {
+        uuid: '',
+        sourcePath,
+        artworkType,
+        programId: null,
+        groupingId: null,
+        cachePath: null,
+        creditId: null,
+        createdAt: null,
+        updatedAt: null,
+        blurHash43: null,
+        blurHash64: null,
+      },
+      mediaSourceId,
+    );
   }
 
   private async resolveCreditArtwork(
@@ -236,7 +322,13 @@ export class ArtworkService {
   ): Promise<ArtworkResult> {
     if (art.cachePath) {
       const path = this.imageCache.getImagePath(art.cachePath, art.artworkType);
-      return { kind: 'file', path, artworkType: art.artworkType };
+      // The cache directory is not part of the database, so the file can be
+      // gone while the row still points at it (a restored database, a deleted
+      // cache/, or the repro's copy mode, which skips cache/). Fall through to
+      // the source path instead of handing out a path that does not exist.
+      if (existsSync(path)) {
+        return { kind: 'file', path, artworkType: art.artworkType };
+      }
     }
 
     if (isHttpUrl(art.sourcePath)) {

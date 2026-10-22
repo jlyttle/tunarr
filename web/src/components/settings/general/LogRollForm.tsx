@@ -12,6 +12,7 @@ import {
   Typography,
 } from '@mui/material';
 import { TimePicker } from '@mui/x-date-pickers';
+import { defaultLogRollConfig } from '@tunarr/types';
 import type { EverySchedule } from '@tunarr/types/schemas';
 import dayjs from 'dayjs';
 import { useCallback } from 'react';
@@ -64,7 +65,9 @@ export const LogRollForm = () => {
           }
         />
         <FormHelperText>
-          <Trans>Enable rolling log files using time and/or size based criteria</Trans>
+          <Trans>
+            Enable rolling log files using time and/or size based criteria
+          </Trans>
         </FormHelperText>
       </FormControl>
       {enabled && (
@@ -99,17 +102,24 @@ export const LogRollForm = () => {
                 }
               />
               <FormHelperText>
-                <Trans>Roll the log file on a fixed schedule, regardless of file size.</Trans>
+                <Trans>
+                  Roll the log file on a fixed schedule, regardless of file
+                  size.
+                </Trans>
               </FormHelperText>
             </FormControl>
             {(currentBackupSchedule?.increment ?? 0) > 0 && (
               <Stack direction="row" alignItems="center" spacing={2}>
-                <Typography><Trans>Every</Trans></Typography>
+                <Typography>
+                  <Trans>Every</Trans>
+                </Typography>
                 <NumericFormControllerText
                   control={control}
                   name="logging.logRollConfig.schedule.increment"
                   prettyFieldName="Max Backups"
-                  rules={{ min: 1 }}
+                  // The rule outlives this field when it unmounts. Unticking
+                  // the schedule writes 0, and min: 1 would block every save.
+                  rules={{ min: 0 }}
                   TextFieldProps={{
                     sx: { width: '30%' },
                   }}
@@ -128,10 +138,16 @@ export const LogRollForm = () => {
                       sx={{ minWidth: '25%' }}
                     >
                       <MenuItem value="hour">
-                        {plural(currentBackupSchedule!.increment, { one: 'Hour', other: 'Hours' })}
+                        {plural(currentBackupSchedule!.increment, {
+                          one: 'Hour',
+                          other: 'Hours',
+                        })}
                       </MenuItem>
                       <MenuItem value="day">
-                        {plural(currentBackupSchedule!.increment, { one: 'Day', other: 'Days' })}
+                        {plural(currentBackupSchedule!.increment, {
+                          one: 'Day',
+                          other: 'Days',
+                        })}
                       </MenuItem>
                     </Select>
                   )}
@@ -167,23 +183,22 @@ export const LogRollForm = () => {
                     render={({ field }) => (
                       <Checkbox
                         checked={(field.value ?? 0) > 0}
-                        onChange={(_, checked) => {
-                          field.onChange(checked ? Math.pow(2, 20) : 0);
-                          setValue(
-                            'logging.logRollConfig.schedule.unit',
-                            'day',
-                            {
-                              shouldDirty: true,
-                            },
-                          );
-                        }}
+                        onChange={(_, checked) =>
+                          field.onChange(
+                            checked
+                              ? defaultLogRollConfig().maxFileSizeBytes
+                              : 0,
+                          )
+                        }
                       />
                     )}
                   />
                 }
               />
               <FormHelperText>
-                <Trans>Roll the log file on a fixed schedule, regardless of file size.</Trans>
+                <Trans>
+                  Roll the log file when it grows past the maximum size.
+                </Trans>
               </FormHelperText>
             </FormControl>
             <NumericFormControllerText

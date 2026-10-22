@@ -53,14 +53,18 @@ export class FfmpegPlaybackParamsCalculator {
 
     if (streamDetails.videoDetails) {
       const [videoStream] = streamDetails.videoDetails;
-      const aspectTransform = calculateAspectTransform(
-        this.transcodeConfig,
-        videoStream,
-      );
-      params.resizeMode = aspectTransform.resizeMode;
-      params.scaledSize = aspectTransform.scaledSize;
-      params.paddedSize = aspectTransform.paddedSize;
-      params.croppedSize = aspectTransform.croppedSize;
+      // A stored size of 0x0 means the size is unknown, so there is no aspect
+      // ratio to scale from.
+      if (videoStream.width > 0 && videoStream.height > 0) {
+        const aspectTransform = calculateAspectTransform(
+          this.transcodeConfig,
+          videoStream,
+        );
+        params.resizeMode = aspectTransform.resizeMode;
+        params.scaledSize = aspectTransform.scaledSize;
+        params.paddedSize = aspectTransform.paddedSize;
+        params.croppedSize = aspectTransform.croppedSize;
+      }
 
       params.videoPreset = match([
         this.transcodeConfig.hardwareAccelerationMode,

@@ -14,6 +14,7 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
+  DialogContentText,
   DialogTitle,
   IconButton,
   List,
@@ -35,6 +36,7 @@ import {
 import { useMediaSourceLibraries } from '../../../hooks/media-sources/useMediaSourceLibraries.ts';
 import { useDayjs } from '../../../hooks/useDayjs.ts';
 import type { Nullable } from '../../../types/util.ts';
+import { UnavailableLibraryChip } from '../../UnavailableLibraryIndicator.tsx';
 
 type Props = {
   mediaSource: Nullable<MediaSourceSettings>;
@@ -92,8 +94,17 @@ export const EditMediaSourceLibrariesDialog = ({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle><Trans>Manage Libraries</Trans></DialogTitle>
+      <DialogTitle>
+        <Trans>Manage Libraries</Trans>
+      </DialogTitle>
       <DialogContent>
+        <DialogContentText>
+          <Trans>
+            Tunarr only syncs content from enabled libraries. Choose the
+            libraries from {mediaSource.name} that you want to use in your
+            channels.
+          </Trans>
+        </DialogContentText>
         <List
           sx={{ width: '100%' }}
           subheader={
@@ -103,7 +114,7 @@ export const EditMediaSourceLibrariesDialog = ({
           }
         >
           {libraries?.map((library) => (
-            <ListItem key={library.id}>
+            <ListItem key={library.id} sx={{ gap: 1 }}>
               <ListItemIcon>
                 {getIconForLibraryType(library.mediaType)}
               </ListItemIcon>
@@ -112,6 +123,11 @@ export const EditMediaSourceLibrariesDialog = ({
               >
                 {library.name}
               </ListItemText>
+              {library.unavailableSince !== undefined && (
+                <UnavailableLibraryChip
+                  unavailableSince={library.unavailableSince}
+                />
+              )}
               {library.enabled && (
                 <Tooltip
                   placement="top"

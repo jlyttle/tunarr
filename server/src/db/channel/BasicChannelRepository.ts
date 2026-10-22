@@ -2,29 +2,32 @@ import { CacheImageService } from '@/services/cacheImageService.js';
 import { ChannelNotFoundError } from '@/types/errors.js';
 import { KEYS } from '@/types/inject.js';
 import { Result } from '@/types/result.js';
-import { Maybe } from '@/types/util.js';
+import type { Maybe } from '@/types/util.js';
 import dayjs from '@/util/dayjs.js';
-import type { SaveableChannel, Watermark } from '@tunarr/types';
+import type {
+  SaveableChannel,
+  UpdateChannelRequest,
+  Watermark,
+} from '@tunarr/types';
 import { desc, eq, sql } from 'drizzle-orm';
 import { inject, injectable } from 'inversify';
-import { Kysely } from 'kysely';
+import type { Kysely } from 'kysely';
 import { isEmpty, isNil, isUndefined, map, sum } from 'lodash-es';
-import { MarkRequired } from 'ts-essentials';
+import type { MarkRequired } from 'ts-essentials';
 import { v4 } from 'uuid';
 import { isDefined, isNonEmptyString } from '../../util/index.ts';
-import { ChannelAndLineup } from '../interfaces/IChannelDB.ts';
-import { Channel, NewChannelOrm } from '../schema/Channel.ts';
+import type { ChannelAndLineup } from '../interfaces/IChannelDB.ts';
+import type { NewChannelOrm } from '../schema/Channel.ts';
+import { Channel } from '../schema/Channel.ts';
 import { ChannelFillerShow } from '../schema/ChannelFillerShow.ts';
 import { ChannelPrograms } from '../schema/ChannelPrograms.ts';
 import type { DB } from '../schema/db.ts';
-import { ChannelOrmWithRelations } from '../schema/derivedTypes.ts';
+import type { ChannelOrmWithRelations } from '../schema/derivedTypes.ts';
 import type { DrizzleDBAccess } from '../schema/index.ts';
-import {
-  ChannelSubtitlePreferences,
-  NewChannelSubtitlePreferenceOrm,
-} from '../schema/SubtitlePreferences.ts';
-import { ChannelReadOpsRepository } from './ChannelReadOpsRepository.ts';
-import { LineupRepository } from './LineupRepository.ts';
+import type { NewChannelSubtitlePreferenceOrm } from '../schema/SubtitlePreferences.ts';
+import { ChannelSubtitlePreferences } from '../schema/SubtitlePreferences.ts';
+import type { ChannelReadOpsRepository } from './ChannelReadOpsRepository.ts';
+import type { LineupRepository } from './LineupRepository.ts';
 
 function sanitizeChannelWatermark(
   watermark: Maybe<Watermark>,
@@ -43,8 +46,16 @@ function sanitizeChannelWatermark(
   };
 }
 
+function roundToMinute(timestamp: number) {
+  return +dayjs(timestamp).startOf('minute');
+}
+
+// Duration is left out because it always follows the lineup. A settings form
+// loaded before a lineup change would otherwise write back a stale cycle.
+// startTime is written only when the request carries it, for the same reason.
+
 function updateRequestToChannel(
-  updateReq: SaveableChannel,
+  updateReq: UpdateChannelRequest,
 ): Partial<NewChannelOrm> {
   const sanitizedWatermark = sanitizeChannelWatermark(updateReq.watermark);
 
@@ -55,10 +66,12 @@ function updateRequestToChannel(
     guideMinimumDuration: updateReq.guideMinimumDuration,
     groupTitle: updateReq.groupTitle,
     disableFillerOverlay: updateReq.disableFillerOverlay,
-    startTime: +dayjs(updateReq.startTime).second(0).millisecond(0),
+    startTime:
+      updateReq.startTime !== undefined
+        ? roundToMinute(updateReq.startTime)
+        : undefined,
     offline: updateReq.offline,
     name: updateReq.name,
-    duration: updateReq.duration,
     stealth: updateReq.stealth,
     fillerRepeatCooldown: updateReq.fillerRepeatCooldown,
     guideFlexTitle: updateReq.guideFlexTitle,
@@ -184,13 +197,13 @@ export class BasicChannelRepository {
 
     return {
       channel,
-      lineup: (await this.lineupRepository.getFileDb(channel.uuid)).data,
+      lineup: await this.lineupRepository.loadLineup(channel.uuid),
     };
   }
 
   async updateChannel(
     id: string,
-    updateReq: SaveableChannel,
+    updateReq: UpdateChannelRequest,
   ): Promise<
     ChannelAndLineup<MarkRequired<ChannelOrmWithRelations, 'fillerShows'>>
   > {
@@ -218,6 +231,10 @@ export class BasicChannelRepository {
     this.drizzleDB.transaction((tx) => {
       tx.update(Channel).set(update).where(eq(Channel.uuid, id)).run();
 
+      tx.delete(ChannelFillerShow)
+        .where(eq(ChannelFillerShow.channelUuid, channel.uuid))
+        .run();
+
       if (!isEmpty(updateReq.fillerCollections)) {
         const channelFillerShows = map(
           updateReq.fillerCollections,
@@ -229,9 +246,6 @@ export class BasicChannelRepository {
           }),
         );
 
-        tx.delete(ChannelFillerShow)
-          .where(eq(ChannelFillerShow.channelUuid, channel.uuid))
-          .run();
         tx.insert(ChannelFillerShow).values(channelFillerShows).run();
       }
       const subtitlePreferences = updateReq.subtitlePreferences?.map(

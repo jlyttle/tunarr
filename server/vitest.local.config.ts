@@ -17,6 +17,7 @@ export default defineConfig({
     silent: false,
     reporters: ['verbose'],
     typecheck: {
+      checker: 'tsc',
       tsconfig: 'tsconfig.test.json',
     },
   },

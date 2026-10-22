@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Follow the contribution policy for AI agents in @AGENTS.md.
+
 ## Project Overview
 
 Tunarr is a live TV channel creation platform that allows users to create custom TV channels using media from local files or remote media servers such as Plex, Jellyfin, or Emby servers. It's a TypeScript monorepo using pnpm workspaces and Turbo for task running.
@@ -19,7 +21,7 @@ This is a monorepo with four main packages:
 
 - Never cast types using `as any`
 - Never use inline `import()` type annotations — use top-level `import type` statements instead
-- All edits must comply with the project's ESLint rules. Run `pnpm lint-changed` to verify before considering work complete
+- All edits must comply with the project's oxlint rules. Run `pnpm lint-changed` to verify before considering work complete
 - **Nullability checks**: For values typed `T | undefined` (not `T | null`), always use `!== undefined` — never `!= null`. The loose equality `!= null` catches both `null` and `undefined`, which is misleading when `null` is not a possible value. Reserve `!= null` for values that are genuinely `T | null | undefined`.
 - **No unguarded non-null assertions (`!`)**: Never use `!` to assert a value is non-null/non-undefined without first narrowing its type via a conditional check, early return, or explicit throw. If a value is optional, either guard it with an `if` check that narrows the type, or throw an explicit error explaining the invariant. The `!` operator silently crashes at runtime when the assumption is wrong.
 
@@ -33,10 +35,37 @@ This is a monorepo with four main packages:
 
 ### Version Control
 
-- The `main` branch creates "stable" releases. It should receive mainly receive `fix` commits.
-- The `dev` branch is for feature development. It receives `feat` commits and other large changes
+- Releases use CalVer (`YYYY.M.PATCH`), so the version says when a release shipped, not what changed.
+- The `main` branch creates "stable" releases. It receives fixes, chores, build/CI changes, docs, refactors, and small to medium features, including those with database migrations.
+- The `dev` branch creates prereleases. It is reserved for large features that need many prerelease iterations before they reach stable, such as infinite schedules or remote streaming sources.
+
+### Plans
+
+- Write all plans, designs, and audits to `plans/` at the repo root. Never use `.claude/plans/`.
+- Write issue investigations to `plans/investigations/`, named `issue-<n>-<slug>-YYYY-MM-DD.md`. These report whether a bug is real and why. A design that follows from one goes in `plans/`.
+- Name files `<topic>.md`, adding a date suffix (`-YYYY-MM-DD`) for point-in-time reports.
+- `.claude/settings.json` sets `plansDirectory` to `plans`, so plan-mode plans land there too.
+
+### PR Review Labels
+
+The maintainer cannot approve their own PRs on GitHub, so review agents record their verdict with labels.
+
+| Label               | Meaning                                        |
+| ------------------- | ---------------------------------------------- |
+| `approved`          | Reviewed and ready to merge                    |
+| `changes requested` | Review found issues; the PR needs another pass |
+
+- A reviewer sets exactly one of these labels and removes the other.
+- A reviewer also leaves a comment with the findings. The label carries the verdict and the comment carries the reasons.
+- Whoever pushes new commits to an `approved` PR removes the label, because nobody has reviewed the new code.
+- An author who addresses the findings removes `changes requested` so the PR returns to review.
+- Only merge a PR labeled `approved`.
+- Commands: `gh pr edit <n> --add-label approved --remove-label "changes requested"` and the reverse.
 
 ### Common Commands
+
+- Build and typecheck through Turbo (`pnpm turbo build`, `pnpm turbo typecheck`). Turbo rebuilds the packages a package depends on first.
+- To check a single package directly, run its own script (`pnpm typecheck` / `pnpm build` inside the package). These use `tsc -p tsconfig.build.json`. Never run a bare `tsc` without `-p tsconfig.build.json`, because the default `tsconfig.json` pulls in test files the build excludes.
 
 ```bash
 # Install dependencies
@@ -63,6 +92,9 @@ pnpm lint-changed
 # Run the typechecker
 pnpm turbo typecheck
 
+# Build the working tree into a Docker image and run it (see docker/test/)
+pnpm docker-test
+
 # Server-specific commands
 cd server
 pnpm dev              # Start server with tsx watch
@@ -70,6 +102,7 @@ pnpm debug            # Start server with debugger
 pnpm kysely           # Run Kysely CLI for database operations
 pnpm tunarr           # Run CLI commands (see src/cli/commands.ts)
 pnpm generate-openapi # Generate OpenAPI spec
+pnpm resolve-migrations # Regenerate this branch's migration after a merge/rebase conflict
 
 # Web-specific commands
 cd web
@@ -104,7 +137,7 @@ pnpm regen-routes     # Regenerate TanStack Router routes
   - `scheduling/` - Channel scheduling logic
   - `startup/` - Startup tasks
 - `stream/` - Video streaming pipeline (HLS, concat streams, FFmpeg integration)
-  - Organized by media source (plex/, jellyfin/, emby/, local/)
+  - Organized by session type (`hls/`, `ConcatSession`); source-specific logic lives in stream details fetchers and `plugins/`
 - `ffmpeg/` - FFmpeg wrapper and pipeline builder
 - `external/` - External API clients for Plex, Jellyfin, Emby
 - `tasks/` - Background tasks and fixers
@@ -172,15 +205,26 @@ The web app uses a generated API client (`generated/`) created from the server's
 
 ## Testing
 
+- **Every code change ships with unit tests.** A bug fix adds a test that fails without the fix. If the logic sits in a private method or behind heavy dependencies, move it into a small exported function and test that.
 - **Vitest** is used for testing across all packages
 - Test files use `.test.ts` extension
 - Run tests with `pnpm turbo test` or `pnpm test:watch` for watch mode
 - Server tests often use `@faker-js/faker` for test data generation
 
+### E2E route sweep (`e2e/`)
+
+- Playwright suite that visits every web route against a seeded server. Local only; CI does not run it yet.
+- Run with `cd e2e && pnpm e2e`. First time only: `pnpm e2e:install-browsers`. Needs `ffmpeg` on the PATH and the Meilisearch binary (`cd server && pnpm install-meilisearch`).
+- Uses its own ports (server 18000, search 17700, web 15173), so it can run beside `pnpm turbo dev`.
+- The fixture is rebuilt on every run: generated test clips, three local media sources, three channels, a custom show, a filler list, and a smart collection (`e2e/fixture/seed.ts`).
+- A route fails on uncaught exceptions, `console.error` output (including React warnings), 5xx API responses, or the error page.
+- New routes must be added to `e2e/tests/routes.ts`; a coverage test compares it against `routeTree.gen.ts`.
+- Pre-existing warnings are listed per route in `e2e/tests/knownIssues.ts`. Remove an entry when its cause is fixed.
+
 ## Code Style
 
 - Prettier for formatting (config in root `package.json`)
-- ESLint for linting (eslint 9.x with flat config)
+- oxlint for linting (config in `.oxlintrc.json` at the root, extended per package)
 - Husky + lint-staged for pre-commit hooks
 - Import aliases: Use `@/` for server, web has configured path aliases
 
@@ -199,11 +243,16 @@ The web app uses a generated API client (`generated/`) created from the server's
 - Use dependency injection to get database instances
 - All database schema changes should have migrations generated via `pnpm drizzle-kit generate`
 
+### When Working with Slot Schedules:
+
+- Time slots and random slots are being deprecated in favor of infinite schedules (`architecture/infinite-schedules/README.md`, "Deprecation plan").
+- A PR that adds or changes classic slot-scheduler behavior must add a row to `architecture/infinite-schedules/parity-checklist.md`.
+
 ### When Working with Streaming:
 
 - Streaming logic is complex - see `stream/` directory
 - Sessions are managed by `SessionManager`
-- Different stream types: `VideoStream`, `ConcatStream`, `DirectStreamSession`
+- Different stream types: `VideoStream`, `ConcatSession`, `DirectStreamSession`
 - FFmpeg pipeline is built using builder pattern in `ffmpeg/builder/`
 
 ### When Working with External Media Sources:

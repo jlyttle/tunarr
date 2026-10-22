@@ -18,9 +18,12 @@ import type {
   Nullable,
   PagedResult,
 } from '@/types/util.js';
+import type { UpdateLineupResult } from '@/db/channel/LineupRepository.js';
 import type {
   CondensedChannelProgramming,
+  ContentProgram,
   SaveableChannel,
+  UpdateChannelRequest,
 } from '@tunarr/types';
 import type { UpdateChannelProgrammingRequest } from '@tunarr/types/api';
 import type { ContentProgramType } from '@tunarr/types/schemas';
@@ -98,7 +101,7 @@ export interface IChannelDB {
 
   updateChannel(
     id: string,
-    updateReq: SaveableChannel,
+    updateReq: UpdateChannelRequest,
   ): Promise<
     ChannelAndLineup<MarkRequired<ChannelOrmWithRelations, 'fillerShows'>>
   >;
@@ -135,7 +138,17 @@ export interface IChannelDB {
   updateLineup(
     id: string,
     req: UpdateChannelProgrammingRequest,
-  ): Promise<Nullable<{ channel: ChannelOrm; newLineup: LineupItem[] }>>;
+  ): Promise<Nullable<UpdateLineupResult>>;
+
+  /**
+   * Builds a condensed lineup from programs the caller already materialized,
+   * skipping the program query and materialization that dominate
+   * `loadCondensedLineup`.
+   */
+  condensedLineupFromMaterialized(
+    channelId: string,
+    materializedPrograms: Record<string, ContentProgram>,
+  ): Promise<CondensedChannelProgramming | null>;
 
   saveLineup(
     channelId: string,
@@ -158,7 +171,9 @@ export interface IChannelDB {
     programIds: string[],
   ): Promise<void>;
 
-  removeProgramsFromAllLineups(programIds: string[]): Promise<void>;
+  removeProgramsFromAllLineups(
+    programIds: ReadonlySet<string> | string[],
+  ): Promise<number>;
 
   loadAllLineupConfigs(
     forceRead?: boolean,
@@ -195,8 +210,8 @@ export interface IChannelDB {
   findChannelsForProgramId(programId: string): Promise<ChannelOrm[]>;
 }
 export type UpdateChannelLineupRequest = MarkOptional<
-  MarkNullable<Omit<Lineup, 'lastUpdated'>, 'schedule'>,
-  'version' | 'onDemandConfig' | 'items' | 'startTimeOffsets'
+  MarkNullable<Omit<Lineup, 'lastUpdated'>, 'schedule' | 'scheduleSeed'>,
+  'version' | 'onDemandConfig' | 'items' | 'startTimeOffsets' | 'scheduleSeed'
 >;
 
 export type PageParams = {

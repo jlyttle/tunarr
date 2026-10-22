@@ -2,8 +2,7 @@ import { inject, injectable } from 'inversify';
 import { MediaSourceDB } from '../db/mediaSourceDB.ts';
 import { MeilisearchService } from '../services/MeilisearchService.ts';
 import { InjectLogger } from '../util/inject.ts';
-import { Logger } from '../util/logging/LoggerFactory.ts';
-import { ReconcileProgramDurationsTask } from './ReconcileProgramDurationsTask.ts';
+import type { Logger } from '../util/logging/LoggerFactory.ts';
 import { SimpleTask } from './Task.ts';
 import { simpleTaskDef } from './TaskRegistry.ts';
 
@@ -14,10 +13,10 @@ import { simpleTaskDef } from './TaskRegistry.ts';
     'Removes programs from the search index that have media sources which do not exist in the database',
 })
 export class RemoveDanglingProgramsFromSearchTask extends SimpleTask {
-  static ID = ReconcileProgramDurationsTask.name;
-  public ID = ReconcileProgramDurationsTask.name;
+  static ID = RemoveDanglingProgramsFromSearchTask.name;
+  public ID = RemoveDanglingProgramsFromSearchTask.ID;
 
-  @InjectLogger() protected declare readonly logger: Logger;
+  @InjectLogger() declare protected readonly logger: Logger;
 
   constructor(
     @inject(MediaSourceDB) private mediaSourceDB: MediaSourceDB,

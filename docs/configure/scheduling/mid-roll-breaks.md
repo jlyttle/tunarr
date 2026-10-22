@@ -55,14 +55,29 @@ Break duration can be configured in two modes:
 - **Fixed**: Every break has the same duration (e.g., 3 minutes).
 - **Range**: Each break's duration is randomly chosen between a minimum and maximum value (e.g., 2–5 minutes). This makes breaks feel less mechanical.
 
+In a time slot, breaks only use the slot's spare time, which is the padding and flex left after its programs. They never push the slot past its end, so the next slot still starts on time. When the spare time runs low, a break is shortened to fit, but never below the minimum break duration (or the fixed duration). A break that cannot fit at that length is dropped, along with the rest of that program's breaks. For example, a 53-minute episode in a one-hour slot gets at most 7 minutes of breaks. A program's breaks use its own padding first, so the programs after it keep their start times.
+
 ## Limits and Filters
 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | **Max Breaks** | Maximum number of breaks per program. 0 = unlimited. | 0 |
-| **Minimum Program Duration** | Programs shorter than this are skipped entirely. | 60 minutes |
+| **Minimum Program Duration** | Programs shorter than this are skipped entirely. | Fitted to the slot |
 | **Tail Buffer** | Minimum amount of content preserved at the end of the program before the credits. No breaks are inserted within this window. | 0 |
 | **Program Types** | Restrict mid-roll to specific content types (Movies, Episodes, Music Tracks, Music Videos, Other Videos). Empty = all types. | All |
+
+### Starting Values
+
+When mid-roll is first enabled on a slot, the interval and minimum program
+duration are fitted to the programs that slot actually draws from: the interval
+aims for about two breaks in a program of typical length, and the minimum sits
+at or below the shortest program in the pool, so none of the slot's own content
+is skipped. A slot whose pool cannot be measured — a smart collection, or a
+channel whose programs have not loaded — starts at a 15 minute interval and a
+20 minute minimum.
+
+These are starting values, not rules. Raise the minimum to leave shorter
+programs whole.
 
 ## Scheduling Strategy
 
@@ -74,6 +89,8 @@ Filler is selected at **schedule generation time**. The specific filler programs
 
 - The TV guide shows the actual filler titles during breaks.
 - Filler selection uses cooldown state from the time the schedule was generated.
+- Any part of a break that the filler lists cannot fill becomes flex. It is still
+  break time, so the TV guide labels it "Commercial Break".
 
 ### Lazy
 
@@ -85,6 +102,13 @@ Filler selection is deferred to **stream time** — the moment a viewer is actua
 
 !!! tip
     Use the **Lazy** strategy if you want the most variety in your filler content. Because filler is picked at playback time, the system has up-to-date knowledge of what has recently played and can avoid repeats more effectively.
+
+## In the Lineup Editor
+
+A program that was split by mid-roll breaks appears as a single collapsed row in
+the channel's program list, labelled with the number of breaks and showing where
+they fall across the program. Expand the row to see each segment and each break
+on its own line. This applies to both strategies.
 
 ## Example Configuration
 

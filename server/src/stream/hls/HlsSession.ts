@@ -9,6 +9,7 @@ import {
 } from '@/ffmpeg/builder/constants.js';
 import type { OnDemandChannelService } from '@/services/OnDemandChannelService.js';
 import { PlayerContext } from '@/stream/PlayerStreamContext.js';
+import type { StopOptions } from '@/stream/Session.js';
 import type { StreamProgramCalculator } from '@/stream/StreamProgramCalculator.js';
 import type { HlsSlowerSession } from '@/stream/hls/HlsSlowerSession.js';
 import type {
@@ -28,10 +29,21 @@ import path, { basename, dirname, extname } from 'node:path';
 import type { DeepRequired } from 'ts-essentials';
 import type { ProgramStreamFactory } from '../ProgramStreamFactory.ts';
 import type { BaseHlsSessionOptions } from './BaseHlsSession.js';
-import { BaseHlsSession } from './BaseHlsSession.js';
+import { BaseHlsSession, SegmentNameRegex } from './BaseHlsSession.js';
 import { HlsMasterPlaylistMutator } from './HlsMasterPlaylistMutator.js';
-import type { HlsPlaylistFilterOptions } from './HlsPlaylistMutator.js';
+import type {
+  FilterBeforeSegmentNumber,
+  HlsPlaylistFilterOptions,
+} from './HlsPlaylistMutator.js';
 import { HlsPlaylistMutator } from './HlsPlaylistMutator.js';
+import type { Cue } from './HlsSubtitlePlaylist.js';
+import {
+  firstNeededCueFile,
+  parseCues,
+  segmentWindows,
+  subtitlePlaylistFromVideo,
+  subtitleWindowVtt,
+} from './HlsSubtitlePlaylist.js';
 
 export type HlsSessionProvider = (
   channel: ChannelOrmWithTranscodeConfig,
@@ -56,6 +68,21 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
   #hlsPlaylistMutator: HlsPlaylistMutator = new HlsPlaylistMutator();
   #currentSession: Maybe<FfmpegTranscodeSession>;
   #lastDelete: Dayjs = dayjs().subtract(1, 'year');
+  #lastSubtitleDelete: Dayjs = dayjs().subtract(1, 'year');
+  // Every video segment numbered below this has been deleted. ffmpeg's
+  // stream.m3u8 still lists them, so trimmed playlists must start at or above
+  // the floor. Subtitles need no floor. Their muxer keeps a 20-entry window
+  // (HlsSubtitleOutputFormat), and that window is also the deletion boundary,
+  // so subs.m3u8 never lists a pruned .vtt.
+  #segmentFloor = 0;
+  #lastServedPlaylist: string | undefined;
+
+  // Session time, in seconds, of the first entry in the on-disk stream.m3u8.
+  // Anything that trims that file must add the removed segments' EXTINF
+  // durations here, or subtitle windows shift.
+  #playlistStartOffset = 0;
+
+  #cueFiles = new Map<number, Cue[]>();
   #isFirstTranscode = true;
   #lastDiscontinuitySequence: number | undefined;
   #currentSubtitleRendition: SubtitleRenditionInfo | undefined;
@@ -116,7 +143,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
       type: 'before_segment_number',
       segmentNumber: this.minSegmentRequested,
       segmentsToKeepBefore: 10,
-      // segmentFloor: this.#highestDeletedBelow,
+      segmentFloor: this.#segmentFloor,
     };
     return Result.attemptAsync(async () => {
       return await this.lock.runExclusive(async () => {
@@ -134,6 +161,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
             },
           );
           this.#lastDiscontinuitySequence = trimResult.discontinuitySequence;
+          this.#lastServedPlaylist = trimResult.playlist;
           const now = dayjs();
           if (now.isAfter(this.#lastDelete.add(30, 'seconds'))) {
             this.logger.debug(
@@ -141,9 +169,17 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
               this.channel.uuid,
               this.channel.number,
             );
-            this.deleteOldSegments(trimResult.sequence).catch((e) =>
-              this.logger.error(e),
+
+            // A playlist of 20 or fewer entries skips the filter, so its
+            // sequence can fall below the floor.
+            this.#segmentFloor = Math.max(
+              this.#segmentFloor,
+              trimResult.sequence,
             );
+            this.deleteOldSegmentFiles(trimResult.sequence, [
+              '.ts',
+              '.mp4',
+            ]).catch((e) => this.logger.error(e));
             this.#lastDelete = now;
           }
 
@@ -153,6 +189,140 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
         this.logger.trace(
           'No playlist for HLS sessions at %s',
           this._m3u8PlaylistPath,
+        );
+        return;
+      });
+    });
+  }
+
+  /**
+   * Subtitle playlist aligned segment for segment with the last video playlist
+   * served. The segment muxer only writes a .vtt when there is a cue, so its
+   * own playlist covers far less time than the video and players that lay
+   * segments out by EXTINF (AVPlayer) never show the cues. Transcoded HLS
+   * only: hls_direct_v2 keeps cues on the source clock (-copyts).
+   */
+  async alignedSubtitlePlaylist() {
+    if (this.#lastServedPlaylist === undefined) {
+      const trimmed = await this.trimPlaylist();
+      if (trimmed.isFailure()) {
+        throw trimmed.error;
+      }
+    }
+    const served = this.#lastServedPlaylist;
+    if (served === undefined) {
+      return;
+    }
+    await this.pruneCueFiles(served);
+    return subtitlePlaylistFromVideo(served);
+  }
+
+  /** WebVTT holding the cues that start inside video segment `segmentNumber`. */
+  async subtitleWindow(segmentNumber: number) {
+    const window = await this.segmentWindow(segmentNumber);
+    if (!window) {
+      return;
+    }
+    const cueFiles = await this.readCueFiles();
+    return subtitleWindowVtt([...cueFiles.values()].flat(), ...window);
+  }
+
+  private async segmentWindow(segmentNumber: number) {
+    const playlistLines = await this.readPlaylist();
+    return playlistLines
+      ? segmentWindows(playlistLines.join('\n'), this.#playlistStartOffset).get(
+          segmentNumber,
+        )
+      : undefined;
+  }
+
+  private async readCueFiles() {
+    const files = seq.collect(
+      await fs.readdir(this._workingDirectory),
+      (file) => {
+        const n = file.match(/^sub(\d+)\.vtt$/)?.[1];
+        return n === undefined ? undefined : ([parseInt(n), file] as const);
+      },
+    );
+    const newest = Math.max(...files.map(([n]) => n));
+    const cueFiles = new Map<number, Cue[]>();
+    for (const [n, file] of files) {
+      // ffmpeg may still be writing the newest file; older ones are final.
+      const cues =
+        (n === newest ? undefined : this.#cueFiles.get(n)) ??
+        parseCues(
+          await fs
+            .readFile(path.join(this._workingDirectory, file), 'utf-8')
+            .catch(() => ''),
+        );
+      if (n !== newest) {
+        this.#cueFiles.set(n, cues);
+      }
+      cueFiles.set(n, cues);
+    }
+    return cueFiles;
+  }
+
+  private async pruneCueFiles(servedPlaylist: string) {
+    const now = dayjs();
+    if (!now.isAfter(this.#lastSubtitleDelete.add(30, 'seconds'))) {
+      return;
+    }
+    this.#lastSubtitleDelete = now;
+    const firstSegment = servedPlaylist.match(
+      /#EXT-X-MEDIA-SEQUENCE:(\d+)/,
+    )?.[1];
+    const window =
+      firstSegment === undefined
+        ? undefined
+        : await this.segmentWindow(parseInt(firstSegment));
+    if (!window) {
+      return;
+    }
+    const keepFrom = firstNeededCueFile(await this.readCueFiles(), window[0]);
+    if (keepFrom === undefined) {
+      return;
+    }
+    for (const n of this.#cueFiles.keys()) {
+      if (n < keepFrom) {
+        this.#cueFiles.delete(n);
+      }
+    }
+    this.deleteOldSegmentFiles(keepFrom, ['.vtt']).catch((e) =>
+      this.logger.error(e),
+    );
+  }
+
+  async trimSubtitlePlaylist(filterOpts?: FilterBeforeSegmentNumber) {
+    filterOpts ??= {
+      type: 'before_segment_number',
+      segmentNumber: this.minSubtitleSegmentRequested,
+      segmentsToKeepBefore: 10,
+    };
+    return Result.attemptAsync(async () => {
+      return await this.lock.runExclusive(async () => {
+        const playlistLines = await this.readSubtitlePlaylist();
+        if (playlistLines) {
+          const trimResult = this.#hlsPlaylistMutator.trimSubtitlePlaylist(
+            playlistLines,
+            filterOpts,
+            { maxSegmentsToKeep: 20 },
+          );
+
+          const now = dayjs();
+          if (now.isAfter(this.#lastSubtitleDelete.add(30, 'seconds'))) {
+            this.deleteOldSegmentFiles(trimResult.sequence, ['.vtt']).catch(
+              (e) => this.logger.error(e),
+            );
+            this.#lastSubtitleDelete = now;
+          }
+
+          return trimResult;
+        }
+
+        this.logger.trace(
+          'No subtitle playlist for HLS sessions at %s',
+          this._subtitlePlaylistPath,
         );
         return;
       });
@@ -200,18 +370,16 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     // (e.g. via endSession). If the session is already stopped, its cleanup
     // has been handled and scheduling another timer would risk deleting a
     // replacement session that now occupies the same map key.
-    if (this.state !== 'stopped') {
+    if (!this.stoppingOrStopped) {
       this.scheduleCleanup();
     }
   }
 
-  protected async stopInternal(): Promise<void> {
+  protected async stopInternal(options: StopOptions): Promise<void> {
     try {
-      await this.stopStream();
+      await this.stopStream(options);
     } catch (e) {
       this.logger.error(e, 'Error while shutting down session');
-    } finally {
-      this.state = 'stopped';
     }
   }
 
@@ -221,6 +389,13 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
       this.sessionOptions.streamMode === 'hls_direct_v2'
         ? 0
         : await this.getPtsOffset();
+    // Unlike ptsOffset, this applies regardless of isFirstTranscode/
+    // streamMode: scanning a fresh/empty working directory already
+    // naturally yields 0, and hls_direct_v2's subs.m3u8 has the same
+    // restart-numbering problem as hls (only the video/audio -copyts
+    // handling is hls_direct_v2-specific).
+    const subtitleSegmentStartNumber =
+      await this.getLastSubtitleSegmentNumber();
 
     const lineupItemResult = await this.programCalculator.getCurrentLineupItem({
       allowSkip: true,
@@ -248,7 +423,11 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
         },
       );
 
-      let programStream = this.getProgramStream(context, ptsOffset);
+      let programStream = this.getProgramStream(
+        context,
+        ptsOffset,
+        subtitleSegmentStartNumber,
+      );
 
       programStream.on('error', () => {
         this.state = 'error';
@@ -277,6 +456,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
             this.sessionType,
           ),
           ptsOffset,
+          subtitleSegmentStartNumber,
         );
 
         transcodeSessionResult = await programStream.setup();
@@ -286,6 +466,12 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
           this.error = transcodeSessionResult.error;
           this.emit('error', this.error);
         }
+      }
+
+      // A stop that landed during setup has already killed the previous
+      // transcode. Starting this one would leave an ffmpeg nothing kills.
+      if (this.state !== 'started') {
+        return;
       }
 
       transcodeSessionResult.forEach((transcodeSession) => {
@@ -336,7 +522,11 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     };
   }
 
-  private getProgramStream(context: PlayerContext, ptsOffset: Maybe<number>) {
+  private getProgramStream(
+    context: PlayerContext,
+    ptsOffset: Maybe<number>,
+    subtitleSegmentStartNumber: Maybe<number>,
+  ) {
     const hlsOptions = this.getHlsOptions();
 
     const outputFormat =
@@ -347,6 +537,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     return this.programStreamFactory(context, outputFormat, {
       ptsOffset,
       isFirstTranscode: this.#isFirstTranscode,
+      subtitleSegmentStartNumber,
     });
   }
 
@@ -404,9 +595,45 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     return;
   }
 
+  private async getLastSubtitleSegmentNumber(): Promise<number> {
+    const workingDirectoryFiles = await Result.attemptAsync(() =>
+      fs.readdir(this._workingDirectory),
+    );
+
+    if (workingDirectoryFiles.isFailure()) {
+      this.logger.error(workingDirectoryFiles.error);
+      return 0;
+    }
+
+    const numbers = seq.collect(
+      filter(workingDirectoryFiles.get(), (f) => extname(f) === '.vtt'),
+      (file) => {
+        const matches = file.match(SegmentNameRegex);
+        if (!matches || matches.length < 2) {
+          return;
+        }
+        const n = parseInt(matches[1]!);
+        return isNaN(n) ? undefined : n;
+      },
+    );
+
+    if (isEmpty(numbers)) {
+      return 0;
+    }
+
+    return Math.max(...numbers) + 1;
+  }
+
   isStale(): boolean {
     const remainingConnections = this.removeStaleConnections();
     return isEmpty(remainingConnections);
+  }
+
+  private get _subtitlePlaylistPath() {
+    return path.join(
+      this._workingDirectory,
+      this.getHlsOptions().subtitleStreamNameFormat,
+    );
   }
 
   private async readPlaylist() {
@@ -421,23 +648,39 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     return playlistContents.toString().split('\n');
   }
 
-  private async deleteOldSegments(sequenceNum: number) {
+  private async readSubtitlePlaylist() {
+    if (!(await fileExists(this._subtitlePlaylistPath))) {
+      return;
+    }
+
+    const playlistContents = await fs.readFile(this._subtitlePlaylistPath, {
+      encoding: 'utf-8',
+    });
+
+    return playlistContents.toString().split('\n');
+  }
+
+  private async deleteOldSegmentFiles(
+    sequenceNum: number,
+    extensions: string[],
+  ) {
     const workingDirectoryFiles = await fs.readdir(this._workingDirectory);
     const segments = filter(
       seq.collect(
-        filter(workingDirectoryFiles, (f) => {
-          const ext = extname(f);
-          return ext === '.ts' || ext === '.mp4' || ext === '.vtt';
-        }),
+        filter(workingDirectoryFiles, (f) => extensions.includes(extname(f))),
         (file) => {
-          const matches = file.match(/[A-z/]+(\d+)\.[ts|mp4]/);
-          if (matches && matches.length > 0) {
-            return {
-              file,
-              seq: parseInt(matches[1]!),
-            };
+          const matches = file.match(SegmentNameRegex);
+          if (!matches || matches.length < 2) {
+            return;
           }
-          return;
+          const n = parseInt(matches[1]!);
+          if (isNaN(n)) {
+            return;
+          }
+          return {
+            file,
+            seq: n,
+          };
         },
       ),
       ({ seq }) => seq < sequenceNum,
@@ -460,9 +703,10 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     }
   }
 
-  protected async stopStream(): Promise<void> {
+  protected async stopStream(options: StopOptions): Promise<void> {
     if (this.#currentSession) {
       this.#currentSession.kill();
+      await this.waitForExit(this.#currentSession, options);
     }
 
     this.logger.debug(

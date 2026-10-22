@@ -1058,4 +1058,294 @@ describe('HlsPlaylistMutator', () => {
       expect(parsed[0]?.type).toBe('segment');
     });
   });
+
+  describe('parseSubtitlePlaylist', () => {
+    // The `segment` muxer's HLS list output has no #EXT-X-PROGRAM-DATE-TIME
+    // lines and no discontinuity tags — just EXTINF + filename pairs.
+    function createSubtitlePlaylist(
+      durations: number[],
+      startNum = 0,
+    ): string[] {
+      const lines = [
+        '#EXTM3U',
+        '#EXT-X-VERSION:3',
+        '#EXT-X-TARGETDURATION:4',
+        `#EXT-X-MEDIA-SEQUENCE:${startNum}`,
+      ];
+      durations.forEach((duration, i) => {
+        lines.push(
+          `#EXTINF:${duration.toFixed(6)},`,
+          `/stream/channels/test-channel/hls/sub${String(startNum + i).padStart(6, '0')}.vtt`,
+        );
+      });
+      return lines;
+    }
+
+    it('parses EXTINF + filename pairs with no program-date-time or discontinuity lines', () => {
+      const lines = createSubtitlePlaylist([4, 4, 4]);
+
+      const result = new HlsPlaylistMutator().parseSubtitlePlaylist(lines);
+
+      expect(result).toHaveLength(3);
+      expect(result[0]?.segmentNumber).toBe(0);
+      expect(result[1]?.segmentNumber).toBe(1);
+      expect(result[2]?.segmentNumber).toBe(2);
+    });
+
+    it('parses variable segment durations', () => {
+      const lines = createSubtitlePlaylist([7, 2, 2]);
+
+      const result = mutator.parseSubtitlePlaylist(lines);
+
+      expect(result.map((s) => s.duration)).toEqual([7, 2, 2]);
+    });
+  });
+
+  describe('trimSubtitlePlaylist', () => {
+    function subtitlePeriods(playlist: string) {
+      let period = 0;
+      const segments: { uri: string; period: number }[] = [];
+      for (const line of playlist.split('\n')) {
+        if (line.startsWith('#EXT-X-DISCONTINUITY-SEQUENCE:')) {
+          period = Number(line.slice(line.indexOf(':') + 1));
+        } else if (line === '#EXT-X-DISCONTINUITY') {
+          period++;
+        } else if (line.endsWith('.vtt')) {
+          segments.push({ uri: line, period });
+        }
+      }
+      return segments;
+    }
+
+    function createSubtitlePlaylist(
+      durations: number[],
+      startNum = 0,
+    ): string[] {
+      const lines = [
+        '#EXTM3U',
+        '#EXT-X-VERSION:3',
+        '#EXT-X-TARGETDURATION:4',
+        `#EXT-X-MEDIA-SEQUENCE:${startNum}`,
+      ];
+      durations.forEach((duration, i) => {
+        lines.push(
+          `#EXTINF:${duration.toFixed(6)},`,
+          `/stream/channels/test-channel/hls/sub${String(startNum + i).padStart(6, '0')}.vtt`,
+        );
+      });
+      return lines;
+    }
+
+    it('reports a media sequence derived from the retained segments, not always 0', () => {
+      const lines = createSubtitlePlaylist(Array(15).fill(4), 20);
+
+      const result = mutator.trimSubtitlePlaylist(
+        lines,
+        {
+          type: 'before_segment_number',
+          segmentNumber: 34,
+          segmentsToKeepBefore: 10,
+        },
+        { maxSegmentsToKeep: 10 },
+      );
+
+      expect(result.sequence).toBeGreaterThan(0);
+      expect(result.playlist).toContain(
+        `#EXT-X-MEDIA-SEQUENCE:${result.sequence}`,
+      );
+      expect(result.segmentCount).toBeLessThanOrEqual(10);
+    });
+
+    it('keeps all segments when under the max, starting at segment 0', () => {
+      const lines = createSubtitlePlaylist([4, 4, 4]);
+
+      const result = mutator.trimSubtitlePlaylist(
+        lines,
+        {
+          type: 'before_segment_number',
+          segmentNumber: 0,
+          segmentsToKeepBefore: 10,
+        },
+        { maxSegmentsToKeep: 10 },
+      );
+
+      expect(result.sequence).toBe(0);
+      expect(result.segmentCount).toBe(3);
+      expect(result.playlist).toContain('#EXT-X-MEDIA-SEQUENCE:0');
+    });
+
+    it('recomputes the target duration from the largest retained segment instead of a nominal value', () => {
+      // First segment is unusually long (sparse cues) — must not be
+      // under-reported as the nominal 4s segment_time.
+      const lines = createSubtitlePlaylist([7, 2, 2]);
+
+      const result = mutator.trimSubtitlePlaylist(
+        lines,
+        {
+          type: 'before_segment_number',
+          segmentNumber: 0,
+          segmentsToKeepBefore: 10,
+        },
+        { maxSegmentsToKeep: 10 },
+      );
+
+      expect(result.playlist).toContain('#EXT-X-TARGETDURATION:7');
+    });
+
+    it('preserves the subtitle transition written alongside the video playlist', () => {
+      const lines = createSubtitlePlaylist([4, 4, 4]);
+      lines.splice(4, 0, '#EXT-X-DISCONTINUITY-SEQUENCE:7');
+      lines.splice(7, 0, '#EXT-X-DISCONTINUITY');
+      const result = mutator.trimSubtitlePlaylist(
+        lines,
+        {
+          type: 'before_segment_number',
+          segmentNumber: 0,
+          segmentsToKeepBefore: 0,
+        },
+        { maxSegmentsToKeep: 20 },
+      );
+      expect(result.playlist).toContain('#EXT-X-DISCONTINUITY-SEQUENCE:7');
+      expect(result.playlist).toContain(
+        'sub000000.vtt\n#EXT-X-DISCONTINUITY\n#EXTINF:4.000000,',
+      );
+    });
+
+    it('carries a trimmed subtitle transition into the discontinuity sequence', () => {
+      const lines = createSubtitlePlaylist([4, 4, 4]);
+      lines.splice(4, 0, '#EXT-X-DISCONTINUITY-SEQUENCE:7');
+      lines.splice(7, 0, '#EXT-X-DISCONTINUITY');
+      const result = mutator.trimSubtitlePlaylist(
+        lines,
+        {
+          type: 'before_segment_number',
+          segmentNumber: 1,
+          segmentsToKeepBefore: 0,
+        },
+        { maxSegmentsToKeep: 2 },
+      );
+      expect(result.playlist).toContain('#EXT-X-MEDIA-SEQUENCE:1');
+      expect(result.playlist).toContain('#EXT-X-DISCONTINUITY-SEQUENCE:8');
+      expect(result.playlist.split('\n')).not.toContain('#EXT-X-DISCONTINUITY');
+    });
+
+    it.each(['CRLF', 'trailing space'])(
+      'preserves periods with %s markers before and after trimming',
+      (format) => {
+        const lines = createSubtitlePlaylist([4, 4, 4, 4, 4]);
+        lines.splice(4, 0, '#EXT-X-DISCONTINUITY-SEQUENCE:7');
+        lines.splice(9, 0, '#EXT-X-DISCONTINUITY');
+        const formatted = lines.map((line) =>
+          format === 'CRLF'
+            ? `${line}\r`
+            : line === '#EXT-X-DISCONTINUITY'
+              ? `${line} `
+              : line,
+        );
+        for (const maxSegmentsToKeep of [20, 3, 2]) {
+          const result = mutator.trimSubtitlePlaylist(
+            formatted,
+            {
+              type: 'before_segment_number',
+              segmentNumber: maxSegmentsToKeep === 2 ? 4 : 1,
+              segmentsToKeepBefore: 0,
+            },
+            { maxSegmentsToKeep },
+          );
+          const expected = [7, 7, 8, 8, 8].map((period, i) => ({
+            uri: `/stream/channels/test-channel/hls/sub${String(i).padStart(6, '0')}.vtt`,
+            period,
+          }));
+          expect(subtitlePeriods(result.playlist)).toEqual(
+            maxSegmentsToKeep === 20
+              ? expected
+              : maxSegmentsToKeep === 3
+                ? expected.slice(1, 4)
+                : expected.slice(3),
+          );
+        }
+      },
+    );
+
+    it('preserves a CRLF boundary without an input sequence header', () => {
+      const lines = createSubtitlePlaylist([4, 4]);
+      lines.splice(6, 0, '#EXT-X-DISCONTINUITY');
+      const result = mutator.trimSubtitlePlaylist(
+        lines.map((line) => `${line}\r`),
+        {
+          type: 'before_segment_number',
+          segmentNumber: 0,
+          segmentsToKeepBefore: 0,
+        },
+        { maxSegmentsToKeep: 20 },
+      );
+      expect(result.playlist.split('\n')).toContain(
+        '#EXT-X-DISCONTINUITY-SEQUENCE:0',
+      );
+      expect(subtitlePeriods(result.playlist)).toEqual([
+        { uri: '/stream/channels/test-channel/hls/sub000000.vtt', period: 0 },
+        { uri: '/stream/channels/test-channel/hls/sub000001.vtt', period: 1 },
+      ]);
+    });
+
+    it('preserves filenames and periods with comments between duration and URI', () => {
+      const lines = createSubtitlePlaylist([4, 4, 4]);
+      lines.splice(4, 0, '#EXT-X-DISCONTINUITY-SEQUENCE:7');
+      lines.splice(7, 0, '#EXT-X-DISCONTINUITY');
+      const commented = lines.flatMap((line) =>
+        line.startsWith('#EXTINF:') ? [line, '#wrapper comment', ''] : [line],
+      );
+      const result = mutator.trimSubtitlePlaylist(
+        commented,
+        {
+          type: 'before_segment_number',
+          segmentNumber: 0,
+          segmentsToKeepBefore: 0,
+        },
+        { maxSegmentsToKeep: 20 },
+      );
+      expect(subtitlePeriods(result.playlist)).toEqual(
+        [7, 8, 8].map((period, i) => ({
+          uri: `/stream/channels/test-channel/hls/sub${String(i).padStart(6, '0')}.vtt`,
+          period,
+        })),
+      );
+    });
+
+    it.each(['garbage', '', '0x7'])(
+      'rejects malformed discontinuity sequence %j',
+      (sequence) => {
+        const lines = createSubtitlePlaylist([4]);
+        lines.splice(4, 0, `#EXT-X-DISCONTINUITY-SEQUENCE:${sequence}`);
+        expect(() =>
+          mutator.trimSubtitlePlaylist(
+            lines,
+            {
+              type: 'before_segment_number',
+              segmentNumber: 0,
+              segmentsToKeepBefore: 0,
+            },
+            { maxSegmentsToKeep: 20 },
+          ),
+        ).toThrow('Invalid subtitle discontinuity sequence');
+      },
+    );
+
+    it('does not add program-date-time or discontinuity tags to a plain playlist', () => {
+      const lines = createSubtitlePlaylist([4, 4, 4]);
+
+      const result = mutator.trimSubtitlePlaylist(
+        lines,
+        {
+          type: 'before_segment_number',
+          segmentNumber: 0,
+          segmentsToKeepBefore: 10,
+        },
+        { maxSegmentsToKeep: 10 },
+      );
+
+      expect(result.playlist).not.toContain('#EXT-X-PROGRAM-DATE-TIME');
+      expect(result.playlist).not.toContain('#EXT-X-DISCONTINUITY');
+    });
+  });
 });

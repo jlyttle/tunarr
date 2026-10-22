@@ -22,9 +22,7 @@ import {
   MenuItem,
   Select,
   TextField,
-  Tooltip,
   Typography,
-  useTheme,
 } from '@mui/material';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
@@ -36,7 +34,6 @@ import type {
 } from '@tunarr/types';
 import {
   LogLevels,
-  type CacheSettings,
   type LogLevel,
   type ServerSettings,
   type SystemSettings,
@@ -100,9 +97,6 @@ const getBaseFormValues = (
     ? 'env'
     : systemSettings.logging.logLevel,
   backup: systemSettings.backup,
-  cache: systemSettings.cache ?? {
-    enablePlexRequestCache: false,
-  },
   server: systemSettings.server,
   logging: {
     ...systemSettings.logging,
@@ -125,11 +119,15 @@ function getDefaultFormValues(
   systemSettings: SystemSettings,
 ) {
   const base = getBaseFormValues(settings, systemSettings);
+  base.logging.logRollConfig = { ...base.logging.logRollConfig };
   base.logging.logRollConfig.maxFileSizeBytes ??= 0;
+
+  // An increment of 0 renders "Roll on Schedule" unticked. The save handler
+  // omits the schedule in that case, because the API requires a positive one.
   base.logging.logRollConfig.schedule ??= {
     type: 'every',
     unit: 'day',
-    increment: 1,
+    increment: 0,
     offsetMs: 0,
   };
   return base;
@@ -144,7 +142,6 @@ export function GeneralSettingsForm({
   const versionInfo = useVersion({
     retry: 0,
   });
-  const theme = useTheme();
   const systemState = useSystemState();
 
   const { isLoading, isError } = versionInfo;
@@ -178,7 +175,7 @@ export function GeneralSettingsForm({
 
     const rollSchedule =
       data.logging.logRollConfig.schedule?.type === 'every' &&
-      data.logging.logRollConfig.schedule.increment >= 0
+      data.logging.logRollConfig.schedule.increment > 0
         ? data.logging.logRollConfig.schedule
         : undefined;
     const updateReq: UpdateSystemSettingsRequest = {
@@ -204,7 +201,6 @@ export function GeneralSettingsForm({
         },
       },
       backup: data.backup,
-      cache: data.cache,
       server: data.server,
     };
 
@@ -212,7 +208,7 @@ export function GeneralSettingsForm({
       { body: updateReq },
       {
         onSuccess(data) {
-          reset(getBaseFormValues(settings, data), { keepDirty: false });
+          reset(getDefaultFormValues(settings, data), { keepDirty: false });
           snackbar.enqueueSnackbar(t`Settings Saved!`, {
             variant: 'success',
           });
@@ -269,7 +265,10 @@ export function GeneralSettingsForm({
               label={t`Enable Backups`}
             />
             <FormHelperText>
-              <Trans>When enabling, Tunarr will generate an initial backup immediately</Trans>
+              <Trans>
+                When enabling, Tunarr will generate an initial backup
+                immediately
+              </Trans>
             </FormHelperText>
           </FormControl>
         </Grid>
@@ -349,7 +348,9 @@ export function GeneralSettingsForm({
                     width: ['100%', '50%'],
                   }}
                 >
-                  <InputLabel id="log-level-label"><Trans>Log Level</Trans></InputLabel>
+                  <InputLabel id="log-level-label">
+                    <Trans>Log Level</Trans>
+                  </InputLabel>
                   <Controller
                     name="logLevel"
                     control={control}
@@ -370,20 +371,24 @@ export function GeneralSettingsForm({
                   />
                   <FormHelperText>
                     <Trans>
-                    Set the log level for the Tunarr server.
-                    <br />
-                    Selecting <strong>"Use environment settings"</strong> will
-                    instruct the server to use the <code>LOG_LEVEL</code>{' '}
-                    environment variable, if set, or system default "info".
+                      Set the log level for the Tunarr server.
+                      <br />
+                      Selecting <strong>"Use environment settings"</strong> will
+                      instruct the server to use the <code>LOG_LEVEL</code>{' '}
+                      environment variable, if set, or system default "info".
                     </Trans>
                   </FormHelperText>
                 </FormControl>
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <Typography sx={{ mb: 1 }}><Trans>Category Log Levels</Trans></Typography>
+                <Typography sx={{ mb: 1 }}>
+                  <Trans>Category Log Levels</Trans>
+                </Typography>
                 <Typography variant="subtitle2">
-                  <Trans>Change the verbosity of specific categories of logs. Useful if
-                  debugging a specific feature.</Trans>
+                  <Trans>
+                    Change the verbosity of specific categories of logs. Useful
+                    if debugging a specific feature.
+                  </Trans>
                 </Typography>
               </Grid>
               {LogCategorySelectInputs.map((category) => (
@@ -429,47 +434,6 @@ export function GeneralSettingsForm({
             </Typography>
             {renderBackupsForm()}
           </Box>
-          <Box>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              <Trans>Caching</Trans>
-            </Typography>
-            <Box>
-              <FormControl
-                sx={{
-                  width: ['100%', '50%'],
-                }}
-              >
-                <FormControlLabel
-                  control={
-                    <Controller
-                      control={control}
-                      name="cache.enablePlexRequestCache"
-                      render={({ field }) => (
-                        <Checkbox checked={field.value} {...field} />
-                      )}
-                    />
-                  }
-                  label={
-                    <span>
-                      <Trans><strong>Experimental:</strong> Enable Plex Request Cache</Trans>{' '}
-                      <Tooltip
-                        title={t`Temporarily caches responses from Plex based by request path. Could potentially speed up channel editing.`}
-                        placement="top"
-                      >
-                        <sup style={{ color: theme.palette.primary.main }}>
-                          [?]
-                        </sup>
-                      </Tooltip>
-                    </span>
-                  }
-                />
-                <FormHelperText>
-                  <Trans>This feature is currently experimental. Proceed with caution
-                  and if you experience an issue, try disabling caching.</Trans>
-                </FormHelperText>
-              </FormControl>
-            </Box>
-          </Box>
         </Stack>
         <Stack
           spacing={2}
@@ -504,7 +468,6 @@ export type GeneralSettingsFormData = {
   backendUri: string;
   logLevel: LogLevel | 'env';
   backup: BackupSettings;
-  cache: CacheSettings;
   server: ServerSettings;
   logging: StrictOmit<LoggingSettings, 'categoryLogLevel'> & {
     categoryLogLevel?: Record<

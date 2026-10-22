@@ -4,8 +4,11 @@ import useStore from '@/store/index.ts';
 import { i18n } from '@lingui/core';
 import { I18nProvider } from '@lingui/react';
 import { ThemeProvider, createTheme } from '@mui/material';
-import { esES as muiEsES } from '@mui/material/locale';
-import { esES as pickersEsES } from '@mui/x-date-pickers/locales';
+import { esES as muiEsES, zhCN as muiZhCN } from '@mui/material/locale';
+import {
+  esES as pickersEsES,
+  zhCN as pickersZhCN,
+} from '@mui/x-date-pickers/locales';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -16,10 +19,10 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ServerEventsProvider } from './components/server_events/ServerEventsProvider.tsx';
 import { TunarrApiProvider } from './context/TunarrApiContext.tsx';
-import { messages as enMessages } from './locales/en/messages';
+import { messages as enMessages } from './locales/en/messages.po';
 import { queryClient } from './queryClient.ts';
 import { router } from './router.ts';
-import { Theme } from './theme.ts';
+import { createTunarrTheme } from './theme.ts';
 // Load English immediately as a synchronous fallback so the first render
 // always has text (no blank flash or message IDs).
 i18n.loadAndActivate({ locale: 'en', messages: enMessages });
@@ -34,20 +37,24 @@ export const Tunarr = () => {
     void setUiLocale(locale);
   }, [locale]);
 
+  const density = useStore((store) => store.theme.density ?? 'comfortable');
+
   const muiLocaleTheme = useMemo(() => {
+    const theme = createTunarrTheme(density);
     if (locale === 'es') {
-      return createTheme(Theme, muiEsES, pickersEsES);
+      return createTheme(theme, muiEsES, pickersEsES);
     }
-    return Theme;
-  }, [locale]);
+    if (locale === 'zh-CN') {
+      return createTheme(theme, muiZhCN, pickersZhCN);
+    }
+    return theme;
+  }, [locale, density]);
 
   return (
     <TunarrApiProvider queryClient={queryClient}>
       <I18nProvider i18n={i18n}>
         <DayjsProvider>
-          <LocalizationProvider
-            dateAdapter={AdapterDayjs}
-          >
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
             <DndProvider backend={HTML5Backend}>
               <ServerEventsProvider>
                 <QueryClientProvider client={queryClient}>

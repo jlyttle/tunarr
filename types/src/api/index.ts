@@ -1,7 +1,6 @@
 import { z } from 'zod/v4';
 import { FeatureFlagsSchema } from '../FeatureFlags.js';
 import {
-  CacheSettingsSchema,
   LogCategoriesSchema,
   LoggingSettingsSchema,
   LogLevelsSchema,
@@ -19,8 +18,12 @@ import {
 import {
   CondensedChannelProgramSchema,
   CondensedContentProgramSchema,
+  CondensedCustomProgramSchema,
+  CondensedFillerProgramSchema,
   ContentProgramSchema,
   CustomProgramSchema,
+  FlexProgramSchema,
+  RedirectProgramSchema,
 } from '../schemas/lineups.js';
 import {
   Episode,
@@ -98,8 +101,11 @@ export type CreateCustomShowRequest = z.infer<
   typeof CreateCustomShowRequestSchema
 >;
 
+// `programs` has no default here. Omitting it leaves membership alone, while
+// an explicit list, including an empty one, replaces it.
 export const UpdateCustomShowRequestSchema =
   CreateCustomShowRequestSchema.partial().extend({
+    programs: z.array(CondensedContentProgramSchema).optional(),
     enableSync: z.boolean(),
   });
 
@@ -109,9 +115,13 @@ export type UpdateCustomShowRequest = z.infer<
 
 export const CreateFillerListRequestSchema = z.object({
   name: z.string(),
-  programs: z.array(
-    z.discriminatedUnion('type', [ContentProgramSchema, CustomProgramSchema]),
-  ),
+  // A filler list with no programs can't contribute anything to a channel or
+  // a slot schedule, so don't let one be persisted.
+  programs: z
+    .array(
+      z.discriminatedUnion('type', [ContentProgramSchema, CustomProgramSchema]),
+    )
+    .min(1, 'A filler list must have at least one program.'),
 });
 
 export type CreateFillerListRequest = z.infer<
@@ -134,9 +144,19 @@ export const BasicPagingSchema = z.object({
   limit: z.coerce.number().optional(),
 });
 
+// A zero-length item can never play, so a saved lineup needs a positive
+// duration on every item, content included.
+const ManualLineupProgramSchema = z.discriminatedUnion('type', [
+  CondensedContentProgramSchema.extend({ duration: z.number().positive() }),
+  CondensedCustomProgramSchema,
+  CondensedFillerProgramSchema,
+  RedirectProgramSchema,
+  FlexProgramSchema,
+]);
+
 export const ManualProgramLineupSchema = z.object({
   type: z.literal('manual'),
-  lineup: CondensedChannelProgramSchema.array(),
+  lineup: ManualLineupProgramSchema.array(),
   append: z.boolean().default(false),
 });
 
@@ -176,18 +196,15 @@ export type UpdateChannelProgrammingRequest = z.infer<
 export const UpdateMediaSourceRequestSchema = z.discriminatedUnion('type', [
   PlexServerSettingsSchema.partial({
     sendGuideUpdates: true,
+    sendPlayStatusUpdates: true,
     clientIdentifier: true,
-  })
-    .omit({ libraries: true })
-    .required({
-      accessToken: true,
-    }),
-  JellyfinServerSettingsSchema.omit({ libraries: true }).required({
-    accessToken: true,
+  }).omit({ libraries: true }),
+  JellyfinServerSettingsSchema.partial({
+    sendPlayStatusUpdates: true,
+  }).omit({
+    libraries: true,
   }),
-  EmbyServerSettingsSchema.omit({ libraries: true }).required({
-    accessToken: true,
-  }),
+  EmbyServerSettingsSchema.omit({ libraries: true }),
   LocalMediaSourceSchema.omit({ libraries: true }),
 ]);
 
@@ -229,7 +246,6 @@ export type InsertMediaSourceRequest = z.infer<
 export const VersionApiResponseSchema = z.object({
   tunarr: z.string(),
   ffmpeg: z.string(),
-  nodejs: z.string(),
 });
 
 export type VersionApiResponse = z.infer<typeof VersionApiResponseSchema>;
@@ -284,7 +300,6 @@ export const UpdateSystemSettingsRequestSchema = z.object({
     })
     .optional(),
   backup: BackupSettingsSchema.optional(),
-  cache: CacheSettingsSchema.optional(),
   server: ServerSettingsSchema.optional(),
 });
 
@@ -476,6 +491,33 @@ export const ScanProgressSchema = z.discriminatedUnion('state', [
 
 export type ScanProgress = z.infer<typeof ScanProgressSchema>;
 
+export const EmptyTrashJobStateSchema = z.enum([
+  'idle',
+  'running',
+  'cancelling',
+  'failed',
+]);
+
+export type EmptyTrashJobState = z.infer<typeof EmptyTrashJobStateSchema>;
+
+/**
+ * Progress of the background "empty trash" drain. Flat rather than a
+ * discriminated union so the UI can render `deleted`/`total` as a lingering
+ * summary of the last run regardless of state.
+ */
+export const EmptyTrashStatusSchema = z.object({
+  state: EmptyTrashJobStateSchema,
+  total: z.number().int().nonnegative(),
+  deleted: z.number().int().nonnegative(),
+  /** Epoch millis. */
+  startedAt: z.number().nullable(),
+  /** Epoch millis. */
+  finishedAt: z.number().nullable(),
+  error: z.string().nullable(),
+});
+
+export type EmptyTrashStatus = z.infer<typeof EmptyTrashStatusSchema>;
+
 export const MaterializedTimeSlotSchedule = z.object({
   ...TimeSlotScheduleSchema.shape,
   slots: MaterializedTimeSlot.array(),
@@ -540,6 +582,7 @@ export const UpdateFeatureFlagsRequestSchema = z.object({
   disableSearchSnapshotInBackup: z.boolean().optional(),
   disableVulkan: z.boolean().optional(),
   disableVaapiPad: z.boolean().optional(),
+  xmltvCreditImagesEnabled: z.boolean().optional(),
 });
 
 export type UpdateFeatureFlagsRequest = z.infer<

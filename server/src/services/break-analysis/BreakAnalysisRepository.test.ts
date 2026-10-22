@@ -19,7 +19,7 @@ describe('break analysis persistence', () => {
     sqlite.exec(
       readFileSync(
         new URL(
-          '../../migration/db/sql/0046_episode_break_analysis.sql',
+          '../../migration/db/sql/0055_episode_break_analysis.sql',
           import.meta.url,
         ),
         'utf8',

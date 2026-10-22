@@ -1,31 +1,36 @@
-import {
+import type {
   ISettingsDB,
   ReadableFfmpegSettings,
   SettingsChangeEvents,
 } from '@/db/interfaces/ISettingsDB.js';
 import { deepCopy, isProduction } from '@/util/index.js';
 import { type Logger, LoggerFactory } from '@/util/logging/LoggerFactory.js';
-import {
-  DefaultServerSettings,
+import type {
   FeatureFlags,
-  FeatureFlagsSchema,
   FfmpegSettings,
   HdhrSettings,
-  LoggingSettingsSchema,
   PlexStreamSettings,
   SystemSettings,
-  SystemSettingsSchema,
   XmlTvSettings,
+} from '@tunarr/types';
+import {
+  DefaultServerSettings,
+  FeatureFlagsSchema,
+  LoggingSettingsSchema,
+  SystemSettingsSchema,
   defaultFfmpegSettings,
   defaultGlobalMediaSourceSettings,
   defaultHdhrSettings,
+  defaultLogRollConfig,
   defaultPlexStreamSettings,
   defaultXmlTvSettings as defaultXmlTvSettingsSchema,
 } from '@tunarr/types';
-import {
+import type {
   BackupSettings,
-  FfmpegSettingsSchema,
   GlobalMediaSourceSettings,
+} from '@tunarr/types/schemas';
+import {
+  FfmpegSettingsSchema,
   GlobalMediaSourceSettingsSchema,
   HdhrSettingsSchema,
   PlexStreamSettingsSchema,
@@ -33,18 +38,15 @@ import {
 } from '@tunarr/types/schemas';
 import { injectable } from 'inversify';
 import { merge } from 'lodash-es';
-import { Low } from 'lowdb';
+import type { Low } from 'lowdb';
 import events from 'node:events';
 import path from 'node:path';
 import { setImmediate } from 'node:timers';
-import { DeepPartial, DeepReadonly } from 'ts-essentials';
+import type { DeepPartial, DeepReadonly } from 'ts-essentials';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod/v4';
-import { Maybe } from '../types/util.ts';
-import {
-  getDefaultLogDirectory,
-  getDefaultLogLevel,
-} from '../util/defaults.ts';
+import type { Maybe } from '../types/util.ts';
+import { getDefaultLogLevel } from '../util/defaults.ts';
 
 // Version 1 -> 2: slot show ids changed to be the program_grouping ID
 //   rather than the show name.
@@ -73,9 +75,23 @@ export const MigrationStateSchema = z.object({
     .describe('Whether a legacy migration was performed'),
   isFreshSettings: z.boolean().default(true).optional(),
   hasMigratedTo1_0: z.boolean().optional().default(false),
+  hasEnabledLogRollByDefault: z.boolean().optional().default(false),
 });
 
 export type MigrationState = z.infer<typeof MigrationStateSchema>;
+
+/**
+ * Persisted markers for long-running background work that must survive a
+ * restart. Deliberately a top-level section rather than part of
+ * {@link SystemSettingsSchema} so it is never exposed via the system settings
+ * API or UI.
+ */
+const PendingOperationsSchema = z.object({
+  /** Epoch millis at which an empty-trash drain was requested, if pending. */
+  emptyTrashRequestedAt: z.number().nullable().default(null),
+});
+
+export type PendingOperations = z.infer<typeof PendingOperationsSchema>;
 
 export const SettingsFileSchema = z.object({
   version: z.number(),
@@ -89,6 +105,9 @@ export const SettingsFileSchema = z.object({
     }),
   }),
   featureFlags: FeatureFlagsSchema.default(() => FeatureFlagsSchema.parse({})),
+  pendingOperations: PendingOperationsSchema.default(() =>
+    PendingOperationsSchema.parse({}),
+  ),
 });
 
 export type SettingsFile = z.infer<typeof SettingsFileSchema>;
@@ -98,6 +117,7 @@ export const defaultSettings = (dbBasePath: string): SettingsFile => ({
   migration: {
     legacyMigration: false,
     hasMigratedTo1_0: false,
+    hasEnabledLogRollByDefault: false,
   },
   settings: {
     clientId: uuidv4(),
@@ -113,20 +133,18 @@ export const defaultSettings = (dbBasePath: string): SettingsFile => ({
     },
     logging: {
       logLevel: getDefaultLogLevel(),
-      logsDirectory: getDefaultLogDirectory(),
+      // Must derive from dbBasePath, not from getDefaultDatabaseDirectory().
+      // The latter re-reads TUNARR_DATABASE_PATH, so starting with
+      // `--database <dir>` while that variable points elsewhere sent the
+      // database to one directory and the logs to another.
+      logsDirectory: path.join(dbBasePath, 'logs'),
       useEnvVarLevel: true,
-      logRollConfig: {
-        enabled: false,
-        rolledFileLimit: 3,
-        maxFileSizeBytes: Math.pow(2, 20),
-      },
-    },
-    cache: {
-      enablePlexRequestCache: false,
+      logRollConfig: defaultLogRollConfig(),
     },
     server: DefaultServerSettings,
   },
   featureFlags: FeatureFlagsSchema.parse({}),
+  pendingOperations: PendingOperationsSchema.parse({}),
 });
 
 abstract class ITypedEventEmitter extends events.EventEmitter<SettingsChangeEvents> {}
@@ -193,6 +211,22 @@ export class SettingsDB extends ITypedEventEmitter implements ISettingsDB {
 
   featureFlags(): DeepReadonly<FeatureFlags> {
     return this.db.data.featureFlags;
+  }
+
+  get pendingOperations(): DeepReadonly<PendingOperations> {
+    return this.db.data.pendingOperations;
+  }
+
+  async markEmptyTrashRequested(at: number): Promise<void> {
+    await this.updateBaseSettings('pendingOperations', {
+      emptyTrashRequestedAt: at,
+    });
+  }
+
+  async clearEmptyTrashRequested(): Promise<void> {
+    await this.updateBaseSettings('pendingOperations', {
+      emptyTrashRequestedAt: null,
+    });
   }
 
   globalMediaSourceSettings(): DeepReadonly<GlobalMediaSourceSettings> {

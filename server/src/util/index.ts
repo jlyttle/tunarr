@@ -213,12 +213,13 @@ export function timeoutPromise<T>(
   ms: number | Duration,
 ): Promise<T> {
   ms = dayjs.isDuration(ms) ? +ms : ms;
+  let timer: Maybe<NodeJS.Timeout>;
   return Promise.race([
     promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms),
-    ),
-  ]);
+    new Promise<T>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
 }
 
 function deepCopyArray<T>(value: T[] | undefined): T[] | undefined {
@@ -382,26 +383,18 @@ export function isMac() {
 export function isWindows() {
   return process.platform === 'win32';
 }
-export function gcd(a: number, b: number) {
+export function gcd(a: number, b: number): number {
+  // Euclid never reaches zero on NaN or Infinity and would spin forever.
+  if (!Number.isFinite(a) || !Number.isFinite(b)) {
+    return NaN;
+  }
+
   a = Math.abs(a);
   b = Math.abs(b);
-
-  if (b > a) {
-    const temp = a;
-    a = b;
-    b = temp;
+  while (b !== 0) {
+    [a, b] = [b, a % b];
   }
-
-  for (;;) {
-    a %= b;
-    if (a === 0) {
-      return b;
-    }
-    b %= a;
-    if (b === 0) {
-      return a;
-    }
-  }
+  return a;
 }
 
 export function makeWritable<T>(obj: DeepReadonly<T>): DeepWritable<T> {

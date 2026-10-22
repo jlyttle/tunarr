@@ -40,6 +40,26 @@ This starts:
 - **Backend server** on `http://localhost:8000`
 - **Frontend dev server** on `http://localhost:5173/web`
 
+## Dev Containers
+
+The repository ships two [dev container](https://containers.dev/) configurations in `.devcontainer/`. Both include Node 22, pnpm, ffmpeg 7.1.1, and the Meilisearch binary, and both build `@tunarr/types` and `@tunarr/shared` on creation.
+
+| Configuration | Use it for | Extra setup |
+|---------------|------------|-------------|
+| **Tunarr: Testing** | Running unit tests and the e2e route sweep | Playwright Chromium and its system libraries |
+| **Tunarr: PR Review** | Checking out and reviewing a pull request | None, so it starts faster |
+
+VS Code asks which configuration to use when you run **Dev Containers: Reopen in Container**.
+
+### Reviewing a pull request in a container
+
+Use either route. Both clone the repository into an isolated Docker volume, so your local checkout stays untouched.
+
+- **Dev Containers extension:** run **Dev Containers: Clone Repository in Container Volume**, paste the pull request URL, and pick **Tunarr: PR Review**.
+- **GitHub Pull Requests extension:** right-click the pull request in the GitHub view and choose **Checkout Pull Request in Dev Container**.
+
+The container builds from the pull request's own `.devcontainer/`, so a PR that changes the container config is reviewed in the changed container.
+
 ## Repository Structure
 
 Tunarr is a monorepo with four main packages:
@@ -107,11 +127,11 @@ pnpm regen-routes     # Regenerate TanStack Router routes
 
 ### Making Changes
 
-1. Create a new branch from `dev`:
+1. Create a new branch from `main`, or from `dev` for a large feature (see [base branch](#pull-request-guidelines)):
 
     ```bash
-    git checkout dev
-    git pull origin dev
+    git checkout main
+    git pull origin main
     git checkout -b feature/your-feature-name
     ```
 
@@ -126,7 +146,7 @@ pnpm regen-routes     # Regenerate TanStack Router routes
     ```
 
 4. Commit your changes using [conventional commit](#commit-messages) format
-5. Push your branch and open a Pull Request against `dev`
+5. Push your branch and open a Pull Request against the branch you started from
 
 ### Adding API Endpoints
 
@@ -175,7 +195,7 @@ When adding new services or components that need dependency injection:
 - **TypeScript**: All code must be written in TypeScript
 - **No `as any`**: Never cast types using `as any`
 - **Formatting**: Prettier handles formatting (run `pnpm fmt`)
-- **Linting**: ESLint 9.x with flat config
+- **Linting**: oxlint (config in `.oxlintrc.json`)
 - **Pre-commit hooks**: Husky + lint-staged run automatically
 
 ### Import Aliases
@@ -192,7 +212,7 @@ Tunarr uses [Husky](https://typicode.github.io/husky/) and [lint-staged](https:/
 When you commit, the following checks run automatically on staged files:
 
 - **Prettier** - Formats code and auto-fixes formatting issues
-- **ESLint** - Lints code and reports errors
+- **oxlint** - Lints code and reports errors
 
 If any check fails, the commit will be blocked. Fix the reported issues and try again.
 
@@ -295,6 +315,18 @@ to crash. This change treats null duration as 0 and logs a warning.
 Fixes #1234"
 ```
 
+### Closing Issues on Release
+
+`Fixes #1234` closes the issue as soon as the PR merges, before any release ships the fix. To keep the issue open until the fix is released, put this line in the PR description instead:
+
+```
+Closes-on-release: #1234
+```
+
+- The line must start with `Closes-on-release:`. List several issues on one line: `Closes-on-release: #1234, #1240`.
+- When a stable release ships the PR, the release workflow comments on the issue and closes it. Prereleases don't count.
+- When an issue needs several PRs, add the line only to the PR that finishes it.
+
 ## Testing
 
 - **Framework**: Vitest
@@ -311,6 +343,68 @@ pnpm test:watch
 # Run a single test file
 cd server && pnpm test path/to/file.test.ts
 ```
+
+## Testing a Build in Docker
+
+`pnpm docker-test` builds your working tree into the production Docker image and runs it. Use it to test a change on real hardware, such as a GPU transcoding pipeline, on your own machine or on a remote server.
+
+It layers three compose files from `docker/test/`:
+
+| Layer | File | Committed |
+|-------|------|-----------|
+| Base | `compose.yaml` | Yes |
+| Hardware pipeline | `pipelines/<name>.compose.yaml` | Yes |
+| Your Docker host | `local.compose.yaml` (optional) | No |
+
+Settings that differ between machines live in `docker/test/.env`, which is also ignored by git.
+
+### Docker Host Requirements
+
+- Docker Engine 23 or later
+- A user that can run `docker` without `sudo`
+- For the `vaapi` and `qsv` pipelines: a working GPU driver, so that `/dev/dri` exists
+- For the `nvidia` pipeline: the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+
+### Setup
+
+1. Copy the templates:
+
+    ```bash
+    cp docker/test/.env.example docker/test/.env
+    cp docker/test/local.compose.example.yaml docker/test/local.compose.yaml  # optional
+    ```
+
+2. Edit `docker/test/.env`. Set `TUNARR_TEST_DATA_DIR` and choose a `TUNARR_TEST_PIPELINE` (`none`, `vaapi`, `qsv`, or `nvidia`).
+3. Add your media mounts to `docker/test/local.compose.yaml`, if you need any.
+4. To run on a remote server, create a Docker context that reaches it over SSH and set `TUNARR_TEST_DOCKER_CONTEXT` to its name:
+
+    ```bash
+    docker context create my-server --docker "host=ssh://user@my-server"
+    ```
+
+!!! warning
+    Every path in `.env` and `local.compose.yaml` is a path on the Docker host. With a remote context, that is the server, not your machine. Docker creates a missing host path as an empty directory instead of reporting an error.
+
+!!! warning
+    Point `TUNARR_TEST_DATA_DIR` at a directory set aside for testing, or at a copy of your data. A test build may run database migrations.
+
+### Commands
+
+```bash
+pnpm docker-test              # Build the working tree and start it
+pnpm docker-test logs -f      # Follow the logs
+pnpm docker-test config       # Print the merged compose file without running anything
+pnpm docker-test down         # Stop and remove the container
+pnpm docker-test repro        # Run the stream-repro script in a throwaway container
+```
+
+`pnpm docker-test repro` builds the same image and runs `.claude/skills/stream-repro/scripts/repro.mjs` inside a throwaway container with the pipeline's GPU, then copies its report back to a local temp directory. Options after `repro` go to the script; see `.claude/skills/stream-repro/SKILL.md`.
+
+Any other arguments are passed to `docker compose`. The build includes uncommitted changes. The server listens on port `8001` by default, so the web UI is at `http://<docker-host>:8001/web`.
+
+### Adding a Pipeline
+
+Add `docker/test/pipelines/<name>.compose.yaml` containing only the settings that pipeline needs. `TUNARR_TEST_PIPELINE=<name>` then selects it.
 
 ## Architecture Overview
 
@@ -354,11 +448,119 @@ Key directories:
 - **GitHub Issues**: [Report bugs or request features](https://github.com/chrisbenincasa/tunarr/issues)
 - **Discord**: [Join the community](https://discord.gg/JpFjERP7y) for discussion and support
 
+## Pull Request Policy
+
+These rules apply to every PR, however it was written. They apply to maintainers too.
+
+### You own every line
+
+- You are the author of everything in your PR, whoever or whatever typed it.
+- You must understand each change well enough to explain it in review.
+- You must have run the change yourself and confirmed it does what the PR says.
+- "The AI wrote that part" is not an answer to a review question.
+
+### Design before code
+
+Some changes need an agreed design before anyone writes code. Open an issue first and describe the design. A maintainer approves it by adding the `design approved` label. Then open the PR and link the issue in the "Design issue" section of the PR description.
+
+A change needs a design issue if it does any of the following:
+
+- Adds a new media source type or a new kind of stream source
+- Changes the database schema (adds a migration)
+- Adds a new runtime dependency
+- Adds a new top-level feature, such as a new page, settings area, or scheduling mode
+- Changes code in more than one package (`server`, `web`, `types`, `shared`) in a way that changes how they talk to each other, such as a new API shape or shared type
+- Changes more than **500 lines** outside tests, or more than **1,500 lines** including tests. Neither count includes the generated files listed below.
+
+The line counts leave out these generated files:
+
+- `pnpm-lock.yaml`
+- `server/src/migration/db/sql/meta/`
+- `server/src/generated/`, `web/src/generated/`, `docs/generated/`
+- `web/src/routeTree.gen.ts`
+- `web/src/locales/`
+
+The design issue should cover:
+
+- The problem, and who has it
+- The approach, and the main alternatives you rejected
+- Which parts of the codebase change, and any schema or API changes
+- How you will split the work into PRs that can each be reviewed on their own
+
+Large mechanical changes, such as a rename or the same fix repeated across many files, can skip the size limit. A maintainer decides by adding the `mechanical` label to the PR. The other triggers still apply. If you're planning a big mechanical change, ask in an issue first, because it may conflict with other open work.
+
+Small fixes, docs changes, and refactors inside one module don't need a design issue. If you're unsure, ask in an issue or on Discord before you start.
+
+### PRs that skip the design step
+
+A bot checks every PR from an outside contributor. It detects the size limit, new migrations, new runtime dependencies, and new media sources. Maintainers flag the other triggers by hand.
+
+When a PR needs a design and doesn't link an approved one, it gets converted to a draft and labeled `needs design`. The bot leaves a comment that lists what triggered it. The code stays where it is. Open a design issue and link it from the PR. When a maintainer labels the issue `design approved`, the bot re-checks every PR that links it and removes `needs design`. Rework or split the PR to match the design and mark it ready for review.
+
+A PR labeled `needs design` for 30 days without an approved design will be closed. The clock pauses while the PR links an open design issue (labeled `design proposal`), since the PR is then waiting on a maintainer. If the design issue is closed without approval, a new 30 days starts.
+
+Maintainers are the people listed in [`.github/CODEOWNERS`](https://github.com/chrisbenincasa/tunarr/blob/main/.github/CODEOWNERS). The bot doesn't check their PRs, but the same rules apply to them.
+
+The bot doesn't check PRs opened before October 10, 2026. Maintainers may still apply these rules to them by hand.
+
+The bot re-checks a PR whenever it's pushed, edited, labeled, or reopened. To re-check it without changing anything, comment `/recheck` on the PR. Only the PR author and people with write access can do this. Maintainers can also run the PR Policy workflow from the Actions tab with a PR number.
+
+### Open PR limit
+
+Each outside contributor may have up to 5 PRs open for review at once. When you open a sixth, the bot converts it to a draft and says why. Mark it ready for review once one of your other PRs is merged or closed. Drafts don't count toward the limit, and PRs opened before the policy took effect do.
+
+### During review
+
+- Address each comment with a change scoped to that comment. Don't regenerate or rewrite unrelated code, because that forces the reviewer to start over.
+- If you don't know why your code does something, say so. Then find out before you change it.
+- A PR whose author can't answer questions about their own code will be closed.
+- A PR that doesn't follow this policy or the [AI use](#ai-use) rules is labeled `needs policy fix`. The bot applies it when the "AI use" section is missing or contradicted by the commits, and removes it once that's fixed. A maintainer applies it by hand for anything else and comments with what to change.
+- A PR labeled `changes requested` or `needs policy fix` with no activity for 30 days gets a warning comment. If nothing happens in the next 7 days, it is closed. Any push or comment resets the clock. Draft PRs are exempt.
+
+## AI Use
+
+You may use AI tools to write code, tests, docs, and issues for Tunarr. The [Pull Request Policy](#pull-request-policy) applies the same way with or without AI. The rules below add to it.
+
+### Disclose AI use
+
+Every PR description says whether you used AI tools, in the "AI use" section of the PR template. If you did, name the tools and say what they did. For example:
+
+- "Claude Code wrote most of the implementation. I wrote the tests and reviewed every change."
+- "No AI tools used."
+
+Disclosure is not a mark against your PR. It tells the reviewer where to look harder.
+
+- Autocomplete that finishes the line you're typing doesn't need disclosure. Anything that writes whole functions, files, or changes does.
+- Commit trailers such as `Co-Authored-By` are fine to keep but don't replace the PR statement. If your commits or PR description credit an AI tool and your "AI use" section says you used none, the bot will ask you to fix the section.
+
+A maintainer may ask how you used AI. If your answer turns out to be false, the review ends and the PR is closed. Maintainers act on concrete evidence, such as AI tool trailers in your commits or your own statements. They don't act on how the code looks. Without such evidence, they ask questions about the code instead.
+
+### AI in review replies
+
+Write review replies yourself. You may use AI to understand a comment or check your answer, but don't paste model output into the thread.
+
+### Issues and bug reports
+
+AI can help you write an issue, but the content must come from you.
+
+- **Bug reports.** Report what you saw. Your steps, logs, and screenshots must come from your own Tunarr install. If you include a guess about the cause, mark it as a guess. You may include an AI analysis of the cause, but put it in the bug template's "AI analysis" field and say whether you checked it. Maintainers treat unchecked AI analysis as a lead, not a finding.
+- **Feature requests.** Describe the problem you have and how you would use the feature. A short request from you beats a long spec from a model.
+- **Design issues.** A design issue is held to the same rule as a PR. You must understand the design and be able to answer questions about it. Use the "Design proposal" issue template, which asks you to disclose AI use.
+- **Comments.** Don't answer other people's questions with AI output you haven't checked.
+
+Issues that are mostly unchecked AI output will be closed.
+
+### Security reports
+
+Report vulnerabilities privately through [GitHub's vulnerability reporting](https://github.com/chrisbenincasa/tunarr/security/advisories/new), not in a public issue. See [SECURITY.md](https://github.com/chrisbenincasa/tunarr/blob/main/.github/SECURITY.md).
+
+A report must include steps that reproduce the problem against a real Tunarr build. Output from an AI or a scanner that you haven't confirmed will be closed without a detailed response.
+
 ## Pull Request Guidelines
 
 1. **Base branch** 
-    1. **Target the `main` branch** for all non-`feat` commits, i.e.g `fix`, `chore`, `refactor`, etc.
-    2. **Target the `dev` branch** for all `feat` commits or `fix` PRs that require DB schema updates.
+    1. **Target the `main` branch** by default. This includes fixes, chores, refactors, and small to medium features, even when they add a database migration.
+    2. **Target the `dev` branch** only for large features that will need many prerelease iterations before they reach stable, such as infinite schedules or remote streaming sources. Ask in the issue or on Discord if you're unsure.
 2. **Keep PRs focused** - one feature or fix per PR
 3. **Use conventional commits** - follow the [commit message format](#commit-messages)
 4. **Ensure all checks pass** before requesting review

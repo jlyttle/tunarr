@@ -833,17 +833,23 @@ describe('VaapiPipelineBuilder tonemap', () => {
     binaryCapabilities?: FfmpegCapabilities;
     pipelineOptions?: Partial<PipelineOptions>;
     desiredState?: Partial<FrameStateOpts>;
+    subtitles?: SubtitlesInputSource | null;
+    stateVaapiDevice?: string;
+    openclInterop?: boolean;
   }): Pipeline {
-    const capabilities = new VaapiHardwareCapabilities([
-      new VaapiProfileEntrypoint(
-        VaapiProfiles.HevcMain10,
-        VaapiEntrypoint.Decode,
-      ),
-      new VaapiProfileEntrypoint(
-        VaapiProfiles.HevcMain,
-        VaapiEntrypoint.Encode,
-      ),
-    ]);
+    const capabilities = new VaapiHardwareCapabilities(
+      [
+        new VaapiProfileEntrypoint(
+          VaapiProfiles.HevcMain10,
+          VaapiEntrypoint.Decode,
+        ),
+        new VaapiProfileEntrypoint(
+          VaapiProfiles.HevcMain,
+          VaapiEntrypoint.Encode,
+        ),
+      ],
+      opts.openclInterop ?? true,
+    );
 
     const binaryCapabilities =
       opts.binaryCapabilities ??
@@ -865,11 +871,14 @@ describe('VaapiPipelineBuilder tonemap', () => {
       video,
       null,
       null,
-      null,
+      opts.subtitles ?? null,
       null,
     );
 
-    const state = FfmpegState.create({ version: fakeVersion });
+    const state = FfmpegState.create({
+      version: fakeVersion,
+      ...(opts.stateVaapiDevice ? { vaapiDevice: opts.stateVaapiDevice } : {}),
+    });
 
     const desiredState = new FrameState({
       isAnamorphic: false,
@@ -1017,7 +1026,7 @@ describe('VaapiPipelineBuilder tonemap', () => {
     expect(hasSoftwareTonemapFilter(pipeline)).to.eq(true);
   });
 
-  test('tonemap filter appears before scale in the filter chain', () => {
+  test('tonemap filter appears after scale in the filter chain', () => {
     process.env[TONEMAP_ENABLED] = 'true';
 
     const pipeline = buildWithTonemap({
@@ -1027,13 +1036,13 @@ describe('VaapiPipelineBuilder tonemap', () => {
     const args = pipeline.getCommandArgs().join(' ');
     console.log(args);
     const tonemapIndex = args.indexOf('tonemap_opencl');
-    // buildWithTonemap sets scaledSize=FHD=paddedSize, but frames are on hardware after tonemap
-    // → scale_vaapi is used (frames stay on hardware)
+    // The 4K source is scaled down to FHD on hardware first, so the tonemap
+    // runs on FHD frames
     const scaleIndex = args.indexOf('scale_vaapi=');
 
     expect(tonemapIndex).toBeGreaterThan(-1);
     expect(scaleIndex).toBeGreaterThan(-1);
-    expect(tonemapIndex).toBeLessThan(scaleIndex);
+    expect(scaleIndex).toBeLessThan(tonemapIndex);
   });
 
   test('uses tonemap_vaapi when preference is explicitly vaapi and opencl is unavailable', () => {
@@ -1078,7 +1087,75 @@ describe('VaapiPipelineBuilder tonemap', () => {
     expect(hasVaapiTonemapFilter(pipeline)).to.eq(false);
   });
 
-  test('opencl tonemap filter appears before scale in the filter chain', () => {
+  test('falls back to tonemap_vaapi when the OpenCL interop probe failed', () => {
+    process.env[TONEMAP_ENABLED] = 'true';
+
+    const pipeline = buildWithTonemap({
+      videoStream: createHdrVideoStream(),
+      binaryCapabilities: new FfmpegCapabilities(
+        new Set(),
+        new Map(),
+        new Set([
+          KnownFfmpegFilters.TonemapVaapi,
+          KnownFfmpegFilters.TonemapOpencl,
+        ]),
+        new Set(),
+      ),
+      stateVaapiDevice: '/dev/dri/renderD128',
+      openclInterop: false,
+    });
+
+    const args = pipeline.getCommandArgs().join(' ');
+    expect(hasVaapiTonemapFilter(pipeline)).to.eq(true);
+    expect(hasOpenclTonemapFilter(pipeline)).to.eq(false);
+    expect(args).not.toContain('opencl=ocl@va');
+    expect(args).not.toContain('derive_device=opencl');
+  });
+
+  test('falls back to software tonemap when the OpenCL interop probe failed and tonemap_vaapi is unavailable', () => {
+    process.env[TONEMAP_ENABLED] = 'true';
+
+    const pipeline = buildWithTonemap({
+      videoStream: createHdrVideoStream(),
+      binaryCapabilities: new FfmpegCapabilities(
+        new Set(),
+        new Map(),
+        new Set([KnownFfmpegFilters.TonemapOpencl]),
+        new Set(),
+      ),
+      stateVaapiDevice: '/dev/dri/renderD128',
+      openclInterop: false,
+    });
+
+    const args = pipeline.getCommandArgs().join(' ');
+    expect(hasSoftwareTonemapFilter(pipeline)).to.eq(true);
+    expect(hasOpenclTonemapFilter(pipeline)).to.eq(false);
+    expect(args).not.toContain('opencl=ocl@va');
+  });
+
+  test('falls back to tonemap_opencl when preference is vaapi but tonemap_vaapi is unavailable', () => {
+    process.env[TONEMAP_ENABLED] = 'true';
+
+    const pipeline = buildWithTonemap({
+      videoStream: createHdrVideoStream(),
+      binaryCapabilities: new FfmpegCapabilities(
+        new Set(),
+        new Map(),
+        new Set([KnownFfmpegFilters.TonemapOpencl]),
+        new Set(),
+      ),
+      pipelineOptions: {
+        vaapiPipelineOptions: { tonemapPreference: 'vaapi' },
+      },
+      stateVaapiDevice: '/dev/dri/renderD128',
+    });
+
+    const args = pipeline.getCommandArgs().join(' ');
+    expect(hasOpenclTonemapFilter(pipeline)).to.eq(true);
+    expect(args).toContain('opencl=ocl@va');
+  });
+
+  test('opencl tonemap filter appears after scale in the filter chain', () => {
     process.env[TONEMAP_ENABLED] = 'true';
 
     const pipeline = buildWithTonemap({
@@ -1094,13 +1171,76 @@ describe('VaapiPipelineBuilder tonemap', () => {
     const args = pipeline.getCommandArgs().join(' ');
     console.log(args);
     const tonemapIndex = args.indexOf('tonemap_opencl');
-    // buildWithTonemap sets scaledSize=FHD=paddedSize, but frames are on hardware after tonemap
-    // → scale_vaapi is used (frames stay on hardware)
+    // The 4K source is scaled down to FHD on hardware first, so the tonemap
+    // runs on FHD frames
     const scaleIndex = args.indexOf('scale_vaapi=');
 
     expect(tonemapIndex).toBeGreaterThan(-1);
     expect(scaleIndex).toBeGreaterThan(-1);
-    expect(tonemapIndex).toBeLessThan(scaleIndex);
+    expect(scaleIndex).toBeLessThan(tonemapIndex);
+  });
+
+  function createHdrVideoStreamWithSize(frameSize: FrameSize): VideoStream {
+    return VideoStream.create({
+      index: 0,
+      codec: VideoFormats.Hevc,
+      profile: 'main 10',
+      pixelFormat: new PixelFormatYuv420P10Le(),
+      frameSize,
+      displayAspectRatio: '16:9',
+      providedSampleAspectRatio: '1:1',
+      colorFormat: new ColorFormat({
+        colorRange: ColorRanges.Tv,
+        colorSpace: ColorSpaces.Bt2020nc,
+        colorPrimaries: ColorPrimaries.Bt2020,
+        colorTransfer: ColorTransferFormats.Smpte2084,
+      }),
+    });
+  }
+
+  test('opencl tonemap returns VAAPI frames before the software pad downloads them (no scale)', () => {
+    process.env[TONEMAP_ENABLED] = 'true';
+
+    const stream = createHdrVideoStreamWithSize(
+      FrameSize.withDimensions(3840, 2076),
+    );
+    const pipeline = buildWithTonemap({
+      videoStream: stream,
+      desiredState: {
+        scaledSize: stream.squarePixelFrameSize(FrameSize.FourK),
+        paddedSize: FrameSize.FourK,
+      },
+    });
+
+    const args = pipeline.getCommandArgs().join(' ');
+    expect(args).toContain(
+      'hwmap=derive_device=vaapi:reverse=1,format=vaapi,hwdownload,format=nv12,pad=3840:2160',
+    );
+  });
+
+  test('opencl tonemap returns VAAPI frames before the software pad downloads them (scale and pad)', () => {
+    process.env[TONEMAP_ENABLED] = 'true';
+
+    const stream = createHdrVideoStreamWithSize(
+      FrameSize.withDimensions(3840, 1600),
+    );
+    const pipeline = buildWithTonemap({
+      videoStream: stream,
+      desiredState: {
+        scaledSize: stream.squarePixelFrameSize(FrameSize.FHD),
+        paddedSize: FrameSize.FHD,
+      },
+    });
+
+    const args = pipeline.getCommandArgs().join(' ');
+    // scale_vaapi targets the fitted size; the pad below fills out the frame.
+    expect(args.indexOf('scale_vaapi=1920:800')).toBeGreaterThan(-1);
+    expect(args.indexOf('scale_vaapi=1920:800')).toBeLessThan(
+      args.indexOf('tonemap_opencl'),
+    );
+    expect(args).toContain(
+      'hwmap=derive_device=vaapi:reverse=1,format=vaapi,hwdownload,format=nv12,pad=1920:1080',
+    );
   });
 
   test('skips opencl tonemap when hardware filters are disabled but applies software tonemap', () => {
@@ -1328,9 +1468,8 @@ describe('VaapiPipelineBuilder tonemap', () => {
     );
   });
 
-  // After tonemap uploads frames to hardware, condition 2 (decoder!=VAAPI && frames on Hardware)
-  // triggers software scale — frames are downloaded from hardware before the software scale.
-  test('8-bit yuv420p HDR input uses vaapi tonemap and software scale (software decode)', () => {
+  // Software-decoded frames are scaled in software, then uploaded once for the tonemap.
+  test('8-bit yuv420p HDR input uses software scale and vaapi tonemap (software decode)', () => {
     process.env[TONEMAP_ENABLED] = 'true';
 
     // Unusual but valid: 8-bit stream tagged with HDR color metadata
@@ -1368,11 +1507,11 @@ describe('VaapiPipelineBuilder tonemap', () => {
     console.log(args);
     const filters = pipeline.getComplexFilter()!.filterChain.videoFilterSteps;
     expect(hasVaapiTonemapFilter(pipeline)).to.eq(true);
-    // decoder=None, tonemap uploads to hardware → condition 2 fires → ScaleFilter (software scale)
+    // decoder=None, frames in software, HDR cannot pad on hardware → ScaleFilter (software scale)
     expect(filters.some((f) => f instanceof ScaleFilter)).toBe(true);
     expect(filters.some((f) => f instanceof ScaleVaapiFilter)).toBe(false);
-    // Frames come from hardware → ScaleFilter inserts hwdownload
-    expect(args).toContain('hwdownload');
+    // Scale runs before the tonemap, so nothing is downloaded from hardware
+    expect(args).not.toContain('hwdownload');
     expect(args).toContain('scale=');
   });
 
@@ -1413,7 +1552,7 @@ describe('VaapiPipelineBuilder tonemap', () => {
     console.log(args);
     const filters = pipeline.getComplexFilter()!.filterChain.videoFilterSteps;
     expect(hasVaapiTonemapFilter(pipeline)).to.eq(true);
-    // Frames on hardware after tonemap → scale_vaapi is used (frames stay on hardware)
+    // Frames on hardware after decode → scale_vaapi is used (frames stay on hardware)
     expect(filters.some((f) => f instanceof ScaleVaapiFilter)).toBe(true);
     expect(filters.some((f) => f instanceof ScaleFilter)).toBe(false);
     expect(args).toContain('scale_vaapi=');
@@ -1503,6 +1642,45 @@ describe('VaapiPipelineBuilder tonemap', () => {
       console.log(builtPipeline.getCommandArgs().join(' '));
     });
   });
+
+  test('sets filter_hw_device to vaapi when opencl tonemap and subtitle burn-in are both active', () => {
+    process.env[TONEMAP_ENABLED] = 'true';
+
+    const pipeline = buildWithTonemap({
+      videoStream: createHdrVideoStream(),
+      binaryCapabilities: new FfmpegCapabilities(
+        new Set(),
+        new Map(),
+        new Set([KnownFfmpegFilters.TonemapOpencl]),
+        new Set(),
+      ),
+      stateVaapiDevice: '/dev/dri/renderD128',
+      subtitles: new SubtitlesInputSource(
+        new FileStreamSource('/path/to/video.mkv'),
+        [new EmbeddedSubtitleStream('pgs', 5, SubtitleMethods.Burn)],
+        SubtitleMethods.Burn,
+      ),
+    });
+
+    const args = pipeline.getCommandArgs();
+    const argsString = args.join(' ');
+
+    // Two hw devices are registered (opencl derived from vaapi for tonemap)...
+    expect(argsString).toContain('opencl=ocl@va');
+    // ...and subtitle burn-in goes through the hardware hwupload/overlay_vaapi path...
+    expect(argsString).toContain('hwupload');
+    // ...so ffmpeg must be told explicitly to default filters to the vaapi
+    // device, otherwise hwupload defaults to opencl and scale_vaapi/overlay_vaapi
+    // reject the resulting frames.
+    const filterHwDeviceIdx = args.indexOf('-filter_hw_device');
+    expect(filterHwDeviceIdx).toBeGreaterThan(-1);
+    expect(args[filterHwDeviceIdx + 1]).toEqual('va');
+
+    // The flag must be set before ffmpeg reaches any hwupload filter use.
+    const hwuploadIdx = argsString.indexOf('hwupload');
+    const filterHwDeviceArgIdx = argsString.indexOf('-filter_hw_device');
+    expect(filterHwDeviceArgIdx).toBeLessThan(hwuploadIdx);
+  });
 });
 
 describe('VaapiPipelineBuilder scale', () => {
@@ -1548,25 +1726,29 @@ describe('VaapiPipelineBuilder scale', () => {
     disableHardwareEncoding?: boolean;
     disableHardwareFilters?: boolean;
     deinterlace?: boolean;
+    openclInterop?: boolean;
   }): Pipeline {
-    const capabilities = new VaapiHardwareCapabilities([
-      new VaapiProfileEntrypoint(
-        VaapiProfiles.H264Main,
-        VaapiEntrypoint.Decode,
-      ),
-      new VaapiProfileEntrypoint(
-        VaapiProfiles.H264Main,
-        VaapiEntrypoint.Encode,
-      ),
-      new VaapiProfileEntrypoint(
-        VaapiProfiles.HevcMain10,
-        VaapiEntrypoint.Decode,
-      ),
-      new VaapiProfileEntrypoint(
-        VaapiProfiles.HevcMain,
-        VaapiEntrypoint.Encode,
-      ),
-    ]);
+    const capabilities = new VaapiHardwareCapabilities(
+      [
+        new VaapiProfileEntrypoint(
+          VaapiProfiles.H264Main,
+          VaapiEntrypoint.Decode,
+        ),
+        new VaapiProfileEntrypoint(
+          VaapiProfiles.H264Main,
+          VaapiEntrypoint.Encode,
+        ),
+        new VaapiProfileEntrypoint(
+          VaapiProfiles.HevcMain10,
+          VaapiEntrypoint.Decode,
+        ),
+        new VaapiProfileEntrypoint(
+          VaapiProfiles.HevcMain,
+          VaapiEntrypoint.Encode,
+        ),
+      ],
+      opts.openclInterop ?? false,
+    );
 
     const binaryCapabilities =
       opts.binaryCapabilities ??
@@ -1715,9 +1897,10 @@ describe('VaapiPipelineBuilder scale', () => {
     expect(args).not.toContain('scale=');
   });
 
-  test('uses software scale when decode is disabled but tonemap uploads frames to hardware', () => {
-    // decoderMode=None (decode disabled), tonemap runs and uploads frames to Hardware
-    // Condition 2: decoder!=VAAPI (true) && frameDataLocation==Hardware (TRUE after tonemap) → software scale
+  test('uses software scale before tonemap when decode is disabled and content is HDR', () => {
+    // decoderMode=None (decode disabled), scale runs before tonemap so frames are in Software
+    // Condition 2: decoder!=VAAPI (true) && frameDataLocation==Hardware (FALSE) → false
+    // Condition 3: HDR cannot pad on hardware && frames in Software → software scale
     process.env[TONEMAP_ENABLED] = 'true';
 
     const pipeline = buildWithScale({
@@ -1732,17 +1915,16 @@ describe('VaapiPipelineBuilder scale', () => {
         ]),
         new Set(),
       ),
+      openclInterop: true,
       disableHardwareDecoding: true,
-      // After TonemapOpenclFilter.nextState: frameDataLocation = Hardware
-      // → condition 2 fires → software scale
     });
     const args = pipeline.getCommandArgs().join(' ');
-    console.log('scale sw (decode disabled, frames on hw via tonemap):', args);
+    console.log('scale sw (decode disabled, HDR, tonemap after scale):', args);
 
     const filters = getVideoFilterSteps(pipeline);
     expect(filters.some((f) => f instanceof ScaleFilter)).toBe(true);
     expect(filters.some((f) => f instanceof ScaleVaapiFilter)).toBe(false);
-    // Frames came from hardware (tonemap) → ScaleFilter adds hwdownload before software scale
+    // Tonemap uploads the scaled frames → software pad downloads them afterwards
     expect(args).toContain('hwdownload');
     expect(args).toContain('scale=');
     expect(args).not.toContain('scale_vaapi=');
@@ -1884,5 +2066,66 @@ describe('VaapiPipelineBuilder scale', () => {
     // scale_vaapi with an actual resize includes 'force_divisible_by'; format-only does not
     expect(args).not.toContain('force_divisible_by');
     expect(args).not.toContain('scale=');
+  });
+});
+
+describe('VaapiPipelineBuilder MPEG-2 encoding', () => {
+  function buildMpeg2(entrypoints: VaapiProfileEntrypoint[]): string {
+    const video = VideoInputSource.withStream(
+      new FileStreamSource('/path/to/video.mkv'),
+      create169FhdVideoStream(),
+    );
+
+    const builder = new VaapiPipelineBuilder(
+      new VaapiHardwareCapabilities(entrypoints),
+      EmptyFfmpegCapabilities,
+      video,
+      null,
+      null,
+      null,
+      null,
+    );
+
+    const pipeline = builder.build(
+      FfmpegState.create({ version: fakeVersion }),
+      new FrameState({
+        isAnamorphic: false,
+        scaledSize: FrameSize.FHD,
+        paddedSize: FrameSize.FHD,
+        pixelFormat: new PixelFormatYuv420P(),
+        videoFormat: VideoFormats.Mpeg2Video,
+      }),
+      { ...DefaultPipelineOptions, vaapiDevice: '/dev/dri/renderD128' },
+    );
+
+    return pipeline.getCommandArgs().join(' ');
+  }
+
+  test('uses mpeg2_vaapi when the device has an MPEG-2 encode entrypoint', () => {
+    const args = buildMpeg2([
+      new VaapiProfileEntrypoint(
+        VaapiProfiles.H264Main,
+        VaapiEntrypoint.Decode,
+      ),
+      new VaapiProfileEntrypoint(
+        VaapiProfiles.Mpeg2Main,
+        VaapiEntrypoint.Encode,
+      ),
+    ]);
+
+    expect(args).toContain('-c:v mpeg2_vaapi');
+    expect(args).not.toContain('hwdownload');
+  });
+
+  test('falls back to software mpeg2video without an MPEG-2 encode entrypoint', () => {
+    const args = buildMpeg2([
+      new VaapiProfileEntrypoint(
+        VaapiProfiles.H264Main,
+        VaapiEntrypoint.Decode,
+      ),
+    ]);
+
+    expect(args).toContain('-c:v mpeg2video');
+    expect(args).not.toContain('mpeg2_vaapi');
   });
 });

@@ -1,19 +1,21 @@
-import { MediaSourceId } from '@tunarr/shared';
+import type { MediaSourceId } from '@tunarr/shared';
 import { E_ALREADY_LOCKED, tryAcquire } from 'async-mutex';
 import { inject, injectable } from 'inversify';
 import PQueue from 'p-queue';
 import { MediaSourceDB } from '../../db/mediaSourceDB.ts';
-import { MediaSourceType } from '../../db/schema/base.ts';
-import { KEYS } from '../../types/inject.ts';
+import type { MediaSourceType } from '../../db/schema/base.ts';
+import { ReconcileProgramDurationsTask } from '../../tasks/ReconcileProgramDurationsTask.ts';
+import { autoFactoryKey, KEYS } from '../../types/inject.ts';
 import { Result } from '../../types/result.ts';
-import { Maybe } from '../../types/util.ts';
+import type { Maybe } from '../../types/util.ts';
 import { InjectLogger } from '../../util/inject.ts';
-import { Logger } from '../../util/logging/LoggerFactory.ts';
+import type { Logger } from '../../util/logging/LoggerFactory.ts';
 import { EntityMutex } from '../EntityMutex.ts';
-import { GenericExternalCollectionScanner } from './ExternalCollectionScanner.ts';
-import { GenericLocalMediaSourceScannerFactory } from './FileSystemScanner.ts';
+import { GlobalScheduler } from '../Scheduler.ts';
+import type { GenericExternalCollectionScanner } from './ExternalCollectionScanner.ts';
+import type { GenericLocalMediaSourceScannerFactory } from './FileSystemScanner.ts';
 import { MediaSourceProgressService } from './MediaSourceProgressService.ts';
-import { GenericMediaSourceScannerFactory } from './MediaSourceScanner.ts';
+import type { GenericMediaSourceScannerFactory } from './MediaSourceScanner.ts';
 
 @injectable()
 export class MediaSourceScanCoordinator {
@@ -35,6 +37,8 @@ export class MediaSourceScanCoordinator {
     private collectionScannerFactory: (
       sourceType: MediaSourceType,
     ) => Maybe<GenericExternalCollectionScanner>,
+    @inject(autoFactoryKey(ReconcileProgramDurationsTask))
+    private reconcileDurationsTaskFactory: () => ReconcileProgramDurationsTask,
   ) {}
 
   async addLocal({
@@ -96,6 +100,7 @@ export class MediaSourceScanCoordinator {
         )
         .finally(() => {
           MediaSourceScanCoordinator.signalById.delete(mediaSource.uuid);
+          this.reconcileProgramDurations();
         });
 
       return true;
@@ -125,6 +130,18 @@ export class MediaSourceScanCoordinator {
 
     if (!library) {
       this.logger.error('No library found with ID %s', libraryId);
+      return false;
+    }
+
+    // Scanning a library the server no longer reports would mark all of its
+    // programs missing.
+    if (library.unavailableSince !== null) {
+      this.logger.warn(
+        "Skipping scan of library '%s' (ID = %s): unavailable since %s",
+        library.name,
+        library.uuid,
+        library.unavailableSince.toISOString(),
+      );
       return false;
     }
 
@@ -177,6 +194,7 @@ export class MediaSourceScanCoordinator {
         )
         .finally(() => {
           MediaSourceScanCoordinator.signalById.delete(library.uuid);
+          this.reconcileProgramDurations();
         });
 
       return true;
@@ -195,6 +213,12 @@ export class MediaSourceScanCoordinator {
       }
       return false;
     }
+  }
+
+  // A scan can change program durations. Channel lineups keep their own copy,
+  // which streaming schedules from, so it is brought back in line here.
+  private reconcileProgramDurations() {
+    GlobalScheduler.runTask(this.reconcileDurationsTaskFactory(), undefined);
   }
 
   cancelAll() {

@@ -8,19 +8,18 @@ import type {
 import type { Maybe } from '@/types/util.js';
 import dayjs from '@/util/dayjs.js';
 import {
-  isDefined,
   isNonEmptyArray,
   isNonEmptyString,
   parseFloatOrNull,
 } from '@/util/index.js';
 import { seq } from '@tunarr/shared/util';
-import { MediaChapter } from '@tunarr/types';
+import type { MediaChapter } from '@tunarr/types';
 import { inject, injectable } from 'inversify';
 import { filter, find, isEmpty, isNull, map, orderBy } from 'lodash-es';
 import type { NonEmptyArray } from 'ts-essentials';
 import { LanguageService } from '../services/LanguageService.ts';
 import { Result } from '../types/result.ts';
-import { StreamDetailsFetcher } from './ExternalStreamDetailsFetcher.ts';
+import type { StreamDetailsFetcher } from './ExternalStreamDetailsFetcher.ts';
 import type {
   AudioStreamDetails,
   ProgramStreamResult,
@@ -42,15 +41,20 @@ export class FfprobeStreamDetails
   async getStream({
     path,
   }: FfprobeStreamDetailsRequest): Promise<Result<ProgramStreamResult>> {
-    const probeResult = (
-      await Result.attemptAsync(() => this.ffmpegInfo.probeFile(path))
-    ).filter(isDefined);
+    const probeResult = await Result.attemptAsync(() =>
+      this.ffmpegInfo.probeFile(path),
+    );
 
     if (probeResult.isFailure()) {
       return probeResult.recast();
     }
 
     const probeDetails = probeResult.get();
+    if (!probeDetails) {
+      return Result.failure(
+        `ffprobe output for ${path} did not match the expected schema`,
+      );
+    }
 
     const videoStream = find(
       probeDetails.streams,
@@ -129,7 +133,7 @@ export class FfprobeStreamDetails
           lang && LanguageService.isValidLanguageCode(lang) ? lang : undefined;
         return {
           type: 'embedded',
-          codec: stream.codec_name,
+          codec: stream.codec_name ?? 'unknown',
           index: stream.index,
           default: stream.disposition?.default === 1,
           forced: stream.disposition?.forced === 1,
@@ -152,6 +156,7 @@ export class FfprobeStreamDetails
           ? subtitleStreamDetails
           : undefined,
         duration: dayjs.duration({ seconds: probeDetails.format.duration }),
+        formatTags: probeDetails.format.tags,
         chapters: seq.collect(
           orderBy(probeDetails.chapters, (c) => c.start, 'asc'),
           (chapter, index) => {

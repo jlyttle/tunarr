@@ -9,6 +9,7 @@ import {
   useMaterialReactTable,
 } from 'material-react-table';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTableDensity } from '../../hooks/useTableSettings.ts';
 import { useSettings } from '../../store/settings/selectors.ts';
 
 const ValidLogLevels = [
@@ -143,11 +144,14 @@ export function SystemLogsPage() {
     ];
   }, [t]);
 
+  const { density, enableDensityToggle } = useTableDensity('compact');
+
   const table = useMaterialReactTable({
     columns,
     data: logBuf,
+    state: { density },
+    enableDensityToggle,
     initialState: {
-      density: 'compact',
       pagination: {
         pageSize: 50,
         pageIndex: 0,
@@ -160,8 +164,10 @@ export function SystemLogsPage() {
           component="a"
           href={`${backendUri}/api/system/debug/logs?download=true&pretty=true&lineLimit=${table.getRowCount()}`}
         >
-          <Trans>Download last {table.getRowCount()}{' '}
-          <Plural value={table.getRowCount()} one="# row" other="# rows" /></Trans>
+          <Trans>
+            Download last {table.getRowCount()}{' '}
+            <Plural value={table.getRowCount()} one="# row" other="# rows" />
+          </Trans>
         </Button>
         <Button
           startIcon={<Download />}

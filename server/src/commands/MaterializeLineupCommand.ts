@@ -1,13 +1,14 @@
 import { seq } from '@tunarr/shared/util';
-import {
+import type {
   ChannelProgram,
   CondensedChannelProgram,
   ContentProgram,
+  CustomProgram,
 } from '@tunarr/types';
 import { inject, injectable } from 'inversify';
 import { match, P } from 'ts-pattern';
 import { ProgramConverter } from '../db/converters/ProgramConverter.ts';
-import { IProgramDB } from '../db/interfaces/IProgramDB.ts';
+import type { IProgramDB } from '../db/interfaces/IProgramDB.ts';
 import { KEYS } from '../types/inject.ts';
 import { groupByUniq } from '../util/index.ts';
 import { MaterializeProgramsCommand } from './MaterializeProgramsCommand.ts';
@@ -39,7 +40,9 @@ export class MaterializeLineupCommand {
       }),
     );
 
-    const dbPrograms = await this.programDB.getProgramsByIds([...programIds]);
+    const dbPrograms = await this.programDB.getLineupProgramsByIds([
+      ...programIds,
+    ]);
     const materializedPrograms =
       await this.materializePrograms.execute(dbPrograms);
 
@@ -71,7 +74,11 @@ export class MaterializeLineupCommand {
         .with({ type: 'custom' }, (c) => {
           const program = programsById[c.id ?? ''];
           if (!program) return;
-          return { ...c, ...program };
+
+          // Nest the program instead of spreading it. A spread would replace a
+          // mid-roll segment's duration with the full program duration and
+          // turn the item into plain content, dropping its custom show.
+          return { ...c, program } satisfies CustomProgram;
         })
         .with({ type: 'filler' }, (f) => {
           const program = programsById[f.id];

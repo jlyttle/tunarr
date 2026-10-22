@@ -36,7 +36,7 @@ export class NvidiaHardwareCapabilitiesFactory
   }
 
   private static cache = new NodeCache({
-    stdTTL: +dayjs.duration({ hours: 1 }),
+    stdTTL: dayjs.duration({ hours: 1 }).asSeconds(),
   });
 
   private static makeCacheKey(path: string, command: string): string {
@@ -91,7 +91,7 @@ export class NvidiaHardwareCapabilitiesFactory
 
 @injectable()
 export class NvidiaGpuDetectionHelper {
-  @InjectLogger() private declare readonly logger: Logger;
+  @InjectLogger() declare private readonly logger: Logger;
 
   async getGpuFromFfmpeg(
     ffmpegExecutablePath: string,

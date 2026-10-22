@@ -105,6 +105,8 @@ export const FfmpegSettingsSchema = z.object({
   enableSubtitleExtraction: z.boolean().optional().default(false),
 });
 
+// .github/scripts/pr-policy.cjs matches this name to detect new media sources.
+// Update it if you rename this constant.
 export const MediaSourceType = z.enum(['plex', 'jellyfin', 'emby', 'local']);
 
 export const MediaSourceContentType = z.enum([
@@ -124,6 +126,7 @@ const BaseMediaSourceLibrarySchema = z.object({
   type: MediaSourceType,
   enabled: z.boolean(),
   isLocked: z.boolean(),
+  unavailableSince: z.number().optional(),
 });
 
 export const MediaSourceLibrarySchema = z.object({
@@ -150,38 +153,43 @@ export const MediaSourcePathReplacement = z.object({
 const BaseMediaSourceSettingsSchema = z.object({
   id: z.string(),
   name: z.string(),
-  uri: z.string(),
-  accessToken: z.string().optional(),
-  userId: z.string().nullable(),
-  username: z.string().nullable(),
   libraries: z.array(BaseMediaSourceLibrarySchema),
   pathReplacements: z.array(MediaSourcePathReplacement),
 });
 
-export const PlexServerSettingsSchema = BaseMediaSourceSettingsSchema.extend({
+const RemoteMediaSourceSettingsSchema = z.object({
+  ...BaseMediaSourceSettingsSchema.shape,
+  uri: z.string().trim(),
+  accessToken: z.string().optional(),
+  userId: z.string().nullable(),
+  sendPlayStatusUpdates: z.boolean().default(false),
+  username: z.string().nullable(),
+});
+
+export const PlexServerSettingsSchema = z.object({
+  ...RemoteMediaSourceSettingsSchema.shape,
   type: z.literal(MediaSourceType.enum.plex),
   sendGuideUpdates: z.boolean(),
   index: z.number(),
   clientIdentifier: z.string().optional(),
 });
 
-export const JellyfinServerSettingsSchema =
-  BaseMediaSourceSettingsSchema.extend({
-    type: z.literal('jellyfin'),
-  });
+export const JellyfinServerSettingsSchema = z.object({
+  ...RemoteMediaSourceSettingsSchema.shape,
+  type: z.literal('jellyfin'),
+});
 
-export const EmbyServerSettingsSchema = BaseMediaSourceSettingsSchema.extend({
+export const EmbyServerSettingsSchema = z.object({
+  ...RemoteMediaSourceSettingsSchema.shape,
   type: z.literal('emby'),
 });
 
-export const LocalMediaSourceSchema = z
-  .object({
-    ...BaseMediaSourceSettingsSchema.shape,
-    type: z.literal('local'),
-    mediaType: MediaSourceContentType,
-    paths: z.array(z.string().min(1)).nonempty(),
-  })
-  .omit({ accessToken: true, userId: true, username: true, uri: true });
+export const LocalMediaSourceSchema = z.object({
+  ...BaseMediaSourceSettingsSchema.shape,
+  type: z.literal('local'),
+  mediaType: MediaSourceContentType,
+  paths: z.array(z.string().min(1)).nonempty(),
+});
 
 export const MediaSourceSettingsSchema = z.discriminatedUnion('type', [
   PlexServerSettingsSchema,
@@ -216,7 +224,7 @@ export const FileBackupOutputSchema = z.object({
   archiveFormat: z.union([z.literal('zip'), z.literal('tar')]).default('tar'),
   gzip: z.boolean().optional(), // Only valid if archive format is tar
   tempDir: z.string().optional(), // Defaults to OS-specific temp dir, can be relative path
-  maxBackups: z.number().positive().default(3),
+  maxBackups: z.number().nonnegative().default(3),
 });
 
 export type FileBackupOutput = z.infer<typeof FileBackupOutputSchema>;

@@ -1,6 +1,6 @@
-import { TvEpisodeNfo, TvShowNfo } from '@/nfo/NfoSchemas.js';
+import type { TvEpisodeNfo, TvShowNfo } from '@/nfo/NfoSchemas.js';
 import { isNonEmptyString, seq } from '@tunarr/shared/util';
-import {
+import type {
   EpisodeMetadata,
   EpisodeWithHierarchy,
   SeasonMetadata,
@@ -19,35 +19,34 @@ import {
   isUndefined,
   range,
 } from 'lodash-es';
-import { Dirent } from 'node:fs';
+import type { Dirent } from 'node:fs';
 import fs from 'node:fs/promises';
 import path, { basename, dirname, extname } from 'node:path';
-import { format } from 'node:util';
 import { match } from 'ts-pattern';
 import { v4 } from 'uuid';
 import { ProgramGroupingMinter } from '../../db/converters/ProgramGroupingMinter.ts';
 import { ProgramDaoMinter } from '../../db/converters/ProgramMinter.ts';
-import {
+import type {
   IProgramDB,
   ProgramCanonicalIdLookupResult,
 } from '../../db/interfaces/IProgramDB.ts';
 import { LocalMediaDB } from '../../db/LocalMediaDB.ts';
 import { MediaSourceDB } from '../../db/mediaSourceDB.ts';
-import { ArtworkType } from '../../db/schema/Artwork.ts';
+import type { ArtworkType } from '../../db/schema/Artwork.ts';
 import { ProgramType } from '../../db/schema/Program.ts';
 import { TvEpisodeNfoParser } from '../../nfo/TvEpisodeNfoParser.ts';
 import { TvShowNfoParser } from '../../nfo/TvShowNfoParser.ts';
 import { FfprobeStreamDetails } from '../../stream/FfprobeStreamDetails.ts';
 import { WrappedError } from '../../types/errors.ts';
 import { KEYS } from '../../types/inject.ts';
-import { HasMediaSourceInfo, SeasonWithShow } from '../../types/Media.ts';
+import type { HasMediaSourceInfo, SeasonWithShow } from '../../types/Media.ts';
 import { Result } from '../../types/result.ts';
 import { fileExists } from '../../util/fsUtil.ts';
 import { isDefined, wait } from '../../util/index.ts';
 import { InjectLogger } from '../../util/inject.ts';
-import { Logger } from '../../util/logging/LoggerFactory.ts';
+import type { Logger } from '../../util/logging/LoggerFactory.ts';
 import { parseReleaseDate, titleToSortTitle } from '../../util/programs.ts';
-import { Canonicalizer } from '../Canonicalizer.ts';
+import type { Canonicalizer } from '../Canonicalizer.ts';
 import { ImageCache } from '../ImageCache.ts';
 import { FallbackMetadataService } from '../local/FallbackMetadataService.ts';
 import {
@@ -57,11 +56,12 @@ import {
   mapNfoToNamedEntity,
 } from '../local/localMetadataUtil.ts';
 import { LocalSubtitlesService } from '../local/LocalSubtitlesService.ts';
-import { FolderAndContents } from '../LocalFolderCanonicalizer.ts';
-import { LocalMediaCanonicalizer } from '../LocalMediaCanonicalizer.ts';
+import type { FolderAndContents } from '../LocalFolderCanonicalizer.ts';
+import type { LocalMediaCanonicalizer } from '../LocalMediaCanonicalizer.ts';
 import { MeilisearchService } from '../MeilisearchService.ts';
 import { KnownVideoFileExtensions } from './constants.ts';
-import { FileSystemScanner, LocalScanContext } from './FileSystemScanner.ts';
+import type { LocalScanContext } from './FileSystemScanner.ts';
+import { FileSystemScanner } from './FileSystemScanner.ts';
 import { MediaSourceProgressService } from './MediaSourceProgressService.ts';
 
 @injectable()
@@ -72,7 +72,7 @@ export class LocalTvShowScanner extends FileSystemScanner {
   private tvShowNfoParser = new TvShowNfoParser();
   private tvEpisodeNfoParser = new TvEpisodeNfoParser();
 
-  @InjectLogger() protected declare readonly logger: Logger;
+  @InjectLogger() declare protected readonly logger: Logger;
 
   constructor(
     @inject(KEYS.LocalFolderCanonicalizer)
@@ -615,7 +615,9 @@ export class LocalTvShowScanner extends FileSystemScanner {
       episodeDirent.name,
     );
 
-    const mediaItem = (await this.getMediaItem(fullEpisodePath)).getOrThrow();
+    const { mediaItem } = (
+      await this.getMediaItem(fullEpisodePath)
+    ).getOrThrow();
 
     if (isNil(mediaItem.duration)) {
       throw new Error(`Could not derive duration for item: ${fullEpisodePath}`);
@@ -698,10 +700,14 @@ export class LocalTvShowScanner extends FileSystemScanner {
     const metadata = await this.tvShowNfoParser.parseFile(nfoFile);
 
     if (metadata.isFailure()) {
-      return Result.forError(
-        new Error(
-          format('Error loading metadata for show at path: %s', fullShowPath),
-          metadata.error,
+      this.logger.warn(
+        metadata.error,
+        'Unable to parse %s, using fallback metadata',
+        nfoFile,
+      );
+      return Result.attemptAsync(() =>
+        Promise.resolve(
+          this.fallbackMetadataService.getShowFallbackMetadata(fullShowPath),
         ),
       );
     }
@@ -754,34 +760,18 @@ export class LocalTvShowScanner extends FileSystemScanner {
       basename(fullEpisodePath, extname(fullEpisodePath)) + '.nfo',
     );
     if (!(await fileExists(nfoPath))) {
-      // Do fallback
       this.logger.debug(
         'No nfo file found for episode %s. Falling back to basic metadata',
         fullEpisodePath,
       );
-      const title = basename(fullEpisodePath, extname(fullEpisodePath));
-      return Result.success({
-        episodeNumber: expectedEpisodeNumber,
-        identifiers: [],
-        originalTitle: null,
-        releaseDate: null,
-        releaseDateString: null,
-        sortTitle: title,
-        sourceType: 'local',
-        summary: null,
-        title,
-        tags: [],
-        type: 'episode',
-        uuid: v4(),
-        year: null,
-        artwork: [],
-        state: 'ok',
-      });
+      return Result.success(
+        this.episodeFallbackMetadata(fullEpisodePath, expectedEpisodeNumber),
+      );
     }
 
     const parseResult = await this.tvEpisodeNfoParser.parseFile(nfoPath);
 
-    return parseResult
+    const nfoMetadata = parseResult
       .flatMapPure<TvEpisodeNfo>(({ episodedetails }) => {
         const matchingEpisode = episodedetails.find(
           (ep) => ep.episode === expectedEpisodeNumber,
@@ -825,6 +815,43 @@ export class LocalTvShowScanner extends FileSystemScanner {
           state: 'ok',
         } satisfies EpisodeMetadata;
       });
+
+    if (nfoMetadata.isFailure()) {
+      this.logger.warn(
+        nfoMetadata.error,
+        'Unable to use %s, falling back to basic metadata',
+        nfoPath,
+      );
+      return Result.success(
+        this.episodeFallbackMetadata(fullEpisodePath, expectedEpisodeNumber),
+      );
+    }
+
+    return nfoMetadata;
+  }
+
+  private episodeFallbackMetadata(
+    fullEpisodePath: string,
+    episodeNumber: number,
+  ): EpisodeMetadata {
+    const title = basename(fullEpisodePath, extname(fullEpisodePath));
+    return {
+      episodeNumber,
+      identifiers: [],
+      originalTitle: null,
+      releaseDate: null,
+      releaseDateString: null,
+      sortTitle: title,
+      sourceType: 'local',
+      summary: null,
+      title,
+      tags: [],
+      type: 'episode',
+      uuid: v4(),
+      year: null,
+      artwork: [],
+      state: 'ok',
+    };
   }
 
   private async scanShowArtwork(

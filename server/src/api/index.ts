@@ -11,6 +11,7 @@ import fpStatic from '@fastify/static';
 import { VersionApiResponseSchema } from '@tunarr/types/api';
 import { fileTypeFromStream } from 'file-type';
 import { isEmpty } from 'lodash-es';
+import { randomUUID } from 'node:crypto';
 import { createReadStream, promises as fsPromises } from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod/v4';
@@ -110,7 +111,6 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
         return res.send({
           tunarr: getTunarrVersion(),
           ffmpeg: v.versionString,
-          nodejs: process.version.replace('v', ''),
         });
       } catch (err) {
         logger.error(err);
@@ -201,19 +201,15 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
         await fsPromises.mkdir(baseDir, { recursive: true });
       }
 
-      // await pipeline(
-      //   createReadStream(data.filepath),
-      //   createWriteStream(path.join(baseDir, data.filename)),
-      // );
-
-      await fsPromises.copyFile(
-        data.filepath,
-        path.join(baseDir, data.filename),
-      );
+      // The client filename is never used. Its extension decides the
+      // Content-Type the file is served with, so a client-chosen name like
+      // "x.html" would let an image-prefixed page run on Tunarr's origin.
+      const fileName = `${randomUUID()}.${fileType.ext}`;
+      await fsPromises.copyFile(data.filepath, path.join(baseDir, fileName));
 
       return res.send({
-        name: data.filename,
-        fileUrl: `${req.protocol}://${req.host}/images/uploads/${data.filename}`,
+        name: fileName,
+        fileUrl: `${req.protocol}://${req.host}/images/uploads/${fileName}`,
       });
     },
   );
@@ -237,6 +233,9 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
     method: ['HEAD', 'GET'],
     schema: {
       tags: ['Streaming'],
+    },
+    config: {
+      authRequired: false,
     },
     handler: async (req, res) => {
       try {
@@ -262,7 +261,7 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
   // Force an XMLTV refresh
   fastify.post('/xmltv/refresh', async (_, res) => {
     await GlobalScheduler.getScheduledJob(UpdateXmlTvTask.ID).runNow(false);
-    return res.status(200);
+    return res.status(200).send();
   });
 
   // CHANNELS.M3U Download
@@ -274,6 +273,9 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
         hostOverride: z.string().optional(),
       }),
       tags: ['Streaming'],
+    },
+    config: {
+      authRequired: false,
     },
     method: ['HEAD', 'GET'],
     handler: async (req, res) => {

@@ -54,7 +54,12 @@ export class VaapiProfileEntrypoint {
 export class VaapiHardwareCapabilities extends BaseFfmpegHardwareCapabilities {
   readonly type: string = 'vaapi';
 
-  constructor(private entrypoints: VaapiProfileEntrypoint[]) {
+  constructor(
+    private entrypoints: VaapiProfileEntrypoint[],
+    // True when ffmpeg can derive an OpenCL device from the VAAPI device,
+    // which tonemap_opencl requires.
+    readonly openclInterop: boolean = false,
+  ) {
     super();
   }
 
@@ -245,7 +250,7 @@ export class VaapiHardwareCapabilities extends BaseFfmpegHardwareCapabilities {
                 ep.entrypoint === VaapiEntrypoint.EncodeLowPower),
           ),
         )
-        .with([VideoFormats.Mpeg1Video, P._], () =>
+        .with([VideoFormats.Mpeg2Video, P._], () =>
           find(
             this.entrypoints,
             (ep) =>

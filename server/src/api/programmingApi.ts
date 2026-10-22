@@ -51,6 +51,10 @@ import { ArtworkService } from '../services/ArtworkService.ts';
 import { FfprobeStreamDetails } from '../stream/FfprobeStreamDetails.ts';
 import { ProgramStreamDetailsFetcher } from '../stream/ProgramStreamDetailsFetcher.ts';
 import { TypedError } from '../types/errors.ts';
+import {
+  MaterializedProgramRelations,
+  ProgramStreamRelations,
+} from '../db/program/programRelations.ts';
 import { KEYS } from '../types/inject.ts';
 
 const LookupExternalProgrammingSchema = z.object({
@@ -102,7 +106,7 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
         req.params.id,
       );
       if (isNil(grouping)) {
-        const program = await req.serverCtx.programDB.getProgramById(
+        const program = await req.serverCtx.programDB.getLineupProgramById(
           req.params.id,
         );
         if (program) {
@@ -255,36 +259,9 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
       const dbRes = await db.query.program.findFirst({
         where: (program, { eq }) => eq(program.uuid, req.params.id),
         with: {
-          externalIds: true,
+          ...MaterializedProgramRelations,
+          ...ProgramStreamRelations,
           mediaLibrary: true,
-          credits: {
-            with: {
-              artwork: true,
-            },
-          },
-          artwork: true,
-          versions: {
-            with: {
-              mediaStreams: true,
-              chapters: true,
-              mediaFiles: true,
-            },
-          },
-          genres: {
-            with: {
-              genre: true,
-            },
-          },
-          studios: {
-            with: {
-              studio: true,
-            },
-          },
-          tags: {
-            with: {
-              tag: true,
-            },
-          },
         },
       });
 
@@ -395,6 +372,9 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
           200: z.any(),
           404: z.void(),
         },
+      },
+      config: {
+        authRequired: false,
       },
     },
     async (req, res) => {
@@ -615,7 +595,10 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
 
       if (program) {
         externalId = program.externalIds.find(
-          (eid) => eid.sourceType === 'jellyfin' || eid.sourceType === 'plex',
+          (eid) =>
+            eid.sourceType === 'jellyfin' ||
+            eid.sourceType === 'emby' ||
+            eid.sourceType === 'plex',
         );
       } else {
         const grouping = await req.serverCtx.programDB.getProgramGrouping(
@@ -625,7 +608,10 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
           return res.status(404).send(`Program ${req.params.id} not found.`);
         }
         externalId = grouping.externalIds.find(
-          (eid) => eid.sourceType === 'jellyfin' || eid.sourceType === 'plex',
+          (eid) =>
+            eid.sourceType === 'jellyfin' ||
+            eid.sourceType === 'emby' ||
+            eid.sourceType === 'plex',
         );
       }
 
@@ -691,6 +677,36 @@ export const programmingApi: RouterPluginAsyncCallback = async (fastify) => {
         }
         case 'jellyfin': {
           const url = `${server.uri}/web/#/details?id=${externalId.externalKey}`;
+          if (!req.query.forward) {
+            return res.send({ url });
+          }
+
+          return res.redirect(url, 302).send();
+        }
+        case 'emby': {
+          // Emby Web needs the server ID to resolve the item. Tunarr does not
+          // store it, so read it from the server. Without it, Emby Web falls
+          // back to the server the browser is signed in to.
+          const params = new URLSearchParams({ id: externalId.externalKey });
+          const api =
+            await req.serverCtx.mediaSourceApiFactory.getEmbyApiClientForMediaSource(
+              server,
+            );
+          const systemInfo = await api.getSystemInfo();
+          if (systemInfo.isFailure()) {
+            logger.warn(
+              systemInfo.error,
+              'Could not fetch server ID for Emby media source %s',
+              server.uuid,
+            );
+          } else {
+            const serverId = systemInfo.get().Id;
+            if (isNonEmptyString(serverId)) {
+              params.set('serverId', serverId);
+            }
+          }
+
+          const url = `${server.uri}/web/index.html#!/item?${params.toString()}`;
           if (!req.query.forward) {
             return res.send({ url });
           }

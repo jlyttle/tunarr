@@ -7,6 +7,7 @@ import {
   first,
   isEmpty,
   last,
+  max,
   nth,
   reject,
   take,
@@ -29,7 +30,7 @@ type FilterBeforeDate = {
   before: Dayjs;
 };
 
-type FilterBeforeSegmentNumber = {
+export type FilterBeforeSegmentNumber = {
   type: 'before_segment_number';
   segmentNumber: number;
   segmentsToKeepBefore: number;
@@ -284,6 +285,106 @@ export class HlsPlaylistMutator {
       discontinuitySequence,
     };
   }
+
+  // Subtitle playlists have no program-date-time requirement, but may carry
+  // the same discontinuity boundaries as their associated video playlist.
+  parseSubtitlePlaylist(playlistLines: string[]): SubtitlePlaylistSegment[] {
+    const items: SubtitlePlaylistSegment[] = [];
+    let discontinuitySequence = 0;
+    let extInf: string | undefined;
+    for (const rawLine of playlistLines) {
+      const line = rawLine.trimEnd();
+      if (line.startsWith('#EXT-X-DISCONTINUITY-SEQUENCE:')) {
+        const value = line.slice(line.indexOf(':') + 1);
+        const sequence = Number(value);
+        if (!/^\d+$/.test(value) || !Number.isSafeInteger(sequence)) {
+          throw new Error('Invalid subtitle discontinuity sequence');
+        }
+        discontinuitySequence = sequence;
+      } else if (line === '#EXT-X-DISCONTINUITY') {
+        discontinuitySequence++;
+      } else if (line.startsWith('#EXTINF:')) {
+        extInf = line;
+      } else if (
+        extInf !== undefined &&
+        line.length > 0 &&
+        !line.startsWith('#')
+      ) {
+        items.push(
+          new SubtitlePlaylistSegment(extInf, line, discontinuitySequence),
+        );
+        extInf = undefined;
+      }
+    }
+
+    return items;
+  }
+
+  trimSubtitlePlaylist(
+    playlistLines: string[],
+    filterOptions: FilterBeforeSegmentNumber,
+    opts: SubtitleTrimOptions,
+  ): SubtitleTrimResult {
+    let allSegments = this.parseSubtitlePlaylist(playlistLines);
+
+    if (allSegments.length > opts.maxSegmentsToKeep) {
+      const minSeg = Math.max(
+        filterOptions.segmentNumber - filterOptions.segmentsToKeepBefore,
+        filterOptions.segmentFloor ?? 0,
+      );
+      const filtered = filter(allSegments, (segment) => {
+        const n = segment.segmentNumber;
+        return n !== null && n >= minSeg;
+      });
+
+      allSegments =
+        filtered.length >= opts.maxSegmentsToKeep
+          ? take(filtered, opts.maxSegmentsToKeep)
+          : takeRight(allSegments, opts.maxSegmentsToKeep);
+    }
+
+    const startSequence = first(allSegments)?.segmentNumber ?? 0;
+
+    // Segment durations here are genuinely variable (unlike the fixed-cadence
+    // video segments above), so the target duration must be derived from the
+    // actual retained segments rather than the nominal segment_time -- an
+    // under-reported #EXT-X-TARGETDURATION is a spec violation.
+    const targetDuration = Math.max(
+      1,
+      Math.ceil(max(allSegments.map((s) => s.duration)) ?? 0),
+    );
+
+    const lines = [
+      '#EXTM3U',
+      '#EXT-X-VERSION:3',
+      `#EXT-X-TARGETDURATION:${targetDuration}`,
+      `#EXT-X-MEDIA-SEQUENCE:${startSequence}`,
+    ];
+
+    let discontinuitySequence = first(allSegments)?.discontinuitySequence ?? 0;
+    if (
+      playlistLines.some(
+        (line) =>
+          line.trimEnd() === '#EXT-X-DISCONTINUITY' ||
+          line.startsWith('#EXT-X-DISCONTINUITY-SEQUENCE:'),
+      )
+    ) {
+      lines.push(`#EXT-X-DISCONTINUITY-SEQUENCE:${discontinuitySequence}`);
+    }
+    for (const segment of allSegments) {
+      while (discontinuitySequence < segment.discontinuitySequence) {
+        lines.push('#EXT-X-DISCONTINUITY');
+        discontinuitySequence++;
+      }
+      lines.push(segment.extInf, segment.line);
+    }
+
+    return {
+      playlist: lines.join('\n'),
+      sequence: startSequence,
+      segmentCount: allSegments.length,
+    };
+  }
 }
 
 class PlaylistSegment {
@@ -296,7 +397,7 @@ class PlaylistSegment {
   ) {}
 
   get startSequence() {
-    const matches = this.line.match(/[A-z/]+(\d+)\.(ts|mp4)/);
+    const matches = basename(this.line).match(SegmentNameRegex);
     const match = nth(matches, 1);
     return match ? parseInt(match) : null;
   }
@@ -310,6 +411,34 @@ class PlaylistSegment {
     );
   }
 }
+
+export class SubtitlePlaylistSegment {
+  public readonly duration: number;
+
+  constructor(
+    public extInf: string,
+    public line: string,
+    public discontinuitySequence = 0,
+  ) {
+    this.duration = parseFloat(trimEnd(extInf.trim(), ',').split(':')[1]!);
+  }
+
+  get segmentNumber(): number | null {
+    const matches = basename(this.line).match(SegmentNameRegex);
+    const match = nth(matches, 1);
+    return match ? parseInt(match) : null;
+  }
+}
+
+export type SubtitleTrimOptions = {
+  maxSegmentsToKeep: number;
+};
+
+export type SubtitleTrimResult = {
+  playlist: string;
+  sequence: number;
+  segmentCount: number;
+};
 
 type PlaylistDiscontinuity = {
   type: 'discontinuity';

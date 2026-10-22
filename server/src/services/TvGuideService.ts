@@ -1,17 +1,16 @@
 import { Mutex } from 'async-mutex';
-import { ChannelDB } from '@/db/ChannelDB.js';
-import { ProgramDB } from '@/db/ProgramDB.js';
+import type { ChannelDB } from '@/db/ChannelDB.js';
+import type { ProgramDB } from '@/db/ProgramDB.js';
 import { ProgramConverter } from '@/db/converters/ProgramConverter.js';
+import type { Lineup, LineupItem } from '@/db/derived_types/Lineup.js';
 import {
   isContentItem,
   isOfflineItem,
   isRedirectItem,
-  Lineup,
-  LineupItem,
 } from '@/db/derived_types/Lineup.js';
-import { OpenDateTimeRange } from '@/types/OpenDateTimeRange.js';
+import type { OpenDateTimeRange } from '@/types/OpenDateTimeRange.js';
 import { KEYS } from '@/types/inject.js';
-import { Maybe } from '@/types/util.js';
+import type { Maybe } from '@/types/util.js';
 import { Timer } from '@/util/Timer.js';
 import { binarySearchRange } from '@/util/binarySearch.js';
 import { devAssert } from '@/util/debug.js';
@@ -23,16 +22,16 @@ import { makeLocalUrl } from '@/util/serverUtil.js';
 import throttle from '@/util/throttle.js';
 import constants from '@tunarr/shared/constants';
 import { seq } from '@tunarr/shared/util';
-import {
+import type {
   ChannelIcon,
   ChannelLineup,
   ChannelProgram,
   TvGuideProgram,
 } from '@tunarr/types';
 import retry from 'async-retry';
-import { Duration } from 'dayjs/plugin/duration.js';
+import type { Duration } from 'dayjs/plugin/duration.js';
 import { inject, injectable } from 'inversify';
-import { Kysely } from 'kysely';
+import type { Kysely } from 'kysely';
 import {
   compact,
   filter,
@@ -55,17 +54,17 @@ import {
 import { match, P } from 'ts-pattern';
 import { v4 } from 'uuid';
 import { MaterializeProgramsCommand } from '../commands/MaterializeProgramsCommand.ts';
-import { ISettingsDB } from '../db/interfaces/ISettingsDB.ts';
+import type { ISettingsDB } from '../db/interfaces/ISettingsDB.ts';
 import { calculateStartTimeOffsets } from '../db/lineupUtil.ts';
-import { ChannelOrm } from '../db/schema/Channel.ts';
-import { ProgramOrm } from '../db/schema/Program.ts';
-import { DB } from '../db/schema/db.ts';
+import type { ChannelOrm } from '../db/schema/Channel.ts';
+import type { ProgramOrm } from '../db/schema/Program.ts';
+import type { DB } from '../db/schema/db.ts';
 import type {
   ChannelOrmWithPrograms,
   ChannelOrmWithRelations,
   ProgramWithRelationsOrm,
 } from '../db/schema/derivedTypes.ts';
-import {
+import type {
   FlexGuideItem,
   MaterializedGuideItem,
   ProgramGuideItem,
@@ -78,12 +77,14 @@ import {
   isDefined,
   isNonEmptyString,
   run,
-  wait,
 } from '../util/index.ts';
 import { loggingDef } from '../util/logging/loggingDef.ts';
 import { EventService } from './EventService.ts';
 import { OnDemandChannelService } from './OnDemandChannelService.ts';
-import { XmlTvWriter } from './XmlTvWriter.ts';
+import {
+  type MaterializedChannelPrograms,
+  XmlTvWriter,
+} from './XmlTvWriter.ts';
 import { findMidRollAnchorIndex, isSameProgramSegment } from './tvGuideUtil.ts';
 
 export type ChannelAndPrograms = ChannelOrm & {
@@ -129,6 +130,11 @@ type ChannelId = string;
 
 const PlaceholderChannelId = v4();
 
+// How close a lookup must be to the end of a program to be treated as landing
+// on the boundary after it. Well above floating point error for epoch
+// timestamps, well below the length of any real program.
+const BOUNDARY_TOLERANCE_MS = 1;
+
 @injectable()
 @loggingDef({ category: 'scheduling' })
 export class TVGuideService {
@@ -147,6 +153,8 @@ export class TVGuideService {
   private eventService: EventService;
   private programConverter: ProgramConverter;
   private cachedGuide: Record<ChannelId, ChannelPrograms>;
+  private runningXmlTvWrite?: Promise<void>;
+  private queuedXmlTvWrite?: Promise<void>;
 
   private lastUpdateTime: Record<string, number>;
   private lastEndTime: Record<string, number>;
@@ -566,11 +574,33 @@ export class TVGuideService {
         );
       }
 
+      // Timestamps this far from the epoch can't hold fractional milliseconds
+      // exactly, so a lookup made at the moment a program ends can land just
+      // short of that end and pick the program that already finished. Treat a
+      // lookup that close to the next boundary as being on it.
+      let cycleStart = startOfCycle;
+      const nextBoundary = accumulate[targetIndex + 1];
+      if (
+        nextBoundary !== undefined &&
+        nextBoundary - channelProgress < BOUNDARY_TOLERANCE_MS
+      ) {
+        targetIndex += 1;
+        if (targetIndex === lineup.items.length) {
+          targetIndex = 0;
+          cycleStart += nextBoundary;
+        }
+      }
+
       const anchorIndex = findMidRollAnchorIndex(lineup.items, targetIndex);
       const lineupItem = lineup.items[anchorIndex]!;
       return {
         index: anchorIndex,
-        startTimeMs: startOfCycle + accumulate[anchorIndex]!,
+        // A snapped boundary can sit a fraction of a millisecond after the
+        // lookup time; never report a program as starting in the future.
+        startTimeMs: Math.min(
+          cycleStart + accumulate[anchorIndex]!,
+          currentUpdateTimeMs,
+        ),
         lineupItem,
       };
     }
@@ -685,19 +715,20 @@ export class TVGuideService {
             targetChannelProgram.startTimeMs,
           );
 
-          // Cap the program at the lowest duration
-          // Either the redirect slot will cut off before the program is
-          // finished, or the program itself will end.
-          // Rounding is not a perfect solution here, we should normalize
-          // fractional durations in channels
+          // End at whichever comes first: the redirect slot or the program on
+          // the target channel. Comparing end times, rather than durations,
+          // accounts for a target program that began before the slot did.
+          // The result is deliberately not rounded: a duration rounded down
+          // ends the item just inside the slot, so the next lookup finds the
+          // same slot again and trims it to a zero-length program.
+          const end = Math.min(
+            playing.startTimeMs + playing.lineupItem.durationMs,
+            targetChannelProgram.startTimeMs +
+              targetChannelProgram.lineupItem.durationMs,
+          );
           const program2 = {
             ...deepCopy(targetChannelProgram.lineupItem),
-            durationMs: Math.round(
-              Math.min(
-                playing.lineupItem.durationMs,
-                targetChannelProgram.lineupItem.durationMs,
-              ),
-            ),
+            durationMs: end - start,
           };
 
           playing = {
@@ -743,12 +774,24 @@ export class TVGuideService {
     let melded = 0;
 
     const push = (program: GuideItem) => {
-      const currentProgram = program.lineupItem;
-      const previousProgramIndex =
-        !isUndefined(program.index) &&
-        inRange(program.index - 1, 0, programs.length)
-          ? (program.index - 1) % programs.length
-          : programs.length - 1;
+      // Normalize filler items to offline so they always participate
+      // in offline melding and never appear as content in the EPG.
+      let currentProgram = program.lineupItem;
+      if (
+        currentProgram.type === 'content' &&
+        isNonEmptyString(currentProgram.fillerListId)
+      ) {
+        currentProgram = {
+          type: 'offline',
+          durationMs: currentProgram.durationMs,
+        };
+        program = { ...program, lineupItem: currentProgram };
+      }
+
+      // program.index is a position in the channel lineup, not in the guide
+      // output being accumulated here, so it can never pick the entry to meld
+      // into. The preceding entry is always the last one pushed.
+      const previousProgramIndex = programs.length - 1;
 
       const previousProgram = nth(programs, previousProgramIndex);
 
@@ -960,7 +1003,7 @@ export class TVGuideService {
 
     result.programs = [];
     for (const program of programs) {
-      await wait();
+      await throttle();
       if (isProgramOffline(program.lineupItem, channelWithLineup.channel)) {
         let start = program.startTimeMs;
         let duration = program.lineupItem.durationMs;
@@ -1063,25 +1106,68 @@ export class TVGuideService {
     }
   }
 
-  private async writeXmlTv() {
-    const allProgramsById: Record<string, ProgramWithRelationsOrm> = {};
-    for (const { programs } of Object.values(this.cachedGuide)) {
-      const programsById = await this.getAllCurrentGuidePrograms(programs);
-      for (const [id, program] of Object.entries(programsById)) {
-        allProgramsById[id] = program;
-      }
+  /**
+   * Writes XMLTV from the guide cache, one write at a time.
+   *
+   * Each write loads every guide program, so overlapping writes multiply peak
+   * memory. A call made while a write runs joins a single follow-up write.
+   * The follow-up reads the cache when it starts, so it holds every change made
+   * before it started. A call made after that queues a new follow-up write.
+   */
+  private writeXmlTv(): Promise<void> {
+    if (this.queuedXmlTvWrite) {
+      return this.queuedXmlTvWrite;
     }
 
-    const materializedGuide = Object.values(this.cachedGuide).map(
-      ({ channel, programs }) => {
-        return {
-          channel,
-          programs: programs.map((program) =>
-            this.materializeGuideItem(channel, program, allProgramsById),
-          ),
-        };
-      },
+    const running = this.runningXmlTvWrite;
+    if (!running) {
+      return this.startXmlTvWrite();
+    }
+
+    // The running write's callers receive its error. The follow-up runs anyway,
+    // because its callers' changes are not on disk yet.
+    const queued = running
+      .catch(() => {})
+      .then(() => {
+        this.queuedXmlTvWrite = undefined;
+        return this.startXmlTvWrite();
+      });
+    this.queuedXmlTvWrite = queued;
+    return queued;
+  }
+
+  private startXmlTvWrite(): Promise<void> {
+    const write = this.writeXmlTvInternal().finally(() => {
+      this.runningXmlTvWrite = undefined;
+    });
+    this.runningXmlTvWrite = write;
+    return write;
+  }
+
+  private async writeXmlTvInternal() {
+    // Every channel's programs are fetched in one pass rather than one query
+    // per channel. The results were being merged into a single flat map
+    // regardless, so the per-channel split bought nothing and cost plenty:
+    // deduplication was scoped to a channel, so a program scheduled on several
+    // channels had its whole relation graph fetched and rebuilt once per
+    // channel. getGuideProgramsByIds dedupes and chunks internally.
+    const guides = Object.values(this.cachedGuide);
+    const allProgramsById = await this.getAllCurrentGuidePrograms(
+      guides.flatMap(({ programs }) => programs),
     );
+
+    // Yield per channel: every channel's guide items together are tens of
+    // milliseconds of synchronous work on a large guide.
+    const materializedGuide: MaterializedChannelPrograms[] = [];
+    for (const { channel, programs } of guides) {
+      await throttle();
+      materializedGuide.push({
+        channel,
+        programs: programs.map((program) =>
+          this.materializeGuideItem(channel, program, allProgramsById),
+        ),
+      });
+    }
 
     await this.xmltv.write(materializedGuide);
 
@@ -1097,7 +1183,11 @@ export class TVGuideService {
     });
   }
 
-  private async getChannelGuides(
+  /**
+   * Builds guides for the given channels, or for every channel when no filter
+   * is passed. Programs carry the lineup relation set only.
+   */
+  async getChannelGuides(
     dateRange: OpenDateTimeRange,
     channelIdFilter?: string[],
   ) {
@@ -1144,7 +1234,10 @@ export class TVGuideService {
       ),
     );
 
-    const dbPrograms = await this.programDB.getProgramsByIds(programIds);
+    // Guide responses carry only what the guide grid shows. Credits, genres
+    // and artwork are left out because a guide spans every program in the
+    // window, and clients fetch a program's details by ID when they need them.
+    const dbPrograms = await this.programDB.getLineupProgramsByIds(programIds);
 
     const materializedPrograms =
       await this.materializeProgramsCommand.execute(dbPrograms);
@@ -1295,8 +1388,12 @@ export class TVGuideService {
       (item) => item.id,
     );
     return groupByUniq(
-      await this.programDB.getProgramsByIds(
+      await this.programDB.getGuideProgramsByIds(
         contentItems.map((item) => item.id),
+        {
+          includeCreditArtwork:
+            this.settingsDB.featureFlags().xmltvCreditImagesEnabled,
+        },
       ),
       (prg) => prg.uuid,
     );
@@ -1375,13 +1472,27 @@ export class TVGuideService {
         };
       })
       .with({ type: 'redirect' }, (redirect) => {
-        const backingChannel = this.channelsById![redirect.channel]!;
+        // XMLTV is also written outside a guide build, when channelsById is
+        // empty, so resolve the target from the guide cache.
+        const backingChannel = this.cachedGuide[redirect.channel]?.channel;
+        if (!backingChannel) {
+          return {
+            ...baseItem,
+            title: isNonEmptyString(channel.guideFlexTitle)
+              ? channel.guideFlexTitle
+              : channel.name,
+            programming: {
+              type: 'flex',
+            },
+          };
+        }
+
         return {
           ...baseItem,
           programming: {
-            channelId: backingChannel.channel.uuid,
-            channelName: backingChannel.channel.name,
-            channelNumber: backingChannel.channel.number,
+            channelId: backingChannel.uuid,
+            channelName: backingChannel.name,
+            channelNumber: backingChannel.number,
             type: 'redirect',
           },
         };

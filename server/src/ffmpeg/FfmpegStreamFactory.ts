@@ -4,7 +4,10 @@ import type {
 } from '@/db/interfaces/ISettingsDB.js';
 import type { ChannelOrm } from '@/db/schema/Channel.js';
 import type { TranscodeConfigOrm } from '@/db/schema/TranscodeConfig.js';
-import { HardwareAccelerationMode } from '@/db/schema/TranscodeConfig.js';
+import {
+  HardwareAccelerationMode,
+  libvaDriverName,
+} from '@/db/schema/TranscodeConfig.js';
 import { InfiniteLoopInputOption } from '@/ffmpeg/builder/options/input/InfiniteLoopInputOption.js';
 import type {
   AudioRenditionInfo,
@@ -15,7 +18,7 @@ import type {
 import { FileStreamSource, HttpStreamSource } from '@/stream/types.js';
 import type { Maybe, Nullable } from '@/types/util.js';
 import { isDefined, isLinux, isNonEmptyString } from '@/util/index.js';
-import { Logger } from '@/util/logging/LoggerFactory.js';
+import type { Logger } from '@/util/logging/LoggerFactory.js';
 import { makeLocalUrl } from '@/util/serverUtil.js';
 import type {
   ChannelStreamMode,
@@ -311,6 +314,7 @@ export class FfmpegStreamFactory {
       encoding,
       isFirstTranscode,
       emitEndList,
+      subtitleSegmentStartNumber,
     },
     lineupItem,
   }: StreamSessionCreateArgs): Promise<Maybe<TranscodeSessionResult>> {
@@ -426,6 +430,7 @@ export class FfmpegStreamFactory {
         duration,
         ptsOffset,
         isFirstTranscode,
+        subtitleSegmentStartNumber,
         emitEndList: emitEndList ?? false,
         threadCount: isPassthrough ? 0 : this.transcodeConfig.threadCount,
         copyAllStreams: isPassthrough,
@@ -479,7 +484,11 @@ export class FfmpegStreamFactory {
 
     return {
       session: transcodeSession,
-      renditions: this.buildRenditions(streamDetails, subtitleRendition),
+      renditions: this.buildRenditions(
+        streamDetails,
+        subtitleRendition,
+        isPassthrough,
+      ),
     };
   }
 
@@ -560,11 +569,10 @@ export class FfmpegStreamFactory {
           : SubtitleMethods.Burn;
 
         if (subtitleDelivery !== 'none') {
+          // External subtitles are always resolved to a local file before they
+          // get here -- downloaded during scanning, or read from storage shared
+          // with the media source.
           const source = match(subtitleStream.path)
-            .with(
-              P.string.startsWith('http'),
-              (path) => new HttpStreamSource(path),
-            )
             .with(P.string, (path) => new FileStreamSource(path))
             .otherwise(() => streamSource);
 
@@ -670,10 +678,6 @@ export class FfmpegStreamFactory {
           !isImageBasedSubtitle(pickedSubtitleStream.codec)
         ) {
           const source = match(pickedSubtitleStream.path)
-            .with(
-              P.string.startsWith('http'),
-              (path) => new HttpStreamSource(path),
-            )
             .with(P.string, (path) => new FileStreamSource(path))
             .otherwise(() => streamSource);
 
@@ -745,19 +749,28 @@ export class FfmpegStreamFactory {
   private buildRenditions(
     streamDetails: StreamDetails,
     subtitleRendition: SubtitleRenditionInfo | undefined,
+    isPassthrough: boolean,
   ): StreamRenditions {
+    // Transcode mode muxes only the selected audio track into the variant,
+    // so there are no alternate audio renditions to advertise.
     const audioRenditions: AudioRenditionInfo[] = [];
-    if (streamDetails.audioDetails) {
-      for (let i = 0; i < streamDetails.audioDetails.length; i++) {
-        const audio = streamDetails.audioDetails[i]!;
+    if (isPassthrough && streamDetails.audioDetails) {
+      const audioDetails = streamDetails.audioDetails;
+
+      // RFC 8216 allows at most one DEFAULT=YES per group. Prefer the first
+      // track the source flags as default, else the first track.
+      const flaggedDefault = audioDetails.findIndex((audio) => audio.default);
+      const defaultIndex = flaggedDefault === -1 ? 0 : flaggedDefault;
+
+      audioDetails.forEach((audio, i) => {
         audioRenditions.push({
           language: audio.languageCodeISO6392 ?? audio.language ?? 'und',
           languageName: audio.language,
           title: audio.title,
           channels: audio.channels,
-          default: i === 0 || (audio.default ?? false),
+          default: i === defaultIndex,
         });
-      }
+      });
     }
 
     return { audio: audioRenditions, subtitle: subtitleRendition };
@@ -961,8 +974,8 @@ export class FfmpegStreamFactory {
         ptsOffset,
         threadCount: this.transcodeConfig.threadCount,
         outputFormat,
-        // softwareDeinterlaceFilter: this.transcodeConfig.deinterlaceFilter,
-        // softwareScalingAlgorithm: this.transcodeConfig.scalingAlgorithm,
+        softwareDeinterlaceFilter: this.ffmpegSettings.deinterlaceFilter,
+        softwareScalingAlgorithm: this.ffmpegSettings.scalingAlgorithm,
         vaapiDevice: this.getVaapiDevice(),
         vaapiDriver: this.getVaapiDriver(),
         logLevel: this.ffmpegSettings.logLevel,
@@ -1151,8 +1164,6 @@ export class FfmpegStreamFactory {
   }
 
   private getVaapiDriver() {
-    return this.transcodeConfig.vaapiDriver !== 'system'
-      ? this.transcodeConfig.vaapiDriver
-      : null;
+    return libvaDriverName(this.transcodeConfig.vaapiDriver);
   }
 }

@@ -67,6 +67,7 @@ const emptyDefaults: EmbyServerSettingsForm = {
   password: '',
   userId: '',
   pathReplacements: [],
+  sendPlayStatusUpdates: false,
 };
 
 export function EmbyServerEditDialog({ open, onClose, server }: Props) {
@@ -302,7 +303,9 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                       !serverStatus.healthy &&
                       isNonEmptyString(field.value) ? (
                       <>
-                        <span><Trans>Server is unreachable</Trans></span>
+                        <span>
+                          <Trans>Server is unreachable</Trans>
+                        </span>
                         <br />
                       </>
                     ) : null
@@ -354,12 +357,15 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                 }}
                 render={({ field, fieldState: { error } }) => (
                   <FormControl sx={{ flex: 1 }} variant="outlined">
-                    <InputLabel htmlFor="emby-username"><Trans>Username</Trans> </InputLabel>
+                    <InputLabel htmlFor="emby-username">
+                      <Trans>Username</Trans>{' '}
+                    </InputLabel>
                     <OutlinedInput
                       id="emby-username"
                       type="text"
                       error={!isUndefined(error)}
-                      label={t`Access Token`}
+                      autoComplete="username"
+                      label={t`Username`}
                       {...field}
                     />
                     <FormHelperText>
@@ -379,15 +385,18 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                 }}
                 render={({ field, fieldState: { error } }) => (
                   <FormControl sx={{ flex: 1 }} variant="outlined">
-                    <InputLabel htmlFor="emby-password"><Trans>Password</Trans> </InputLabel>
+                    <InputLabel htmlFor="emby-password">
+                      <Trans>Password</Trans>{' '}
+                    </InputLabel>
                     <OutlinedInput
                       id="emby-password"
                       type={showPassword ? 'text' : 'password'}
+                      autoComplete="current-password"
                       error={!isUndefined(error)}
                       endAdornment={
                         <InputAdornment position="end">
                           <IconButton
-                            aria-label={t`toggle access token visibility`}
+                            aria-label={t`toggle password visibility`}
                             onClick={() => setShowPassword(toggle)}
                             edge="end"
                           >
@@ -395,7 +404,7 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                           </IconButton>
                         </InputAdornment>
                       }
-                      label={t`Access Token`}
+                      label={t`Password`}
                       {...field}
                     />
                     <FormHelperText>
@@ -410,12 +419,16 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                 )}
               />
               <FormHelperText sx={{ ml: '14px', mt: -1, flexBasis: '100%' }}>
-                <Trans>Enter your Emby password to generate a new access token.</Trans>
+                <Trans>
+                  Enter your Emby password to generate a new access token.
+                </Trans>
               </FormHelperText>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Divider sx={{ flex: 1 }} />
-              <Typography variant="caption"><Trans>OR</Trans></Typography>
+              <Typography variant="caption">
+                <Trans>OR</Trans>
+              </Typography>
               <Divider sx={{ flex: 1 }} />
             </Box>
             <Controller
@@ -436,7 +449,9 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                   //   // isNonEmptyString(username) && isNonEmptyString(password)
                   // }
                 >
-                  <InputLabel htmlFor="access-token"><Trans>Access Token</Trans> </InputLabel>
+                  <InputLabel htmlFor="access-token">
+                    <Trans>Access Token</Trans>{' '}
+                  </InputLabel>
                   <OutlinedInput
                     id="access-token"
                     type={showAccessToken ? 'text' : 'password'}
@@ -464,7 +479,9 @@ export function EmbyServerEditDialog({ open, onClose, server }: Props) {
                         </>
                       )}
                       <span>
-                        <Trans>Manually add an access token from your Emby server</Trans>
+                        <Trans>
+                          Manually add an access token from your Emby server
+                        </Trans>
                       </span>
                     </>
                   </FormHelperText>

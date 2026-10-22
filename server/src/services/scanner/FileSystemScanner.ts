@@ -26,11 +26,17 @@ import { Result } from '../../types/result.js';
 import type { Maybe } from '../../types/util.ts';
 import { fileExists } from '../../util/fsUtil.ts';
 import { caughtErrorToError, isDefined } from '../../util/index.ts';
+import { configuredLibraries } from '../../util/mediaSources.ts';
 import type { Logger } from '../../util/logging/LoggerFactory.ts';
 import type { Canonicalizer } from '../Canonicalizer.ts';
 import type { ImageCache } from '../ImageCache.ts';
 import type { FolderAndContents } from '../LocalFolderCanonicalizer.ts';
 import { KnownImageFileExtensions } from './constants.ts';
+import {
+  caseInsensitiveExtensionGlob,
+  imageFileLookup,
+  locateImageFile,
+} from './imageFileLookup.ts';
 import type { MediaSourceProgressService } from './MediaSourceProgressService.ts';
 import type { RunState } from './MediaSourceScanner.ts';
 
@@ -65,7 +71,7 @@ export abstract class FileSystemScanner {
   protected state: RunState = 'starting';
   private mediaSourceId: Maybe<string>;
 
-  @InjectLogger() protected declare readonly logger: Logger;
+  @InjectLogger() declare protected readonly logger: Logger;
 
   constructor(
     protected ffprobeStreamDetails: FfprobeStreamDetails,
@@ -85,7 +91,9 @@ export abstract class FileSystemScanner {
       );
     }
 
-    if (req.mediaSource.libraries.length === 0) {
+    const libraries = configuredLibraries(req.mediaSource.libraries);
+
+    if (libraries.length === 0) {
       this.logger.warn('Media source has no paths to scan.');
       return;
     }
@@ -98,18 +106,17 @@ export abstract class FileSystemScanner {
       req.force ?? false,
     );
 
-    for (let i = 0; i < req.mediaSource.libraries.length; i++) {
-      const localPath = req.mediaSource.libraries[i]!;
+    for (let i = 0; i < libraries.length; i++) {
+      const localPath = libraries[i]!;
       this.mediaSourceProgressService.scanStarted(req.mediaSource.uuid);
       try {
         await this.scanPath({
           mediaSource: req.mediaSource,
           library: localPath,
           force: req.force ?? false,
-          percentMin: i / req.mediaSource.libraries.length,
+          percentMin: i / libraries.length,
           percentCompleteMultiplier:
-            (i + 1) / req.mediaSource.libraries.length -
-            i / req.mediaSource.libraries.length,
+            (i + 1) / libraries.length - i / libraries.length,
           pathFilter: req.pathFilter,
         });
       } catch (e) {
@@ -145,17 +152,23 @@ export abstract class FileSystemScanner {
     );
   }
 
-  protected async getMediaItem(filePath: string): Promise<Result<MediaItem>> {
+  protected async getMediaItem(
+    filePath: string,
+  ): Promise<
+    Result<{ mediaItem: MediaItem; formatTags?: Record<string, string> }>
+  > {
     try {
-      const streamDetails = await this.ffprobeStreamDetails.getStream({
+      const streamDetailsResult = await this.ffprobeStreamDetails.getStream({
         path: filePath,
       });
 
-      if (streamDetails.isFailure()) {
-        return streamDetails.recast();
+      if (streamDetailsResult.isFailure()) {
+        return streamDetailsResult.recast();
       }
 
-      const videoStreams = streamDetails.get().streamDetails.videoDetails;
+      const streamDetails = streamDetailsResult.get();
+
+      const videoStreams = streamDetails.streamDetails.videoDetails;
       const streams: MediaStream[] = [];
       if (videoStreams) {
         for (const probeVideoStream of videoStreams) {
@@ -179,8 +192,8 @@ export abstract class FileSystemScanner {
         }
       }
 
-      for (const audioStream of streamDetails.get().streamDetails
-        .audioDetails ?? []) {
+      for (const audioStream of streamDetails.streamDetails.audioDetails ??
+        []) {
         const stream: MediaStream = {
           ...audioStream,
           // uuid: v4(),
@@ -200,7 +213,7 @@ export abstract class FileSystemScanner {
         streams.push(stream);
       }
 
-      for (const subtitleStream of streamDetails.get().streamDetails
+      for (const subtitleStream of streamDetails.streamDetails
         .subtitleDetails ?? []) {
         const stream: MediaStream = {
           ...subtitleStream,
@@ -227,13 +240,13 @@ export abstract class FileSystemScanner {
 
       const firstVideoStream = head(
         orderBy(
-          streamDetails.get().streamDetails.videoDetails,
+          streamDetails.streamDetails.videoDetails,
           (v, i) => (v.streamIndex ?? 0) + i,
           'asc',
         ),
       );
 
-      const chapters = streamDetails.get().streamDetails.chapters;
+      const chapters = streamDetails.streamDetails.chapters;
 
       const mediaItem: MediaItem = {
         // createdAt: statResult.ctime,
@@ -241,7 +254,7 @@ export abstract class FileSystemScanner {
         chapters,
         displayAspectRatio: firstVideoStream?.displayAspectRatio,
         sampleAspectRatio: firstVideoStream?.sampleAspectRatio,
-        duration: +streamDetails.get().streamDetails.duration,
+        duration: +streamDetails.streamDetails.duration,
         frameRate: firstVideoStream?.framerate,
         resolution:
           isDefined(firstVideoStream?.height) &&
@@ -261,7 +274,10 @@ export abstract class FileSystemScanner {
         ],
       };
 
-      return Result.success(mediaItem);
+      return Result.success({
+        mediaItem,
+        formatTags: streamDetails.streamDetails.formatTags,
+      });
     } catch (e) {
       return Result.forError(caughtErrorToError(e));
     }
@@ -514,23 +530,21 @@ export abstract class FileSystemScanner {
     baseFolder: string,
     artworkNames: string[],
   ) {
-    const allNames = KnownImageFileExtensions.values().flatMap((ext) => {
-      return artworkNames.map((name) => {
+    const lookup = imageFileLookup();
+    for (const ext of KnownImageFileExtensions) {
+      for (const name of artworkNames) {
         if (glob.isDynamicPattern(name)) {
-          return `${glob.convertPathToPattern(baseFolder)}/${name}.${ext}`;
+          const pattern = `${glob.convertPathToPattern(baseFolder)}/${name}.${caseInsensitiveExtensionGlob(ext)}`;
+          const expanded = await glob.async(pattern);
+          if (expanded.length > 0) {
+            return expanded[0];
+          }
+        } else {
+          const found = await lookup(path.join(baseFolder, name), ext);
+          if (found) {
+            return found;
+          }
         }
-        return path.join(baseFolder, `${name}.${ext}`);
-      });
-    });
-
-    for (const name of allNames) {
-      if (glob.isDynamicPattern(name)) {
-        const expanded = await glob.async(name);
-        if (expanded.length > 0) {
-          return expanded[0];
-        }
-      } else if (await fileExists(name)) {
-        return name;
       }
     }
     return;
@@ -539,17 +553,7 @@ export abstract class FileSystemScanner {
   protected static async locateArtworkForPossibleNames(
     possibleNames: string[],
   ) {
-    const allNames = [
-      ...KnownImageFileExtensions.values().flatMap((ext) =>
-        possibleNames.map((name) => `${name}.${ext}`),
-      ),
-    ];
-    for (const name of allNames) {
-      if (await fileExists(name)) {
-        return name;
-      }
-    }
-    return;
+    return locateImageFile(possibleNames);
   }
 }
 
