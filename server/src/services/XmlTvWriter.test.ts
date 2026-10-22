@@ -607,6 +607,64 @@ describe('XmlTvWriter', () => {
     });
   });
 
+  describe('categories', () => {
+    function genresNamed(...names: string[]) {
+      return names.map((name) => ({
+        genre: { uuid: v4(), name },
+        genreId: '',
+        groupId: '',
+        programId: '',
+      }));
+    }
+
+    function categoriesFor(program: ProgramWithRelationsOrm) {
+      const writer = new XmlTvWriter(inMemorySettingsDB());
+      const output = writer.generateXmltv([
+        {
+          channel: createChannel(),
+          programs: [{ programming: { type: 'program', program } }],
+        },
+      ]);
+      return output.programmes[0]?.category?.map((c) => c._value);
+    }
+
+    test('uses the show genres for an episode without genres', () => {
+      const program = makeProgram({
+        type: 'episode',
+        genres: [],
+        show: makeGrouping({ genres: genresNamed('Comedy', 'Animation') }),
+      });
+
+      expect(categoriesFor(program)).toEqual(['Comedy', 'Animation']);
+    });
+
+    test('uses the album genres for a track without genres', () => {
+      const program = makeProgram({
+        type: 'track',
+        genres: [],
+        album: makeGrouping({
+          type: 'album',
+          genres: genresNamed('Jazz', 'Bebop'),
+        }),
+      });
+
+      expect(categoriesFor(program)).toEqual(['Jazz', 'Bebop']);
+    });
+
+    test('lists a genre shared with the album once', () => {
+      const program = makeProgram({
+        type: 'track',
+        genres: genresNamed('Jazz'),
+        album: makeGrouping({
+          type: 'album',
+          genres: genresNamed('Jazz', 'Bebop'),
+        }),
+      });
+
+      expect(categoriesFor(program)).toEqual(['Jazz', 'Bebop']);
+    });
+  });
+
   describe('resolveArtworkUrl', () => {
     const resolveArtworkUrl = XmlTvWriter.resolveArtworkUrl;
 

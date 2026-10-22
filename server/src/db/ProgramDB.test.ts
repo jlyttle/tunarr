@@ -3262,4 +3262,60 @@ describe('ProgramDB', () => {
       });
     });
   });
+
+  describe('getGuideProgramsByIds', () => {
+    test('loads the genres of an episode show and a track album', async ({
+      programDb,
+      drizzle,
+    }) => {
+      const library = await createTestMediaSourceLibrary(drizzle);
+      const show = createProgramGrouping('show', library.uuid, 'plex', {
+        mediaSourceId: library.mediaSourceId,
+      });
+      const album = createProgramGrouping('album', library.uuid, 'plex', {
+        mediaSourceId: library.mediaSourceId,
+      });
+      await programDb.upsertProgramGrouping(show);
+      await programDb.upsertProgramGrouping(album);
+
+      const noRelations = {
+        externalIds: [],
+        genres: [],
+        studios: [],
+        artwork: [],
+        credits: [],
+        versions: [],
+        subtitles: [],
+        tags: [],
+      };
+      const episode: NewProgramWithRelations = {
+        program: createBaseProgram('episode', library.uuid, 'plex', {
+          mediaSourceId: library.mediaSourceId,
+          tvShowUuid: show.programGrouping.uuid,
+        }),
+        ...noRelations,
+      };
+      const track: NewProgramWithRelations = {
+        program: createBaseProgram('track', library.uuid, 'plex', {
+          mediaSourceId: library.mediaSourceId,
+          albumUuid: album.programGrouping.uuid,
+        }),
+        ...noRelations,
+      };
+      await programDb.upsertPrograms([episode, track]);
+
+      const programs = await programDb.getGuideProgramsByIds(
+        [episode.program.uuid, track.program.uuid],
+        { includeCreditArtwork: false },
+      );
+      const byId = new Map(programs.map((p) => [p.uuid, p]));
+
+      expect(
+        byId.get(episode.program.uuid)?.show?.genres?.map((g) => g.genre.name),
+      ).toEqual(show.genres.map((g) => g.name));
+      expect(
+        byId.get(track.program.uuid)?.album?.genres?.map((g) => g.genre.name),
+      ).toEqual(album.genres.map((g) => g.name));
+    });
+  });
 });

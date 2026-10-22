@@ -321,9 +321,12 @@ export class XmlTvWriter {
         partial.date ??= airDate.toDate();
       }
 
+      // Plex leaves episode and track genres empty, so the show's or album's
+      // genres are what give those programs a category.
       const genres = [
         ...(program.genres ?? []),
         ...(program.show?.genres ?? []),
+        ...(program.album?.genres ?? []),
       ];
       const uniqueCategories: Set<string> = new Set();
       for (const { genre } of genres ?? []) {

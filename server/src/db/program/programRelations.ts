@@ -154,7 +154,13 @@ const guideProgramRelations = <CreditsT extends GuideCredits>(
     genres: { with: { genre: true } },
     tags: { with: { tag: true } },
     season: { with: { externalIds: true } },
-    album: { with: { externalIds: true, artwork: true } },
+    album: {
+      with: {
+        externalIds: true,
+        artwork: true,
+        genres: { with: { genre: true } },
+      },
+    },
   }) as const;
 
 const guideShowRelations = <CreditsT extends GuideCredits>(credits: CreditsT) =>
