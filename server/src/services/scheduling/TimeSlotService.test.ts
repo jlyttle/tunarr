@@ -4366,6 +4366,19 @@ describe('episode cursor', () => {
     expect(new Set(ids.slice(2, 6))).toEqual(new Set([e1, e2, e3, e4]));
   });
 
+  test('playFirst ignores excluded and unknown ids', async () => {
+    const ids = await airedIds(
+      dailyHalfHour({
+        order: 'shuffle',
+        excludeProgramIds: [e2],
+        playFirstProgramIds: [e2, randomUUID(), e5, e6],
+      }),
+    );
+    expect(new Set(ids.slice(0, 2))).toEqual(new Set([e5, e6]));
+    expect(new Set(ids.slice(2, 5))).toEqual(new Set([e1, e3, e4]));
+    expect(ids).not.toContain(e2);
+  });
+
   test('exclude everything flexes the slot', async () => {
     const result = await scheduleTimeSlots(
       dailyHalfHour({ excludeProgramIds: allEpisodes }),
