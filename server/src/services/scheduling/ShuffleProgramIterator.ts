@@ -3,6 +3,7 @@ import type {
   CondensedContentProgram,
 } from '@tunarr/types';
 import type { CondensedCustomProgram } from '@tunarr/types/schemas';
+import { partition } from 'lodash-es';
 import type { Random } from 'random-js';
 import {
   IndexBasedProgramIterator,
@@ -13,14 +14,30 @@ import {
   type SlotSchedulerProgram,
 } from './slotSchedulerUtil.ts';
 
+function shuffleWithPlayFirst(
+  programs: SlotSchedulerProgram[],
+  random: Random,
+  playFirstProgramIds: string[] = [],
+) {
+  const playFirstIds = new Set(playFirstProgramIds);
+  const [playFirst, rest] = partition(programs, (program) =>
+    playFirstIds.has(program.uuid),
+  );
+  if (playFirst.length === 0) {
+    return random.shuffle(programs);
+  }
+  return [...random.shuffle(playFirst), ...random.shuffle(rest)];
+}
+
 abstract class ShuffleProgramIterator<
   ProgramT extends CondensedChannelProgram,
 > extends IndexBasedProgramIterator<ProgramT> {
   constructor(
     programs: SlotSchedulerProgram[],
     protected random: Random,
+    playFirstProgramIds?: string[],
   ) {
-    super(random.shuffle(programs));
+    super(shuffleWithPlayFirst(programs, random, playFirstProgramIds));
   }
 
   next() {
@@ -81,8 +98,9 @@ export class CustomProgramShuffleIterator extends ShuffleProgramIterator<Condens
     private customShowId: string,
     programs: SlotSchedulerProgram[],
     random: Random,
+    playFirstProgramIds?: string[],
   ) {
-    super(programs, random);
+    super(programs, random, playFirstProgramIds);
     this.indexById = createIndexByIdMap(programs, customShowId);
   }
 

@@ -4256,3 +4256,213 @@ describe('mid-roll break budgeting', () => {
     expect(sumBy(slotItems, ({ item }) => item.duration)).toBe(oneHour);
   });
 });
+
+describe('episode cursor', () => {
+  const MIN = 60 * 1000;
+  const HOUR = 60 * MIN;
+  const showId = '11111111-1111-4111-8111-111111111111';
+  const customShowId = '22222222-2222-4222-8222-222222222222';
+  const start = dayjs('2024-01-01T00:00:00');
+  const seed = [7, 7, 7];
+  const ep = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
+  const [e1, e2, e3, e4, e5, e6] = [1, 2, 3, 4, 5, 6].map(ep);
+  const allEpisodes = [e1, e2, e3, e4, e5, e6];
+
+  const episodes: SlotSchedulerProgram[] = [1, 2, 3, 4, 5, 6].map((n) => ({
+    ...createFakeProgramOrm({
+      uuid: ep(n),
+      title: `Episode ${n}`,
+      type: 'episode',
+      duration: 30 * MIN,
+      seasonNumber: 1,
+      episode: n,
+      tvShowUuid: showId,
+      show: { uuid: showId },
+    }),
+    parentFillerLists: [],
+    parentCustomShows: [{ customShowId, index: n - 1 }],
+    parentSmartCollections: [],
+  }));
+
+  type Slot = TimeSlotSchedule['slots'][number];
+
+  const showSlot = (overrides: Partial<Slot> = {}): Slot =>
+    ({
+      id: randomUUID(),
+      startTime: 0,
+      type: 'show',
+      showId,
+      order: 'next',
+      direction: 'asc',
+      seasonFilter: [],
+      seasonExcludeFilter: [],
+      ...overrides,
+    }) as Slot;
+
+  const flexSlot = (startTime: number): Slot => ({
+    id: randomUUID(),
+    startTime,
+    type: 'flex',
+  });
+
+  const schedule = (slots: Slot[], maxDays = 8): TimeSlotSchedule => ({
+    type: 'time',
+    flexPreference: 'end',
+    maxDays,
+    padMs: 30 * MIN,
+    slots,
+    period: 'day',
+    latenessMs: 0,
+    overflow: { type: 'duration', maxMs: 0 },
+    timeZoneOffset: 0,
+  });
+
+  const dailyHalfHour = (overrides: Partial<Slot> = {}) =>
+    schedule([showSlot(overrides), flexSlot(30 * MIN)]);
+
+  const airings = async (sched: TimeSlotSchedule) => {
+    const result = await scheduleTimeSlots(sched, episodes, seed, 0, start);
+    let t = result.startTime;
+    return result.lineup.flatMap((item) => {
+      const at = t;
+      t += item.duration;
+      return item.type === 'content' || item.type === 'custom'
+        ? [{ id: item.id, at: dayjs(at).diff(dayjs(at).startOf('day')) }]
+        : [];
+    });
+  };
+
+  const airedIds = async (sched: TimeSlotSchedule) =>
+    (await airings(sched)).map((a) => a.id);
+
+  test('next order starts at startProgramId', async () => {
+    const ids = await airedIds(dailyHalfHour({ startProgramId: e4 }));
+    expect(ids.slice(0, 4)).toEqual([e4, e5, e6, e1]);
+  });
+
+  test('excluded episodes never air', async () => {
+    const ids = await airedIds(dailyHalfHour({ excludeProgramIds: [e2, e5] }));
+    expect(ids.slice(0, 5)).toEqual([e1, e3, e4, e6, e1]);
+    expect(ids).not.toContain(e2);
+    expect(ids).not.toContain(e5);
+  });
+
+  test('start on an excluded or unknown id falls back to first', async () => {
+    const excluded = await airedIds(
+      dailyHalfHour({ startProgramId: e2, excludeProgramIds: [e2] }),
+    );
+    expect(excluded.slice(0, 2)).toEqual([e1, e3]);
+    const unknown = await airedIds(
+      dailyHalfHour({ startProgramId: randomUUID() }),
+    );
+    expect(unknown[0]).toBe(e1);
+  });
+
+  test('shuffle plays playFirst before the rest', async () => {
+    const ids = await airedIds(
+      dailyHalfHour({ order: 'shuffle', playFirstProgramIds: [e5, e6] }),
+    );
+    expect(new Set(ids.slice(0, 2))).toEqual(new Set([e5, e6]));
+    expect(new Set(ids.slice(2, 6))).toEqual(new Set([e1, e2, e3, e4]));
+  });
+
+  test('exclude everything flexes the slot', async () => {
+    const result = await scheduleTimeSlots(
+      dailyHalfHour({ excludeProgramIds: allEpisodes }),
+      episodes,
+      seed,
+      0,
+      start,
+    );
+    expect(result.lineup.length).toBeGreaterThan(0);
+    expect(result.lineup.every((item) => item.type === 'flex')).toBe(true);
+  });
+
+  test('linked rerun replays cursor-started episode', async () => {
+    const group = randomUUID();
+    const cursor = { startProgramId: e3, iterationGroup: group };
+    const result = await airings(
+      schedule(
+        [
+          showSlot({ ...cursor, startTime: 7 * HOUR, linkMode: 'continue' }),
+          flexSlot(7.5 * HOUR),
+          showSlot({ ...cursor, startTime: 16 * HOUR, linkMode: 'rerun' }),
+          flexSlot(16.5 * HOUR),
+        ],
+        2,
+      ),
+    );
+    expect(result.slice(0, 4)).toEqual([
+      { id: e3, at: 7 * HOUR },
+      { id: e3, at: 16 * HOUR },
+      { id: e4, at: 7 * HOUR },
+      { id: e4, at: 16 * HOUR },
+    ]);
+  });
+
+  test('custom show next honors start and exclude', async () => {
+    const ids = await airedIds(
+      schedule([
+        {
+          id: randomUUID(),
+          startTime: 0,
+          type: 'custom-show',
+          customShowId,
+          order: 'next',
+          direction: 'asc',
+          startProgramId: e3,
+          excludeProgramIds: [e4],
+        },
+        flexSlot(30 * MIN),
+      ]),
+    );
+    expect(ids.slice(0, 5)).toEqual([e3, e5, e6, e1, e2]);
+  });
+
+  test('custom show shuffle plays playFirst before the rest', async () => {
+    const ids = await airedIds(
+      schedule([
+        {
+          id: randomUUID(),
+          startTime: 0,
+          type: 'custom-show',
+          customShowId,
+          order: 'shuffle',
+          direction: 'asc',
+          playFirstProgramIds: [e1],
+          excludeProgramIds: [e2],
+        },
+        flexSlot(30 * MIN),
+      ]),
+    );
+    expect(ids[0]).toBe(e1);
+    expect(new Set(ids.slice(1, 5))).toEqual(new Set([e3, e4, e5, e6]));
+  });
+
+  test('no fields = unchanged', async () => {
+    const ids = await airedIds(
+      schedule([
+        showSlot(),
+        flexSlot(30 * MIN),
+        showSlot({ startTime: 12 * HOUR, order: 'shuffle' }),
+        flexSlot(12.5 * HOUR),
+        {
+          id: randomUUID(),
+          startTime: 18 * HOUR,
+          type: 'custom-show',
+          customShowId,
+          order: 'shuffle',
+          direction: 'asc',
+        },
+        flexSlot(18.5 * HOUR),
+      ]),
+    );
+    // Captured from the scheduler before the cursor fields were honored.
+    expect(ids).toEqual(
+      [
+        1, 4, 1, 2, 5, 6, 3, 2, 2, 4, 1, 3, 5, 3, 5, 6, 6, 4, 1, 1, 1, 2, 3, 3,
+        3, 2, 2,
+      ].map(ep),
+    );
+  });
+});

@@ -13,6 +13,7 @@ import {
   type BaseMovieProgrammingSlot,
   type BaseShowProgrammingSlot,
   type BaseSlot,
+  type EpisodeCursorSlot,
   type FillerProgrammingSlot,
   type MidRollConfig,
   type SlotFillerTypes,
@@ -396,23 +397,36 @@ export function createSlotProgramIterator(
       });
     })
     .with({ type: 'custom-show', order: 'next' }, (slot) => {
-      const programs =
-        programBySlotType.custom[customShowSlotId(slot.customShowId)] ?? [];
-      return new CustomProgramOrderedIterator(slot.customShowId, programs);
+      const programs = withoutExcludedPrograms(
+        programBySlotType.custom[customShowSlotId(slot.customShowId)] ?? [],
+        slot,
+      );
+      return new CustomProgramOrderedIterator(
+        slot.customShowId,
+        programs,
+        true,
+        slot.startProgramId,
+      );
     })
     .with(
       { type: 'custom-show', order: 'shuffle' },
       (slot) =>
         new CustomProgramShuffleIterator(
           slot.customShowId,
-          programBySlotType.custom[customShowSlotId(slot.customShowId)] ?? [],
+          withoutExcludedPrograms(
+            programBySlotType.custom[customShowSlotId(slot.customShowId)] ?? [],
+            slot,
+          ),
           random,
+          slot.playFirstProgramIds,
         ),
     )
     .with({ type: 'custom-show', order: 'ordered_shuffle' }, (slot) => {
-      const programs =
+      const programs = withoutExcludedPrograms(
         programBySlotType.custom[`custom-show.${slot.customShowId}` as const] ??
-        [];
+          [],
+        slot,
+      );
       return new CustomProgramChunkedShuffle(
         slot.customShowId,
         programs,
@@ -691,6 +705,17 @@ export function getFillerIteratorsForSlot(
   return out;
 }
 
+function withoutExcludedPrograms(
+  programs: SlotSchedulerProgram[],
+  { excludeProgramIds }: EpisodeCursorSlot,
+) {
+  if (!excludeProgramIds?.length) {
+    return programs;
+  }
+  const excluded = new Set(excludeProgramIds);
+  return programs.filter((program) => !excluded.has(program.uuid));
+}
+
 function getContentProgramIterator(
   programBySlotType: ProgramMapping,
   contentSlotId: ContentSlotId,
@@ -715,7 +740,10 @@ function getContentProgramIterator(
         return isNil(season) || !slot.seasonExcludeFilter.includes(season);
       });
     }
+    programs = withoutExcludedPrograms(programs, slot);
   }
+
+  const cursor: EpisodeCursorSlot = slot.type === 'show' ? slot : {};
 
   switch (slot.order) {
     case 'next':
@@ -725,9 +753,14 @@ function getContentProgramIterator(
         programs,
         getProgramOrderer(slot.order),
         slot.direction === 'asc',
+        cursor.startProgramId,
       );
     case 'shuffle':
-      return new ContentProgramShuffleIterator(programs, random);
+      return new ContentProgramShuffleIterator(
+        programs,
+        random,
+        cursor.playFirstProgramIds,
+      );
     case 'ordered_shuffle':
       return new ContentProgramChunkedShuffle(
         programs,

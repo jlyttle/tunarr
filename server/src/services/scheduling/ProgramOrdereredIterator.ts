@@ -23,8 +23,13 @@ abstract class ProgramOrdereredIterator<
     programs: SlotSchedulerProgram[],
     orderer: (program: SlotSchedulerProgram) => string | number,
     asc: boolean = true,
+    startProgramId?: string,
   ) {
     super(orderBy(programs, orderer, [asc ? 'asc' : 'desc']));
+    this.position = Math.max(
+      0,
+      this.programs.findIndex((program) => program.uuid === startProgramId),
+    );
   }
 }
 
@@ -44,9 +49,15 @@ export class CustomProgramOrderedIterator extends ProgramOrdereredIterator<Conde
     private customShowId: string,
     programs: SlotSchedulerProgram[],
     asc: boolean = true,
+    startProgramId?: string,
   ) {
     const indexById = createIndexByIdMap(programs, customShowId);
-    super(programs, (program) => indexById[program.uuid] ?? -1, asc);
+    super(
+      programs,
+      (program) => indexById[program.uuid] ?? -1,
+      asc,
+      startProgramId,
+    );
     this.indexById = indexById;
   }
 
