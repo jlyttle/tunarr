@@ -143,6 +143,14 @@ export const Slot = z.object({
   ...SlotWithFiller.shape,
 });
 
+export const EpisodeCursorSlot = z.object({
+  startProgramId: z.uuid().optional(),
+  excludeProgramIds: z.array(z.uuid()).optional(),
+  playFirstProgramIds: z.array(z.uuid()).optional(),
+});
+
+export type EpisodeCursorSlot = z.infer<typeof EpisodeCursorSlot>;
+
 //
 // Base slots
 //
@@ -164,6 +172,7 @@ export const ShowProgrammingSlotSchema = z.object({
   seasonExcludeFilter: z.number().array().default([]).catch([]),
   ...BaseSlotOrdering.shape,
   ...Slot.shape,
+  ...EpisodeCursorSlot.shape,
 });
 
 export type BaseShowProgrammingSlot = z.infer<typeof ShowProgrammingSlotSchema>;
@@ -183,6 +192,7 @@ export const CustomShowProgrammingSlotSchema = z.object({
   customShowId: z.uuid(),
   ...BaseSlotOrdering.shape,
   ...Slot.shape,
+  ...EpisodeCursorSlot.shape,
 });
 
 export type BaseCustomShowProgrammingSlot = z.infer<

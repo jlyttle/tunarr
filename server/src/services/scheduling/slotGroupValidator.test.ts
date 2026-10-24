@@ -1,3 +1,4 @@
+import { StrictTimeSlotScheduleSchema } from '@tunarr/types/api';
 import { describe, expect, test } from 'vitest';
 import { validateSlotGroups } from './slotGroupValidator.ts';
 
@@ -226,5 +227,105 @@ describe('validateSlotGroups', () => {
       },
     ]);
     expect(result.valid).toBe(true);
+  });
+
+  describe('episode cursor fields', () => {
+    const programA = '11111111-1111-4111-8111-111111111111';
+    const programB = '22222222-2222-4222-8222-222222222222';
+    const programC = '33333333-3333-4333-8333-333333333333';
+
+    const cursorShowSlot = (
+      id: string,
+      cursor: {
+        startProgramId?: string;
+        excludeProgramIds?: string[];
+        playFirstProgramIds?: string[];
+      },
+    ) => ({
+      type: 'show' as const,
+      showId: 'show1',
+      order: 'next' as const,
+      direction: 'asc' as const,
+      seasonFilter: [],
+      id,
+      iterationGroup: validGroupId,
+      linkMode: 'continue' as const,
+      ...cursor,
+    });
+
+    test('keeps cursor fields on show slots', () => {
+      const slot = {
+        type: 'show' as const,
+        showId: 'show1',
+        order: 'next' as const,
+        direction: 'asc' as const,
+        seasonFilter: [],
+        id: '1',
+        startProgramId: programA,
+        excludeProgramIds: [programB],
+        playFirstProgramIds: [programC],
+      };
+      const result = validateSlotGroups([slot]);
+      expect(result.valid).toBe(true);
+      expect(result.sanitizedSlots[0]).toMatchObject({
+        startProgramId: programA,
+        excludeProgramIds: [programB],
+        playFirstProgramIds: [programC],
+      });
+    });
+
+    test('reports mismatched cursor fields in a group', () => {
+      const result = validateSlotGroups([
+        cursorShowSlot('1', { startProgramId: programA }),
+        cursorShowSlot('2', { startProgramId: programB }),
+      ]);
+      expect(result.valid).toBe(false);
+      expect(result.errors.join('\n')).toContain('mismatched episode cursor');
+    });
+
+    test('accepts identical cursor fields in a group', () => {
+      const result = validateSlotGroups([
+        cursorShowSlot('1', {
+          startProgramId: programA,
+          excludeProgramIds: [programB, programC],
+        }),
+        cursorShowSlot('2', {
+          startProgramId: programA,
+          excludeProgramIds: [programC, programB],
+        }),
+      ]);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    test('strict schedule schema does not strip cursor fields', () => {
+      const parsed = StrictTimeSlotScheduleSchema.parse({
+        type: 'time',
+        flexPreference: 'distribute',
+        latenessMs: 0,
+        maxDays: 1,
+        padMs: 1,
+        period: 'day',
+        timeZoneOffset: 0,
+        slots: [
+          {
+            type: 'show',
+            showId: 'show1',
+            order: 'next',
+            direction: 'asc',
+            id: validGroupId,
+            startTime: 0,
+            startProgramId: programA,
+            excludeProgramIds: [programB],
+            playFirstProgramIds: [programC],
+          },
+        ],
+      });
+      expect(parsed.slots[0]).toMatchObject({
+        startProgramId: programA,
+        excludeProgramIds: [programB],
+        playFirstProgramIds: [programC],
+      });
+    });
   });
 });

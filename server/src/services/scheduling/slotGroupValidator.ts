@@ -16,6 +16,15 @@ type ValidationOptions = {
   scheduleType?: 'time' | 'random';
 };
 
+function episodeCursorKey(slot: LinkableBaseSlot): string {
+  if (slot.type !== 'show' && slot.type !== 'custom-show') return '';
+  return JSON.stringify([
+    slot.startProgramId ?? null,
+    [...(slot.excludeProgramIds ?? [])].sort(),
+    [...(slot.playFirstProgramIds ?? [])].sort(),
+  ]);
+}
+
 export function validateSlotGroups<T extends BaseSlot>(
   slots: T[],
   options: ValidationOptions = {},
@@ -81,6 +90,10 @@ export function validateSlotGroups<T extends BaseSlot>(
       errors.push(
         `Group ${groupId} has mismatched content keys: ${[...slotContentKeys].join(', ')}`,
       );
+    }
+    const slotCursorKeys = new Set(map(slots, episodeCursorKey));
+    if (slotCursorKeys.size > 1) {
+      errors.push(`Group ${groupId} has mismatched episode cursor fields`);
     }
     const slotLinkModes = new Set(
       map(slots, (slot) => slot.linkMode ?? 'continue'),
