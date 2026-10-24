@@ -280,7 +280,44 @@ describe('validateSlotGroups', () => {
         cursorShowSlot('2', { startProgramId: programB }),
       ]);
       expect(result.valid).toBe(false);
-      expect(result.errors.join('\n')).toContain('mismatched episode cursor');
+      expect(result.errors.join('\n')).toContain(
+        'mismatched episode cursor fields on slots: 1, 2',
+      );
+    });
+
+    test('slot without cursor fields inherits the group cursor', () => {
+      const cursor = {
+        startProgramId: programA,
+        excludeProgramIds: [programB],
+        playFirstProgramIds: [programC],
+      };
+      const result = validateSlotGroups([
+        cursorShowSlot('1', cursor),
+        cursorShowSlot('2', {}),
+        cursorShowSlot('3', cursor),
+      ]);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+      expect(result.sanitizedSlots[1]).toMatchObject({ id: '2', ...cursor });
+    });
+
+    test('different cursors stay an error when another slot has none', () => {
+      const result = validateSlotGroups([
+        cursorShowSlot('1', { startProgramId: programA }),
+        cursorShowSlot('2', {}),
+        cursorShowSlot('3', { excludeProgramIds: [programB] }),
+      ]);
+      expect(result.valid).toBe(false);
+      expect(result.errors.join('\n')).toContain(
+        'mismatched episode cursor fields on slots: 1, 3',
+      );
+    });
+
+    test('group without cursor fields stays unchanged', () => {
+      const slots = [cursorShowSlot('1', {}), cursorShowSlot('2', {})];
+      const result = validateSlotGroups(slots);
+      expect(result.valid).toBe(true);
+      expect(result.sanitizedSlots).toEqual(slots);
     });
 
     test('accepts identical cursor fields in a group', () => {

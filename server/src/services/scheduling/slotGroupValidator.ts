@@ -3,7 +3,7 @@ import {
   type BaseSlot,
   type LinkableBaseSlot,
 } from '@tunarr/types/api';
-import { map, uniqBy } from 'lodash-es';
+import { map, pick, uniqBy } from 'lodash-es';
 import { slotIteratorKey } from './ProgramIterator.js';
 
 type ValidationResult<T> = {
@@ -16,13 +16,49 @@ type ValidationOptions = {
   scheduleType?: 'time' | 'random';
 };
 
-function episodeCursorKey(slot: LinkableBaseSlot): string {
-  if (slot.type !== 'show' && slot.type !== 'custom-show') return '';
+type CursorSlot = Extract<LinkableBaseSlot, { type: 'show' | 'custom-show' }>;
+
+function hasEpisodeCursor(slot: LinkableBaseSlot): slot is CursorSlot {
+  if (slot.type !== 'show' && slot.type !== 'custom-show') return false;
+  return (
+    !!slot.startProgramId ||
+    !!slot.excludeProgramIds?.length ||
+    !!slot.playFirstProgramIds?.length
+  );
+}
+
+function episodeCursorKey(slot: CursorSlot): string {
   return JSON.stringify([
     slot.startProgramId ?? null,
     [...(slot.excludeProgramIds ?? [])].sort(),
     [...(slot.playFirstProgramIds ?? [])].sort(),
   ]);
+}
+
+function withEpisodeCursor<T extends BaseSlot>(slot: T, source: CursorSlot): T {
+  if (slot.type !== 'show' && slot.type !== 'custom-show') return slot;
+  return {
+    ...slot,
+    ...pick(source, [
+      'startProgramId',
+      'excludeProgramIds',
+      'playFirstProgramIds',
+    ]),
+  };
+}
+
+function shareGroupCursor<T extends BaseSlot>(
+  groupSlots: LinkableBaseSlot[],
+  source: CursorSlot,
+  sanitizedSlots: T[],
+) {
+  for (const slot of groupSlots) {
+    if (hasEpisodeCursor(slot)) continue;
+    const idx = sanitizedSlots.indexOf(slot as T);
+    if (idx !== -1) {
+      sanitizedSlots[idx] = withEpisodeCursor(sanitizedSlots[idx]!, source);
+    }
+  }
 }
 
 export function validateSlotGroups<T extends BaseSlot>(
@@ -91,9 +127,14 @@ export function validateSlotGroups<T extends BaseSlot>(
         `Group ${groupId} has mismatched content keys: ${[...slotContentKeys].join(', ')}`,
       );
     }
-    const slotCursorKeys = new Set(map(slots, episodeCursorKey));
+    const cursorSlots = slots.filter(hasEpisodeCursor);
+    const slotCursorKeys = new Set(map(cursorSlots, episodeCursorKey));
     if (slotCursorKeys.size > 1) {
-      errors.push(`Group ${groupId} has mismatched episode cursor fields`);
+      errors.push(
+        `Group ${groupId} has mismatched episode cursor fields on slots: ${map(cursorSlots, 'id').join(', ')}`,
+      );
+    } else if (cursorSlots.length > 0) {
+      shareGroupCursor(slots, cursorSlots[0]!, sanitizedSlots);
     }
     const slotLinkModes = new Set(
       map(slots, (slot) => slot.linkMode ?? 'continue'),
