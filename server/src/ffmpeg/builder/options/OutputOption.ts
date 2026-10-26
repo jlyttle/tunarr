@@ -30,8 +30,14 @@ export function makeConstantOutputOption(opts: string[]): ConstantOutputOption {
   return new (class extends ConstantOutputOption {})(opts);
 }
 
-export const ClosedGopOutputOption = () =>
-  makeConstantOutputOption(['-flags', 'cgop']);
+export const ClosedGopOutputOption = (interlaced: boolean = false) =>
+  makeConstantOutputOption([
+    '-flags',
+    interlaced ? '+cgop+ildct+ilme' : 'cgop',
+  ]);
+
+export const AlternateScanOutputOption = () =>
+  makeConstantOutputOption(['-alternate_scan', '1']);
 
 export const NoDemuxDecodeDelayOutputOption = () =>
   makeConstantOutputOption(['-muxdelay', '0', '-muxpreload', '0']);

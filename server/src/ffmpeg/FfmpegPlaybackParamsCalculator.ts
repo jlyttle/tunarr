@@ -130,7 +130,7 @@ export class FfmpegPlaybackParamsCalculator {
       videoBitrate: this.transcodeConfig.videoBitRate,
       videoBufferSize: this.transcodeConfig.videoBufferSize,
       videoTrackTimeScale: 90_000,
-      frameRate: 24,
+      ...this.slateRate(),
       realtime: outputFormat.type === 'hls' ? hlsRealtime : true,
     };
   }
@@ -147,9 +147,15 @@ export class FfmpegPlaybackParamsCalculator {
       videoBitrate: this.transcodeConfig.videoBitRate,
       videoBufferSize: this.transcodeConfig.videoBufferSize,
       videoTrackTimeScale: 90_000,
-      frameRate: 24,
+      ...this.slateRate(),
       realtime: false,
     };
+  }
+
+  private slateRate(): Pick<FfmpegPlaybackParams, 'frameRate' | 'interlaced'> {
+    return this.transcodeConfig.interlacedOutput
+      ? { frameRate: Interlaced480FrameRate, interlaced: { path: 'fieldRate' } }
+      : { frameRate: 24 };
   }
 }
 

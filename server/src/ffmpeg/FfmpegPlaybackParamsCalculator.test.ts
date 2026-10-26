@@ -2,7 +2,7 @@ import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration.js';
 import type { TranscodeConfigOrm } from '@/db/schema/TranscodeConfig.js';
 import type { StreamDetails, VideoStreamDetails } from '@/stream/types.js';
-import { VideoPresets } from './builder/constants.ts';
+import { MpegTsOutputFormat, VideoPresets } from './builder/constants.ts';
 import {
   calculateAspectTransform,
   FfmpegPlaybackParamsCalculator,
@@ -496,5 +496,41 @@ describe('480i output', () => {
 
     expect(params.scaledSize).toMatchObject({ width: 720, height: 480 });
     expect(params.paddedSize).toMatchObject({ width: 720, height: 480 });
+  });
+});
+
+describe('480i slates', () => {
+  test('error and concat params keep 24 fps without 480i and run 30000/1001 with it', () => {
+    const progressive = new FfmpegPlaybackParamsCalculator(
+      makeTranscodeConfig(),
+      'hls',
+    );
+    const interlaced = new FfmpegPlaybackParamsCalculator(
+      makeTranscodeConfig({ interlacedOutput: true }),
+      'hls',
+    );
+
+    expect(
+      progressive.calculateForErrorStream(MpegTsOutputFormat, true),
+    ).toMatchObject({
+      frameRate: 24,
+    });
+    expect(progressive.calculateForHlsConcat()).toMatchObject({
+      frameRate: 24,
+    });
+    expect(progressive.calculateForHlsConcat().interlaced).toBeUndefined();
+    expect(
+      progressive.calculateForErrorStream(MpegTsOutputFormat, true).interlaced,
+    ).toBeUndefined();
+    expect(
+      interlaced.calculateForErrorStream(MpegTsOutputFormat, true),
+    ).toMatchObject({
+      frameRate: 30000 / 1001,
+      interlaced: { path: 'fieldRate' },
+    });
+    expect(interlaced.calculateForHlsConcat()).toMatchObject({
+      frameRate: 30000 / 1001,
+      interlaced: { path: 'fieldRate' },
+    });
   });
 });

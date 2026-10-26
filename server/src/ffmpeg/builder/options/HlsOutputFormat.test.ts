@@ -6,6 +6,7 @@ import { HlsOutputFormat } from './HlsOutputFormat.ts';
 function makeFormat(
   isFirstTranscode: boolean,
   playlistPath = '/some/path/stream.m3u8',
+  frameRate = 24,
 ) {
   const state = new FrameState({
     isAnamorphic: false,
@@ -15,7 +16,7 @@ function makeFormat(
   });
   return new HlsOutputFormat(
     state,
-    24,
+    frameRate,
     playlistPath,
     '/some/path/data%06d.ts',
     '/stream/channels/test-uuid/hls/',
@@ -47,5 +48,19 @@ describe('HlsOutputFormat', () => {
     expect(masterIdx).toBeGreaterThan(-1);
     expect(outputIdx).toBeGreaterThan(-1);
     expect(masterIdx).toBeLessThan(outputIdx);
+  });
+
+  test('rounds a 29.97 GOP to whole frames', () => {
+    const opts = makeFormat(true, undefined, 30000 / 1001).options();
+
+    expect(opts[opts.indexOf('-g') + 1]).toBe('120');
+    expect(opts[opts.indexOf('-keyint_min') + 1]).toBe('120');
+  });
+
+  test('keeps a whole-number GOP unchanged', () => {
+    const opts = makeFormat(true).options();
+
+    expect(opts[opts.indexOf('-g') + 1]).toBe('96');
+    expect(opts[opts.indexOf('-keyint_min') + 1]).toBe('96');
   });
 });

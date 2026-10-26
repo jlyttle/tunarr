@@ -594,6 +594,57 @@ describe('FfmpegStreamFactory', () => {
       expect(ffmpegState!.softwareDeinterlaceFilter).toBe('yadif=0');
       expect(ffmpegState!.softwareScalingAlgorithm).toBe('lanczos');
     });
+
+    test.each([
+      [
+        'error',
+        {
+          kind: 'error' as const,
+          title: 'Test Error',
+          duration: dayjs.duration({ seconds: 10 }),
+          outputFormat: MpegTsOutputFormat,
+          realtime: true,
+        },
+      ],
+      [
+        'offline',
+        {
+          kind: 'offline' as const,
+          duration: dayjs.duration({ seconds: 10 }),
+          outputFormat: MpegTsOutputFormat,
+        },
+      ],
+    ])(
+      'createPlaceholderSession (%s) on a 480i config is a field-rate 480i stream',
+      async (_, request) => {
+        const config = makeTranscodeConfig({
+          interlacedOutput: true,
+          errorScreen: 'testsrc',
+        });
+        const { factory, getCapturedFrameState } =
+          createCapturingPipelineBuilderFactory();
+        const sut = new FfmpegStreamFactory(
+          makeMockFfmpegInfo(),
+          makeMockSettingsDB(makeFfmpegSettings()),
+          factory,
+          makeMockChannelDB(),
+          makeMockFeatureFlagService(),
+          makeMockStreamSelector(),
+          config,
+          makeChannel(),
+        );
+
+        await sut.createPlaceholderSession(request);
+
+        const frameState = getCapturedFrameState();
+        expect(frameState?.interlaced).toEqual({ path: 'fieldRate' });
+        expect(frameState?.frameRate).toBe(30000 / 1001);
+        expect(frameState?.paddedSize).toMatchObject({
+          width: 720,
+          height: 480,
+        });
+      },
+    );
   });
 
   describe('passthrough mode (HlsDirectV2 / remux)', () => {

@@ -19,14 +19,16 @@ export class HlsOutputFormat extends OutputOption {
 
   options(): string[] {
     const frameRate = this.desiredState.frameRate ?? this.mediaFrameRate;
-    const gop = this.oneSecondGop
-      ? frameRate
-      : frameRate * HlsOutputFormat.SegmentSeconds;
+    const gop = Math.round(
+      this.oneSecondGop
+        ? frameRate
+        : frameRate * HlsOutputFormat.SegmentSeconds,
+    );
     const opts = [
       '-g',
       `${gop}`,
       '-keyint_min',
-      `${frameRate * HlsOutputFormat.SegmentSeconds}`,
+      `${Math.round(frameRate * HlsOutputFormat.SegmentSeconds)}`,
       '-force_key_frames',
       `expr:gte(t,n_forced*${HlsOutputFormat.SegmentSeconds})`,
       '-f',

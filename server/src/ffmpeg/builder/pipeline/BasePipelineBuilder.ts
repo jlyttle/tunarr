@@ -105,6 +105,7 @@ import {
   ThreadCountOption,
 } from '../options/GlobalOption.ts';
 import {
+  AlternateScanOutputOption,
   ClosedGopOutputOption,
   DoNotMapMetadataOutputOption,
   FastStartOutputOption,
@@ -383,8 +384,12 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
       new LogLevelOption(this.context.ffmpegState.logLevel),
       new StandardFormatFlags(),
       NoDemuxDecodeDelayOutputOption(),
-      ClosedGopOutputOption(),
+      ClosedGopOutputOption(this.desiredState.interlaced != null),
     ];
+
+    if (this.desiredState.interlaced) {
+      this.context.pipelineSteps.push(AlternateScanOutputOption());
+    }
 
     const movFlags =
       this.ffmpegState.outputFormat.type === OutputFormatTypes.Mp4 ||

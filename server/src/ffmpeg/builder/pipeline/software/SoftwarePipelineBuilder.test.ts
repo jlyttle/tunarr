@@ -277,3 +277,44 @@ describe('480i output', () => {
     );
   });
 });
+
+describe('480i watermark', () => {
+  const Sd = FrameSize.withDimensions(720, 480);
+
+  function overlayFilter(
+    watermark: Partial<Watermark>,
+    interlaced: Interlaced480Plan | null = { path: 'fieldRate' },
+  ) {
+    const desiredState = new FrameState({
+      isAnamorphic: false,
+      scaledSize: Sd,
+      paddedSize: Sd,
+      pixelFormat: new PixelFormatYuv420P(),
+      videoFormat: 'mpeg2video',
+      interlaced,
+    });
+    return buildPipeline(desiredState, makeWatermarkInput(watermark))
+      .getComplexFilter()!
+      .filterChain.watermarkOverlayFilterSteps.find(
+        (step) => step instanceof OverlayWatermarkFilter,
+      )!.filter;
+  }
+
+  test('480i watermark sits on an even line', () => {
+    expect(
+      overlayFilter({ position: 'bottom-right', verticalMargin: 10 }),
+    ).toContain('y=trunc((H-h-48)/2)*2');
+    expect(
+      overlayFilter({ position: 'top-left', verticalMargin: 5 }),
+    ).toContain('y=24');
+    expect(
+      overlayFilter({ position: 'top-left', verticalMargin: 6.9 }),
+    ).toContain('y=32');
+  });
+
+  test('a progressive watermark keeps its plain position', () => {
+    expect(
+      overlayFilter({ position: 'bottom-right', verticalMargin: 10 }, null),
+    ).toContain('y=H-h-48');
+  });
+});

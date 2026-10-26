@@ -226,6 +226,7 @@ export class SoftwarePipelineBuilder extends BasePipelineBuilder {
             this.desiredState.paddedSize,
           ),
           desiredPixelState,
+          this.desiredState.interlaced != null,
         ),
       );
     }

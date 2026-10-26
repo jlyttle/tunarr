@@ -545,4 +545,40 @@ describe('BasePipelineBuilder', () => {
     const seekCount = commandArgs.filter((arg) => arg === '-ss').length;
     expect(seekCount).toBe(2);
   });
+
+  describe('closed GOP flags', () => {
+    const buildArgs = (desiredState: FrameState) =>
+      new NoopPipelineBuilder(
+        video,
+        null,
+        null,
+        null,
+        null,
+        EmptyFfmpegCapabilities,
+      )
+        .build(state, desiredState, DefaultPipelineOptions)
+        .getCommandArgs();
+
+    test('480i pipeline merges interlaced flags into the one closed-GOP option and adds alternate scan', () => {
+      const args = buildArgs(
+        new FrameState({
+          isAnamorphic: false,
+          paddedSize: FrameSize.withDimensions(720, 480),
+          scaledSize: FrameSize.withDimensions(720, 480),
+          interlaced: { path: 'fieldRate' },
+        }),
+      );
+
+      expect(args.filter((arg) => arg === '-flags')).toHaveLength(1);
+      expect(args[args.indexOf('-flags') + 1]).toBe('+cgop+ildct+ilme');
+      expect(args[args.indexOf('-alternate_scan') + 1]).toBe('1');
+    });
+
+    test('progressive pipeline keeps -flags cgop and no alternate scan', () => {
+      const args = buildArgs(frameState);
+
+      expect(args[args.indexOf('-flags') + 1]).toBe('cgop');
+      expect(args).not.toContain('-alternate_scan');
+    });
+  });
 });

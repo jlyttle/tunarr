@@ -13,6 +13,7 @@ export class OverlayWatermarkFilter extends FilterOption {
     // @ts-expect-error - We're going to use this soon
     private squarePixelResolution: FrameSize,
     private outputPixelFormat: PixelFormat,
+    private evenLines: boolean = false,
   ) {
     super();
   }
@@ -29,20 +30,22 @@ export class OverlayWatermarkFilter extends FilterOption {
     const y = Math.round(
       (this.watermark.verticalMargin / 100.0) * this.resolution.height,
     );
+    const topY = this.evenLines ? 2 * Math.floor(y / 2) : y;
+    const bottomY = this.evenLines ? `trunc((H-h-${y})/2)*2` : `H-h-${y}`;
 
     let position: string;
     switch (this.watermark.position) {
       case 'top-left':
-        position = `x=${x}:y=${y}`;
+        position = `x=${x}:y=${topY}`;
         break;
       case 'top-right':
-        position = `x=W-w-${x}:y=${y}`;
+        position = `x=W-w-${x}:y=${topY}`;
         break;
       case 'bottom-left':
-        position = `x=${x}:y=H-h-${y}`;
+        position = `x=${x}:y=${bottomY}`;
         break;
       case 'bottom-right':
-        position = `x=W-w-${x}:y=H-h-${y}`;
+        position = `x=W-w-${x}:y=${bottomY}`;
         break;
     }
 
