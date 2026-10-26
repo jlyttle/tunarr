@@ -405,3 +405,80 @@ describe('calculateAspectTransform', () => {
     expect(transform.croppedSize).toBeUndefined();
   });
 });
+
+describe('480i output', () => {
+  const interlacedConfig = (
+    aspectRatioMode: TranscodeConfigOrm['aspectRatioMode'],
+  ) =>
+    makeTranscodeConfig({
+      interlacedOutput: true,
+      aspectRatioMode,
+      resolution: { widthPx: 720, heightPx: 480 },
+      videoFormat: 'mpeg2video',
+    });
+
+  const calculate = (
+    config: TranscodeConfigOrm,
+    overrides: Partial<VideoStreamDetails> = {},
+  ) => {
+    const details = makeStreamDetails();
+    Object.assign(details.videoDetails![0], overrides);
+    return new FfmpegPlaybackParamsCalculator(config, 'hls').calculateForStream(
+      details,
+    );
+  };
+
+  test('480i params never deinterlace and run at 30000/1001', () => {
+    const params = calculate(
+      { ...interlacedConfig('crop'), deinterlaceVideo: true },
+      { scanType: 'interlaced' },
+    );
+
+    expect(params.deinterlace).toBe(false);
+    expect(params.frameRate).toBe(30000 / 1001);
+    expect(params.videoPreset).toBeUndefined();
+    expect(params.interlaced).toEqual({ path: 'fieldRate' });
+  });
+
+  test('480i 16:9 HD preserve scales to 720x360 and pads to 720x480', () => {
+    const params = calculate(interlacedConfig('preserve'));
+
+    expect(params.scaledSize).toMatchObject({ width: 720, height: 360 });
+    expect(params.paddedSize).toMatchObject({ width: 720, height: 480 });
+    expect(params.croppedSize).toBeUndefined();
+  });
+
+  test('480i 16:9 HD crop scales to 962x480 and crops to 720x480', () => {
+    const params = calculate(interlacedConfig('crop'));
+
+    expect(params.scaledSize).toMatchObject({ width: 962, height: 480 });
+    expect(params.paddedSize).toMatchObject({ width: 720, height: 480 });
+    expect(params.croppedSize).toMatchObject({ width: 720, height: 480 });
+  });
+
+  test('480i 4:3 DVD keeps 720x480 with no crop', () => {
+    const params = calculate(interlacedConfig('crop'), {
+      codec: 'mpeg2video',
+      width: 720,
+      height: 480,
+      framerate: '29.97',
+      scanType: 'interlaced',
+      sampleAspectRatio: '8:9',
+      displayAspectRatio: '4:3',
+      anamorphic: true,
+    });
+
+    expect(params.interlaced).toEqual({ path: 'fields' });
+    expect(params.scaledSize).toMatchObject({ width: 720, height: 480 });
+    expect(params.paddedSize).toMatchObject({ width: 720, height: 480 });
+    expect(params.croppedSize).toBeUndefined();
+  });
+
+  test('480i with a stored size of 0x0 takes the field-rate path with no sizes', () => {
+    const params = calculate(interlacedConfig('crop'), { width: 0, height: 0 });
+
+    expect(params.interlaced).toEqual({ path: 'fieldRate' });
+    expect(params.scaledSize).toBeUndefined();
+    expect(params.paddedSize).toBeUndefined();
+  });
+});

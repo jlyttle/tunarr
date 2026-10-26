@@ -8,6 +8,7 @@ import type { DataProps, Nullable } from '@/types/util.js';
 import type { TranscodeAspectRatioMode } from '@tunarr/types';
 import { isEqual, merge } from 'lodash-es';
 import type { MarkOptional } from 'ts-essentials';
+import type { Interlaced480Plan } from '../../interlaced/Interlaced480.ts';
 import type { VideoFormat } from '../constants.ts';
 import { ColorFormat } from '../format/ColorFormat.ts';
 
@@ -34,6 +35,7 @@ const DefaultFrameState: Omit<
   colorFormat: ColorFormat.unknown,
   forceSoftwareOverlay: false,
   infiniteLoop: false,
+  interlaced: null,
 };
 
 export type FrameStateOpts = MarkOptional<
@@ -59,6 +61,7 @@ export class FrameState {
   deinterlace!: boolean;
   pixelFormat!: Nullable<PixelFormat>;
   colorFormat!: Nullable<ColorFormat>;
+  interlaced!: Nullable<Interlaced480Plan>;
   infiniteLoop: boolean = false;
 
   forceSoftwareOverlay = false;

@@ -45,6 +45,7 @@ import type { FfmpegPlaybackParams } from './FfmpegPlaybackParamsCalculator.ts';
 import { FfmpegPlaybackParamsCalculator } from './FfmpegPlaybackParamsCalculator.ts';
 import { FfmpegProcess } from './FfmpegProcess.ts';
 import { FfmpegTranscodeSession } from './FfmpegTrancodeSession.ts';
+import { enforceInterlaced480 } from './interlaced/Interlaced480.ts';
 import { StreamSelector } from './StreamSelector.ts';
 import { SubtitleStreamPicker } from './SubtitleStreamPicker.ts';
 import {
@@ -122,6 +123,19 @@ export class FfmpegStreamFactory {
     @assisted private channel: ChannelOrm,
   ) {
     this.ffmpegSettings = this.settingsDB.ffmpegSettings();
+    this.transcodeConfig = this.applyInterlaced480(transcodeConfig);
+  }
+
+  private applyInterlaced480(transcodeConfig: TranscodeConfigOrm) {
+    const { config, overridden } = enforceInterlaced480(transcodeConfig);
+    if (overridden.length > 0) {
+      this.logger.warn(
+        '480i output on transcode config "%s": overriding %s',
+        config.name,
+        overridden.join(', '),
+      );
+    }
+    return config;
   }
 
   async createConcatSession(
@@ -472,6 +486,7 @@ export class FfmpegStreamFactory {
         videoProfile: null,
         deinterlace: isPassthrough ? false : playbackParams!.deinterlace,
         infiniteLoop: lineupItem.infiniteLoop,
+        interlaced: playbackParams?.interlaced ?? null,
       }),
       pipelineOptions,
     );

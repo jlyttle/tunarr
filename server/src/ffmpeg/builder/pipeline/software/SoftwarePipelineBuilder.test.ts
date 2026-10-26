@@ -1,7 +1,10 @@
 import { FileStreamSource } from '@/stream/types.js';
 import type { Watermark } from '@tunarr/types';
 import { EmptyFfmpegCapabilities } from '../../capabilities/FfmpegCapabilities.ts';
+import type { Interlaced480Plan } from '../../../interlaced/Interlaced480.ts';
 import { CropFilter } from '../../filter/CropFilter.ts';
+import { DeinterlaceFilter } from '../../filter/DeinterlaceFilter.ts';
+import { FieldRateFilter } from '../../filter/interlaced/FieldRateFilter.ts';
 import { PadFilter } from '../../filter/PadFilter.ts';
 import { ScaleFilter } from '../../filter/ScaleFilter.ts';
 import { OverlayWatermarkFilter } from '../../filter/watermark/OverlayWatermarkFilter.ts';
@@ -53,11 +56,27 @@ function makeWatermarkInput(watermark: Partial<Watermark> = {}) {
   );
 }
 
+function makeSdVideoInput(frameSize: FrameSize, sampleAspectRatio = '8:9') {
+  return VideoInputSource.withStream(
+    new FileStreamSource('/path/to/video.mpg'),
+    VideoStream.create({
+      codec: 'mpeg2video',
+      profile: 'main',
+      displayAspectRatio: '4:3',
+      frameSize,
+      index: 0,
+      pixelFormat: new PixelFormatYuv420P(),
+      providedSampleAspectRatio: sampleAspectRatio,
+      colorFormat: null,
+    }),
+  );
+}
+
 function buildPipeline(
   desiredState: FrameState,
   watermark?: WatermarkInputSource,
+  video: VideoInputSource = makeVideoInput(),
 ) {
-  const video = makeVideoInput();
   const builder = new SoftwarePipelineBuilder(
     video,
     null,
@@ -143,5 +162,105 @@ describe('SoftwarePipelineBuilder aspect ratio modes', () => {
     expect(scale?.filter).toBe('scale=640:480:flags=fast_bilinear,setsar=1');
     expect(filters.some((filter) => filter instanceof PadFilter)).toBe(false);
     expect(filters.some((filter) => filter instanceof CropFilter)).toBe(false);
+  });
+});
+
+describe('480i output', () => {
+  const Sd = FrameSize.withDimensions(720, 480);
+
+  function interlacedState(
+    interlaced: Interlaced480Plan,
+    sizes: Pick<FrameState, 'scaledSize' | 'paddedSize'> = {
+      scaledSize: Sd,
+      paddedSize: Sd,
+    },
+  ) {
+    return new FrameState({
+      isAnamorphic: false,
+      resizeMode: 'crop',
+      ...sizes,
+      pixelFormat: new PixelFormatYuv420P(),
+      videoFormat: 'mpeg2video',
+      frameRate: 30000 / 1001,
+      interlaced,
+    });
+  }
+
+  function videoFilters(
+    desiredState: FrameState,
+    video: VideoInputSource = makeSdVideoInput(Sd),
+  ) {
+    return buildPipeline(desiredState, undefined, video)
+      .getComplexFilter()!
+      .filterChain.videoFilterSteps.filter((step) => step.filter !== '');
+  }
+
+  const filterStrings = (filters: ReturnType<typeof videoFilters>) =>
+    filters.map((step) => step.filter);
+
+  test('fields path passes the frame through', () => {
+    const filters = videoFilters(interlacedState({ path: 'fields' }));
+
+    expect(filterStrings(filters)).toEqual([
+      'repeatfields,fieldorder=tff',
+      'setfield=tff,setsar=8/9',
+    ]);
+    expect(filters.some((step) => step instanceof ScaleFilter)).toBe(false);
+    expect(filters.some((step) => step instanceof PadFilter)).toBe(false);
+    expect(filters.some((step) => step instanceof DeinterlaceFilter)).toBe(
+      false,
+    );
+  });
+
+  test('a BFF 480-line source still ends TFF', () => {
+    const chain = filterStrings(
+      videoFilters(interlacedState({ path: 'fields' })),
+    ).join(',');
+
+    expect(chain).toContain('fieldorder=tff');
+    expect(chain.endsWith('setfield=tff,setsar=8/9')).toBe(true);
+  });
+
+  test('486 lines crop to 480 on an even line', () => {
+    const chain = filterStrings(
+      videoFilters(
+        interlacedState({ path: 'fields' }),
+        makeSdVideoInput(FrameSize.withDimensions(720, 486)),
+      ),
+    ).join(',');
+
+    expect(chain).toContain('crop=720:480:0:4');
+  });
+
+  test('crop path crops horizontally with interlace-aware scaling', () => {
+    const chain = filterStrings(
+      videoFilters(
+        interlacedState({ path: 'fields', cropWidth: 540 }),
+        makeSdVideoInput(Sd, '32:27'),
+      ),
+    ).join(',');
+
+    expect(chain).toContain('crop=540:480,scale=720:480:interl=1');
+  });
+
+  test('field-rate path deinterlaces flagged frames, scales, then interlaces', () => {
+    const filters = videoFilters(
+      interlacedState(
+        { path: 'fieldRate' },
+        {
+          scaledSize: FrameSize.withDimensions(720, 360),
+          paddedSize: Sd,
+        },
+      ),
+      makeVideoInput(),
+    );
+
+    expect(filters).toHaveLength(4);
+    expect(filters[0]).toBeInstanceOf(FieldRateFilter);
+    expect(filters[1]).toBeInstanceOf(ScaleFilter);
+    expect(filters[2]).toBeInstanceOf(PadFilter);
+    expect(filters[3]?.filter).toBe(
+      'interlace=scan=tff:lowpass=linear,setfield=tff,setsar=8/9',
+    );
   });
 });

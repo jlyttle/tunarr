@@ -25,6 +25,7 @@ import type { StreamSelector } from '@/ffmpeg/StreamSelector.ts';
 import type { FeatureFlagService } from '@/services/FeatureFlagService.ts';
 import type { StreamDetails, SubtitleStreamDetails } from '@/stream/types.ts';
 import { HttpStreamSource } from '@/stream/types.ts';
+import type { Logger } from '@/util/logging/LoggerFactory.ts';
 import type { SubtitlesInputSource } from '@/ffmpeg/builder/input/SubtitlesInputSource.ts';
 import type { VideoInputSource } from '@/ffmpeg/builder/input/VideoInputSource.ts';
 import {
@@ -1559,6 +1560,78 @@ describe('FfmpegStreamFactory', () => {
         expect(subtitleInput).toBeNull();
         expect(result!.renditions.subtitle).toBeUndefined();
       });
+    });
+  });
+
+  describe('480i output', () => {
+    test('a 480i config with vaapi h264 1080p streams software mpeg2 720x480', async () => {
+      const warn = vi.fn();
+      const logger = {
+        warn,
+        trace: vi.fn(),
+        debug: vi.fn(),
+        info: vi.fn(),
+        error: vi.fn(),
+      } as unknown as Logger;
+      const loggerSpy = vi
+        .spyOn(
+          FfmpegStreamFactory.prototype as unknown as { logger: Logger },
+          'logger',
+          'get',
+        )
+        .mockReturnValue(logger);
+      const config = makeTranscodeConfig({
+        name: '4:3 Cable TV',
+        hardwareAccelerationMode: 'vaapi',
+        videoFormat: 'h264',
+        interlacedOutput: true,
+      });
+      const { factory, getCapturedFrameState, getCapturedHwAccel } =
+        createCapturingPipelineBuilderFactory();
+
+      try {
+        const sut = new FfmpegStreamFactory(
+          makeMockFfmpegInfo(),
+          makeMockSettingsDB(makeFfmpegSettings()),
+          factory,
+          makeMockChannelDB(),
+          makeMockFeatureFlagService(),
+          makeMockStreamSelector(),
+          config,
+          makeChannel(),
+        );
+
+        await sut.createStreamSession({
+          stream: {
+            source: new HttpStreamSource('http://example.com/video.ts'),
+            details: makeStreamDetails(),
+          },
+          options: {
+            startTime: dayjs.duration(0),
+            duration: dayjs.duration({ seconds: 30 }),
+            outputFormat: HlsOutputFormat(defaultHlsOptions),
+            ptsOffset: 0,
+            realtime: true,
+            streamMode: 'hls',
+          },
+          lineupItem: makeLineupItem(),
+        });
+      } finally {
+        loggerSpy.mockRestore();
+      }
+
+      const frameState = getCapturedFrameState();
+      expect(getCapturedHwAccel()).toBe('none');
+      expect(frameState?.videoFormat).toBe(VideoFormats.Mpeg2Video);
+      expect(frameState?.paddedSize).toMatchObject({ width: 720, height: 480 });
+      expect(frameState?.deinterlace).toBe(false);
+      expect(frameState?.frameRate).toBe(30000 / 1001);
+      expect(frameState?.interlaced).toEqual({ path: 'fieldRate' });
+      expect(warn).toHaveBeenCalledWith(
+        '480i output on transcode config "%s": overriding %s',
+        '4:3 Cable TV',
+        'resolution, videoFormat, hardwareAccelerationMode, deinterlaceVideo, normalizeFrameRate',
+      );
     });
   });
 });

@@ -17,7 +17,11 @@ import { FrameDataLocation } from '@/ffmpeg/builder/types.js';
 import dayjs from '@/util/dayjs.js';
 import type { Watermark } from '@tunarr/types';
 import { filter, first, isEmpty, isNull, some } from 'lodash-es';
+import type { Interlaced480Plan } from '../../../interlaced/Interlaced480.ts';
 import { ImageScaleFilter } from '../../filter/ImageScaleFilter.ts';
+import { FieldPassFilter } from '../../filter/interlaced/FieldPassFilter.ts';
+import { FieldRateFilter } from '../../filter/interlaced/FieldRateFilter.ts';
+import { InterlaceTffFilter } from '../../filter/interlaced/InterlaceTffFilter.ts';
 import { SubtitleFilter } from '../../filter/SubtitleFilter.ts';
 import { SubtitleOverlayFilter } from '../../filter/SubtitleOverlayFilter.ts';
 import { WatermarkFadeFilter } from '../../filter/watermark/WatermarkFadeFilter.ts';
@@ -48,11 +52,18 @@ export class SoftwarePipelineBuilder extends BasePipelineBuilder {
     });
 
     if (desiredState.videoFormat !== VideoFormats.Copy) {
-      currentState = this.setDeinterlace(currentState);
-      currentState = this.setTonemap(currentState);
-      currentState = this.setScale(currentState);
-      currentState = this.setPad(currentState);
-      currentState = this.setCrop(currentState);
+      if (desiredState.interlaced) {
+        currentState = this.setInterlaced480(
+          currentState,
+          desiredState.interlaced,
+        );
+      } else {
+        currentState = this.setDeinterlace(currentState);
+        currentState = this.setTonemap(currentState);
+        currentState = this.setScale(currentState);
+        currentState = this.setPad(currentState);
+        currentState = this.setCrop(currentState);
+      }
       currentState = this.addSubtitles(currentState);
       currentState = this.setWatermark(currentState);
     }
@@ -72,6 +83,47 @@ export class SoftwarePipelineBuilder extends BasePipelineBuilder {
     this.setPixelFormat(currentState);
 
     filterChain.videoFilterSteps.push(...this.videoInputSource.filterSteps);
+  }
+
+  protected setInterlaced480(
+    currentState: FrameState,
+    plan: Interlaced480Plan,
+  ): FrameState {
+    if (plan.path === 'fields') {
+      return this.setFieldPass(currentState, plan.cropWidth);
+    }
+
+    return this.setFieldRate(currentState);
+  }
+
+  private setFieldPass(currentState: FrameState, cropWidth?: number) {
+    if (!isVideoPipelineContext(this.context)) {
+      return currentState;
+    }
+
+    const fieldPass = new FieldPassFilter(
+      this.context.videoStream.frameSize,
+      cropWidth,
+    );
+    currentState = this.addFilterToVideoChain(currentState, fieldPass);
+    return this.addFilterToVideoChain(
+      currentState,
+      new InterlaceTffFilter(false),
+    );
+  }
+
+  private setFieldRate(currentState: FrameState) {
+    currentState = this.addFilterToVideoChain(
+      currentState,
+      new FieldRateFilter(),
+    );
+    currentState = this.setScale(currentState);
+    currentState = this.setPad(currentState);
+    currentState = this.setCrop(currentState);
+    return this.addFilterToVideoChain(
+      currentState,
+      new InterlaceTffFilter(true),
+    );
   }
 
   protected setDeinterlace(currentState: FrameState): FrameState {

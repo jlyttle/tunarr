@@ -18,6 +18,12 @@ import {
 import type { PixelFormat } from './builder/format/PixelFormat.ts';
 import { PixelFormatYuv420P } from './builder/format/PixelFormat.ts';
 import { FrameSize } from './builder/types.ts';
+import type { Interlaced480Plan } from './interlaced/Interlaced480.ts';
+import {
+  interlaced480Plan,
+  Interlaced480FrameRate,
+  Interlaced480Size,
+} from './interlaced/Interlaced480.ts';
 
 export class FfmpegPlaybackParamsCalculator {
   constructor(
@@ -97,6 +103,13 @@ export class FfmpegPlaybackParamsCalculator {
       params.deinterlace =
         !!this.transcodeConfig.deinterlaceVideo &&
         videoStream.scanType === 'interlaced';
+
+      if (this.transcodeConfig.interlacedOutput) {
+        Object.assign(
+          params,
+          calculateInterlaced480Params(this.transcodeConfig, videoStream),
+        );
+      }
     }
 
     return params;
@@ -158,6 +171,7 @@ export type FfmpegPlaybackParams = {
   videoPreset?: VideoPreset;
   pixelFormat?: PixelFormat;
   deinterlace?: boolean;
+  interlaced?: Interlaced480Plan;
 
   // audio details
   audioFormat: TranscodeAudioOutputFormat;
@@ -169,6 +183,8 @@ export type FfmpegPlaybackParams = {
 };
 
 const AspectRatioTolerance = 0.01;
+
+const SquarePixel480Resolution = { widthPx: 640, heightPx: 480 };
 
 export type AspectTransform = {
   resizeMode: AspectRatioMode;
@@ -220,6 +236,61 @@ export function calculateAspectTransform(
   };
 }
 
+export function calculateInterlaced480Transform(
+  mode: AspectRatioMode,
+  videoStream: VideoStreamDetails,
+): AspectTransform {
+  const squarePixelTransform = calculateAspectTransform(
+    { aspectRatioMode: mode, resolution: SquarePixel480Resolution },
+    videoStream,
+  );
+
+  return {
+    resizeMode: squarePixelTransform.resizeMode,
+    scaledSize: toInterlaced480Pixels(squarePixelTransform.scaledSize),
+    paddedSize: toInterlaced480Pixels(squarePixelTransform.paddedSize),
+    croppedSize:
+      squarePixelTransform.croppedSize &&
+      toInterlaced480Pixels(squarePixelTransform.croppedSize),
+  };
+}
+
+function calculateInterlaced480Params(
+  config: Pick<TranscodeConfigOrm, 'aspectRatioMode'>,
+  videoStream: VideoStreamDetails,
+): Partial<FfmpegPlaybackParams> {
+  const params = {
+    deinterlace: false,
+    frameRate: Interlaced480FrameRate,
+    videoPreset: undefined,
+  };
+
+  if (videoStream.width <= 0 || videoStream.height <= 0) {
+    return { ...params, interlaced: { path: 'fieldRate' } };
+  }
+
+  const mode = config.aspectRatioMode ?? 'preserve';
+  const interlaced = interlaced480Plan(videoStream, mode);
+  const transform: AspectTransform =
+    interlaced.path === 'fields'
+      ? {
+          resizeMode: mode,
+          scaledSize: Interlaced480Size,
+          paddedSize: Interlaced480Size,
+          croppedSize: undefined,
+        }
+      : calculateInterlaced480Transform(mode, videoStream);
+
+  return { ...params, interlaced, ...transform };
+}
+
+function toInterlaced480Pixels(size: FrameSize) {
+  return FrameSize.create({
+    width: ceilEven((size.width * 9) / 8),
+    height: size.height,
+  });
+}
+
 function calculateFillSize(sourceAspectRatio: number, targetSize: FrameSize) {
   const targetAspectRatio = targetSize.width / targetSize.height;
 
@@ -252,7 +323,7 @@ function calculateFitSize(sourceAspectRatio: number, targetSize: FrameSize) {
   });
 }
 
-function calculateDisplayAspectRatio(videoStream: VideoStreamDetails) {
+export function calculateDisplayAspectRatio(videoStream: VideoStreamDetails) {
   const numericSar = parseAspectRatio(videoStream.sampleAspectRatio);
   if (numericSar && numericSar.den !== 0) {
     return (
