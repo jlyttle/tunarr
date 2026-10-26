@@ -36,4 +36,22 @@ describe('WatermarkScaleFilter', () => {
     // width = round(25% of 1280) = 320
     expect(filter.filter).toBe('scale=320:-2');
   });
+
+  it('480i watermark scales height for 8:9 pixels', () => {
+    const resolution: FrameSize = { width: 720, height: 480 };
+    const watermark = makeWatermark({ width: 100 });
+
+    const filter = new WatermarkScaleFilter(resolution, watermark, true);
+
+    expect(filter.filter).toBe('scale=720:trunc(ih*720/iw*8/9/2)*2');
+  });
+
+  it('progressive watermark scale is unchanged', () => {
+    const resolution: FrameSize = { width: 720, height: 480 };
+    const watermark = makeWatermark({ width: 100 });
+
+    const filter = new WatermarkScaleFilter(resolution, watermark, false);
+
+    expect(filter.filter).toBe('scale=720:-2');
+  });
 });

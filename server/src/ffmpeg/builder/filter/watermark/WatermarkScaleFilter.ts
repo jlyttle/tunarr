@@ -6,6 +6,7 @@ export class WatermarkScaleFilter extends FilterOption {
   constructor(
     private resolution: FrameSize,
     private watermark: Watermark,
+    private narrowPixels: boolean = false,
   ) {
     super();
   }
@@ -14,6 +15,9 @@ export class WatermarkScaleFilter extends FilterOption {
     const width = Math.round(
       (this.watermark.width / 100) * this.resolution.width,
     );
+    if (this.narrowPixels) {
+      return `scale=${width}:trunc(ih*${width}/iw*8/9/2)*2`;
+    }
     return `scale=${width}:-2`;
   }
 }

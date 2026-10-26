@@ -198,6 +198,7 @@ export class SoftwarePipelineBuilder extends BasePipelineBuilder {
         new WatermarkScaleFilter(
           currentState.paddedSize,
           watermarkInputSource.watermark,
+          this.desiredState.interlaced != null,
         ),
       );
     }
