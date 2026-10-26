@@ -318,3 +318,32 @@ describe('480i watermark', () => {
     ).toContain('y=H-h-48');
   });
 });
+
+describe('software watermark looping', () => {
+  const Sd = FrameSize.withDimensions(720, 480);
+
+  function watermarkInputOptions(watermark: Partial<Watermark>) {
+    const input = makeWatermarkInput(watermark);
+    buildPipeline(
+      new FrameState({
+        isAnamorphic: false,
+        scaledSize: Sd,
+        paddedSize: Sd,
+        pixelFormat: new PixelFormatYuv420P(),
+      }),
+      input,
+    );
+    return input.inputOptions.flatMap((option) => option.options(input));
+  }
+
+  test('software watermark still image with fade loops its input', () => {
+    const options = watermarkInputOptions({
+      fadeConfig: [{ periodMins: 5, leadingEdge: true }],
+    });
+    expect(options).toEqual(expect.arrayContaining(['-loop', '1']));
+  });
+
+  test('software watermark still image without fade does not loop', () => {
+    expect(watermarkInputOptions({})).not.toContain('-loop');
+  });
+});
