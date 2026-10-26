@@ -23,10 +23,10 @@ export class FieldPassFilter extends FilterOption {
   }
 
   private generateFilter() {
-    const parts = ['repeatfields', 'fieldorder=tff'];
+    const parts = ['repeatfields'];
 
     if (this.sourceSize.height === 486) {
-      parts.push('crop=720:480:0:4');
+      parts.push('crop=iw:480:0:4');
     }
 
     if (this.sourceSize.width === 704) {

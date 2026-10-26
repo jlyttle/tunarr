@@ -1633,5 +1633,50 @@ describe('FfmpegStreamFactory', () => {
         'resolution, videoFormat, hardwareAccelerationMode, deinterlaceVideo, normalizeFrameRate',
       );
     });
+
+    test('a 480i stream with a stored size of 0x0 is sized for 8:9 pixels', async () => {
+      const { factory, getCapturedFrameState } =
+        createCapturingPipelineBuilderFactory();
+      const details = makeStreamDetails();
+      details.videoDetails![0] = {
+        ...details.videoDetails![0],
+        width: 0,
+        height: 0,
+      };
+      const sut = new FfmpegStreamFactory(
+        makeMockFfmpegInfo(),
+        makeMockSettingsDB(makeFfmpegSettings()),
+        factory,
+        makeMockChannelDB(),
+        makeMockFeatureFlagService(),
+        makeMockStreamSelector(),
+        makeTranscodeConfig({
+          aspectRatioMode: 'preserve',
+          interlacedOutput: true,
+        }),
+        makeChannel(),
+      );
+
+      await sut.createStreamSession({
+        stream: {
+          source: new HttpStreamSource('http://example.com/video.ts'),
+          details,
+        },
+        options: {
+          startTime: dayjs.duration(0),
+          duration: dayjs.duration({ seconds: 30 }),
+          outputFormat: HlsOutputFormat(defaultHlsOptions),
+          ptsOffset: 0,
+          realtime: true,
+          streamMode: 'hls',
+        },
+        lineupItem: makeLineupItem(),
+      });
+
+      const frameState = getCapturedFrameState();
+      expect(frameState?.interlaced).toEqual({ path: 'fieldRate' });
+      expect(frameState?.scaledSize).toMatchObject({ width: 720, height: 360 });
+      expect(frameState?.paddedSize).toMatchObject({ width: 720, height: 480 });
+    });
   });
 });

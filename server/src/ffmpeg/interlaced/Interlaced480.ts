@@ -20,7 +20,7 @@ export type Interlaced480Plan =
 const FieldHeights = [480, 486];
 const FieldWidths = [720, 704];
 const FieldRateTolerance = 0.05;
-const WidescreenAspectRatio = 1.5;
+const WidescreenAspectRatio = 1.6;
 
 const Interlaced480Config = {
   resolution: { widthPx: 720, heightPx: 480 },
@@ -71,7 +71,10 @@ function hasFields(stream: VideoStreamDetails) {
 }
 
 function hasFieldFrameRate(stream: VideoStreamDetails) {
-  if (stream.codec === VideoFormats.Mpeg2Video) {
+  if (
+    stream.codec === VideoFormats.Mpeg2Video ||
+    stream.scanType === 'interlaced'
+  ) {
     return true;
   }
 

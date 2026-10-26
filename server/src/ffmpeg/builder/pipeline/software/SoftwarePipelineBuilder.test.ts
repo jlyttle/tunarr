@@ -202,7 +202,7 @@ describe('480i output', () => {
     const filters = videoFilters(interlacedState({ path: 'fields' }));
 
     expect(filterStrings(filters)).toEqual([
-      'repeatfields,fieldorder=tff',
+      'repeatfields',
       'setfield=tff,setsar=8/9',
     ]);
     expect(filters.some((step) => step instanceof ScaleFilter)).toBe(false);
@@ -212,12 +212,13 @@ describe('480i output', () => {
     );
   });
 
-  test('a BFF 480-line source still ends TFF', () => {
+  test('the fields path always normalizes field order to TFF', () => {
     const chain = filterStrings(
       videoFilters(interlacedState({ path: 'fields' })),
     ).join(',');
 
-    expect(chain).toContain('fieldorder=tff');
+    expect(chain.startsWith('repeatfields')).toBe(true);
+    expect(chain).not.toContain('fieldorder');
     expect(chain.endsWith('setfield=tff,setsar=8/9')).toBe(true);
   });
 
@@ -229,7 +230,19 @@ describe('480i output', () => {
       ),
     ).join(',');
 
-    expect(chain).toContain('crop=720:480:0:4');
+    expect(chain).toContain('crop=iw:480:0:4');
+  });
+
+  test('704x486 crops to 480 lines before padding to 720', () => {
+    const chain = filterStrings(
+      videoFilters(
+        interlacedState({ path: 'fields' }),
+        makeSdVideoInput(FrameSize.withDimensions(704, 486)),
+      ),
+    ).join(',');
+
+    expect(chain).toContain('crop=iw:480:0:4');
+    expect(chain).toContain('pad=720:480:8:0');
   });
 
   test('crop path crops horizontally with interlace-aware scaling', () => {

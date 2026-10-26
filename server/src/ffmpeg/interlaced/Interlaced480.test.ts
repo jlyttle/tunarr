@@ -120,6 +120,36 @@ describe('Interlaced480', () => {
     });
   });
 
+  test('interlaced h264 at 60000/1001 takes the fields path', () => {
+    const stream = makeVideoStream({
+      codec: 'h264',
+      framerate: '60000/1001',
+      scanType: 'interlaced',
+    });
+
+    expect(interlaced480Plan(stream, 'crop')).toEqual({ path: 'fields' });
+  });
+
+  test('progressive 59.94 480p takes the field-rate path', () => {
+    const stream = makeVideoStream({
+      codec: 'h264',
+      framerate: '60000/1001',
+      scanType: 'progressive',
+    });
+
+    expect(interlaced480Plan(stream, 'crop')).toEqual({ path: 'fieldRate' });
+  });
+
+  test('720x480 with no SAR is 4:3 and takes the fields path with no crop', () => {
+    const stream = makeVideoStream({
+      sampleAspectRatio: undefined,
+      displayAspectRatio: '',
+    });
+
+    expect(interlaced480Plan(stream, 'crop')).toEqual({ path: 'fields' });
+    expect(interlaced480Plan(stream, 'preserve')).toEqual({ path: 'fields' });
+  });
+
   test('1080i and 1080p take the field-rate path', () => {
     const interlaced = makeHdStream({ scanType: 'interlaced' });
     const progressive = makeHdStream({

@@ -474,11 +474,27 @@ describe('480i output', () => {
     expect(params.croppedSize).toBeUndefined();
   });
 
-  test('480i with a stored size of 0x0 takes the field-rate path with no sizes', () => {
-    const params = calculate(interlacedConfig('crop'), { width: 0, height: 0 });
+  test('480i with a stored size of 0x0 sizes the field-rate path against a square 4:3 target', () => {
+    const params = calculate(interlacedConfig('preserve'), {
+      width: 0,
+      height: 0,
+    });
 
     expect(params.interlaced).toEqual({ path: 'fieldRate' });
-    expect(params.scaledSize).toBeUndefined();
-    expect(params.paddedSize).toBeUndefined();
+    expect(params.scaledSize).toMatchObject({ width: 720, height: 360 });
+    expect(params.paddedSize).toMatchObject({ width: 720, height: 480 });
+    expect(params.croppedSize).toBeUndefined();
+  });
+
+  test('480i with a stored size of 0x0 and no aspect ratio fills 720x480', () => {
+    const params = calculate(interlacedConfig('preserve'), {
+      width: 0,
+      height: 0,
+      sampleAspectRatio: undefined,
+      displayAspectRatio: '',
+    });
+
+    expect(params.scaledSize).toMatchObject({ width: 720, height: 480 });
+    expect(params.paddedSize).toMatchObject({ width: 720, height: 480 });
   });
 });

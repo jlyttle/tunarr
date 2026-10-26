@@ -186,6 +186,12 @@ const AspectRatioTolerance = 0.01;
 
 const SquarePixel480Resolution = { widthPx: 640, heightPx: 480 };
 
+const UnknownSizeStream = {
+  width: 640,
+  height: 480,
+  sampleAspectRatio: undefined,
+};
+
 export type AspectTransform = {
   resizeMode: AspectRatioMode;
   scaledSize: FrameSize;
@@ -265,11 +271,19 @@ function calculateInterlaced480Params(
     videoPreset: undefined,
   };
 
+  const mode = config.aspectRatioMode ?? 'preserve';
+
   if (videoStream.width <= 0 || videoStream.height <= 0) {
-    return { ...params, interlaced: { path: 'fieldRate' } };
+    return {
+      ...params,
+      interlaced: { path: 'fieldRate' },
+      ...calculateInterlaced480Transform(mode, {
+        ...videoStream,
+        ...UnknownSizeStream,
+      }),
+    };
   }
 
-  const mode = config.aspectRatioMode ?? 'preserve';
   const interlaced = interlaced480Plan(videoStream, mode);
   const transform: AspectTransform =
     interlaced.path === 'fields'
