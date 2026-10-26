@@ -29,7 +29,7 @@ import type { FrameState } from '@/ffmpeg/builder/state/FrameState.js';
 import { FrameDataLocation } from '@/ffmpeg/builder/types.js';
 import type { Maybe, Nullable } from '@/types/util.js';
 import { isDefined, isNonEmptyString } from '@/util/index.js';
-import { head, isEmpty, isNil, isNull, reject, some } from 'lodash-es';
+import { isEmpty, isNil, isNull, reject, some } from 'lodash-es';
 import { VulkanDecoder } from '../../decoder/VulkanDecoder.ts';
 import {
   ImplicitNvidiaDecoder,
@@ -59,8 +59,6 @@ import {
 import type { SubtitlesInputSource } from '../../input/SubtitlesInputSource.ts';
 import { KnownFfmpegFilters } from '../../options/KnownFfmpegOptions.ts';
 import { CopyTimestampInputOption } from '../../options/input/CopyTimestampInputOption.ts';
-import { DoNotIgnoreLoopInputOption } from '../../options/input/DoNotIgnoreLoopInputOption.ts';
-import { InfiniteLoopInputOption } from '../../options/input/InfiniteLoopInputOption.ts';
 import { NvidiaDeinterlacer } from './NvidiaDeinterlacer.ts';
 import { NvidiaScaler } from './NvidiaScaler.ts';
 
@@ -725,14 +723,7 @@ export class NvidiaPipelineBuilder extends SoftwarePipelineBuilder {
 
     const watermarkInput = this.watermarkInputSource;
 
-    for (const watermark of watermarkInput.streams ?? []) {
-      if (watermark.inputKind !== 'stillimage') {
-        watermarkInput.addOption(new DoNotIgnoreLoopInputOption());
-      } else if (isDefined(head(watermarkInput.watermark.fadeConfig))) {
-        // TODO: Needs hwaccel option here
-        watermarkInput.addOption(new InfiniteLoopInputOption());
-      }
-    }
+    this.addWatermarkLoopOptions(watermarkInput);
 
     if (!this.watermarkInputSource.watermark.fixedSize) {
       this.watermarkInputSource.filterSteps.push(

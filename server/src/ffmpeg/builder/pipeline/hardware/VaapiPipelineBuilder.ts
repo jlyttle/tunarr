@@ -28,8 +28,6 @@ import type { WatermarkInputSource } from '@/ffmpeg/builder/input/WatermarkInput
 import { VaapiDriverEnvironmentVariable } from '@/ffmpeg/builder/options/EnvironmentVariables.js';
 import { ExtraHardwareFramesOption } from '@/ffmpeg/builder/options/hardwareAcceleration/ExtraHardwareFramesOption.js';
 import { VaapiHardwareAccelerationOption } from '@/ffmpeg/builder/options/hardwareAcceleration/VaapiOptions.js';
-import { DoNotIgnoreLoopInputOption } from '@/ffmpeg/builder/options/input/DoNotIgnoreLoopInputOption.js';
-import { InfiniteLoopInputOption } from '@/ffmpeg/builder/options/input/InfiniteLoopInputOption.js';
 import { KnownFfmpegFilters } from '@/ffmpeg/builder/options/KnownFfmpegOptions.js';
 import { isVideoPipelineContext } from '@/ffmpeg/builder/pipeline/BasePipelineBuilder.js';
 import { SoftwarePipelineBuilder } from '@/ffmpeg/builder/pipeline/software/SoftwarePipelineBuilder.js';
@@ -611,14 +609,7 @@ export class VaapiPipelineBuilder extends SoftwarePipelineBuilder {
 
     const watermarkInput = this.watermarkInputSource!;
 
-    for (const watermark of watermarkInput.streams ?? []) {
-      if (watermark.inputKind !== 'stillimage') {
-        watermarkInput.addOption(new DoNotIgnoreLoopInputOption());
-      } else if (isDefined(head(watermarkInput.watermark.fadeConfig))) {
-        // TODO: Needs hwaccel option here
-        watermarkInput.addOption(new InfiniteLoopInputOption());
-      }
-    }
+    this.addWatermarkLoopOptions(watermarkInput);
 
     if (!watermarkInput.watermark.fixedSize) {
       // scale filter

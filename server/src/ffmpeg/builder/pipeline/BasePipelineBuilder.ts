@@ -41,6 +41,7 @@ import { NoStatsOption } from '@/ffmpeg/builder/options/NoStatsOption.js';
 import { ConcatHttpReconnectOptions } from '@/ffmpeg/builder/options/input/ConcatHttpReconnectOptions.js';
 import { ConcatInputFormatOption } from '@/ffmpeg/builder/options/input/ConcatInputFormatOption.js';
 import { HttpReconnectOptions } from '@/ffmpeg/builder/options/input/HttpReconnectOptions.js';
+import { DoNotIgnoreLoopInputOption } from '@/ffmpeg/builder/options/input/DoNotIgnoreLoopInputOption.js';
 import { InfiniteLoopInputOption } from '@/ffmpeg/builder/options/input/InfiniteLoopInputOption.js';
 import { ReadrateInputOption } from '@/ffmpeg/builder/options/input/ReadrateInputOption.js';
 import { SeekTimestampInputOption } from '@/ffmpeg/builder/options/input/SeekTimestampInputOption.js';
@@ -58,11 +59,19 @@ import type {
   PipelineStep,
 } from '@/ffmpeg/builder/types/PipelineStep.js';
 import type { DataProps, Nilable, Nullable } from '@/types/util.js';
-import { ifDefined, isNonEmptyString } from '@/util/index.js';
+import { ifDefined, isDefined, isNonEmptyString } from '@/util/index.js';
 import type { Logger } from '@/util/logging/LoggerFactory.js';
 import { LoggerFactory } from '@/util/logging/LoggerFactory.js';
 import { getTunarrVersion } from '@/util/version.js';
-import { filter, first, isNil, isNull, isUndefined, merge } from 'lodash-es';
+import {
+  filter,
+  first,
+  head,
+  isNil,
+  isNull,
+  isUndefined,
+  merge,
+} from 'lodash-es';
 import path from 'node:path';
 import type { DeepReadonly, MarkRequired } from 'ts-essentials';
 import { match, P } from 'ts-pattern';
@@ -1074,6 +1083,16 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
 
   protected getIsIntelQsvOrVaapi() {
     return false;
+  }
+
+  protected addWatermarkLoopOptions(watermarkInput: WatermarkInputSource) {
+    for (const stream of watermarkInput.streams ?? []) {
+      if (stream.inputKind !== 'stillimage') {
+        watermarkInput.addOption(new DoNotIgnoreLoopInputOption());
+      } else if (isDefined(head(watermarkInput.watermark.fadeConfig))) {
+        watermarkInput.addOption(new InfiniteLoopInputOption());
+      }
+    }
   }
 
   protected addFilterToVideoChain(

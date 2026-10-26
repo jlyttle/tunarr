@@ -193,6 +193,8 @@ export class SoftwarePipelineBuilder extends BasePipelineBuilder {
     const watermarkInputSource = this.watermarkInputSource!;
     const watermark = watermarkInputSource.watermark;
 
+    this.addWatermarkLoopOptions(watermarkInputSource);
+
     if (!watermarkInputSource.watermark.fixedSize) {
       watermarkInputSource.filterSteps.push(
         new WatermarkScaleFilter(

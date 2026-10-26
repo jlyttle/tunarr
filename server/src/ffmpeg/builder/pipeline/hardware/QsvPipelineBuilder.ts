@@ -31,8 +31,6 @@ import type { VideoInputSource } from '@/ffmpeg/builder/input/VideoInputSource.j
 import type { WatermarkInputSource } from '@/ffmpeg/builder/input/WatermarkInputSource.js';
 import { PixelFormatOutputOption } from '@/ffmpeg/builder/options/OutputOption.js';
 import { QsvHardwareAccelerationOption } from '@/ffmpeg/builder/options/hardwareAcceleration/QsvOptions.js';
-import { DoNotIgnoreLoopInputOption } from '@/ffmpeg/builder/options/input/DoNotIgnoreLoopInputOption.js';
-import { InfiniteLoopInputOption } from '@/ffmpeg/builder/options/input/InfiniteLoopInputOption.js';
 import { isVideoPipelineContext } from '@/ffmpeg/builder/pipeline/BasePipelineBuilder.js';
 import { SoftwarePipelineBuilder } from '@/ffmpeg/builder/pipeline/software/SoftwarePipelineBuilder.js';
 import type { FrameState } from '@/ffmpeg/builder/state/FrameState.js';
@@ -487,14 +485,7 @@ export class QsvPipelineBuilder extends SoftwarePipelineBuilder {
 
     const watermarkInput = this.watermarkInputSource!;
 
-    for (const watermark of watermarkInput.streams ?? []) {
-      if (watermark.inputKind !== 'stillimage') {
-        watermarkInput.addOption(new DoNotIgnoreLoopInputOption());
-      } else if (isDefined(head(watermarkInput.watermark.fadeConfig))) {
-        // TODO: Needs hwaccel option here
-        watermarkInput.addOption(new InfiniteLoopInputOption());
-      }
-    }
+    this.addWatermarkLoopOptions(watermarkInput);
 
     if (!watermarkInput.watermark.fixedSize) {
       // scale filter
