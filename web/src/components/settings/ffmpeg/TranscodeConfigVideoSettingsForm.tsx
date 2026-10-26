@@ -1,6 +1,6 @@
 import { useTypedAppFormContext } from '@/hooks/form.ts';
 import { Trans, useLingui } from '@lingui/react/macro';
-import { InputAdornment, Link as MuiLink, Stack } from '@mui/material';
+import { Alert, InputAdornment, Link as MuiLink, Stack } from '@mui/material';
 import { useStore } from '@tanstack/react-form';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import type {
@@ -13,6 +13,11 @@ import { useMemo } from 'react';
 import { getApiFfmpegInfoOptions } from '../../../generated/@tanstack/react-query.gen.ts';
 import { TranscodeResolutionOptions } from '../../../helpers/constants.ts';
 import type { DropdownOption } from '../../../helpers/DropdownOption.ts';
+import {
+  Interlaced480Defaults,
+  interlaced480Warnings,
+} from '../../../helpers/interlaced480.ts';
+import type { Interlaced480Warning } from '../../../helpers/interlaced480.ts';
 import {
   resolutionFromAnyString,
   resolutionToString,
@@ -100,6 +105,32 @@ export const TranscodeConfigVideoSettingsForm = ({
     form.store,
     (state) => state.values.hardwareAccelerationMode,
   ); // watch('hardwareAccelerationMode');
+
+  const interlaced480WarningCopy: Record<Interlaced480Warning, string> = {
+    resolution: t`480i output streams at 720x480. Tunarr will use 720x480 for channels on this config.`,
+    videoFormat: t`480i output is MPEG-2 only. Tunarr will encode MPEG-2.`,
+    hardwareAcceleration: t`480i output encodes in software (hardware encoders are progressive only). Tunarr will encode in software.`,
+    frameRate: t`480i output runs at a constant 29.97 fps. Tunarr will keep it constant.`,
+    deinterlace: t`480i output never deinterlaces. Tunarr will keep fields as they are.`,
+    preserveWidescreen: t`Preserve letterboxes widescreen interlaced sources, which deinterlaces and re-interlaces them. Crop or Stretch keep their fields.`,
+  };
+
+  const applyInterlaced480Defaults = () => {
+    form.setFieldValue('resolution', Interlaced480Defaults.resolution);
+    form.setFieldValue('videoFormat', Interlaced480Defaults.videoFormat);
+    form.setFieldValue(
+      'hardwareAccelerationMode',
+      Interlaced480Defaults.hardwareAccelerationMode,
+    );
+    form.setFieldValue(
+      'normalizeFrameRate',
+      Interlaced480Defaults.normalizeFrameRate,
+    );
+    form.setFieldValue(
+      'deinterlaceVideo',
+      Interlaced480Defaults.deinterlaceVideo,
+    );
+  };
 
   const hardwareAccelerationOptions = useMemo(() => {
     return VideoHardwareAccelerationOptions.filter(
@@ -289,6 +320,32 @@ export const TranscodeConfigVideoSettingsForm = ({
           )}
         />
       </Stack>
+      <form.AppField
+        name="interlacedOutput"
+        listeners={{
+          onChange: ({ value }) => {
+            if (value) {
+              applyInterlaced480Defaults();
+            }
+          },
+        }}
+        children={(field) => (
+          <field.BasicCheckboxInput
+            label={t`480i Interlaced Output (MPEG-2 SD)`}
+            helperText={t`Streams real interlaced 720x480 MPEG-2 at 29.97 fps, top field first. For CRT clients; progressive players will comb.`}
+          />
+        )}
+      />
+      <form.Subscribe
+        selector={(s) => interlaced480Warnings(s.values)}
+        children={(warnings) =>
+          warnings.map((warning) => (
+            <Alert key={warning} severity="warning">
+              {interlaced480WarningCopy[warning]}
+            </Alert>
+          ))
+        }
+      />
       {/* 
       <Stack gap={1} direction={{ sm: 'column', md: 'row' }}>
         <FormControl fullWidth>
