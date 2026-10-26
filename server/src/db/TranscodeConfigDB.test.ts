@@ -63,6 +63,7 @@ const baseConfig = (
   audioLoudnormConfig: null,
   normalizeFrameRate: false,
   deinterlaceVideo: true,
+  interlacedOutput: false,
   disableChannelOverlay: false,
   errorScreen: 'pic',
   errorScreenAudio: 'silent',
@@ -105,5 +106,39 @@ describe('TranscodeConfigDB', () => {
 
     const updated = await repo.getById(created.uuid);
     expect(updated?.aspectRatioMode).toBe('stretch');
+  });
+
+  test('schema defaults interlacedOutput to false for legacy payloads', () => {
+    const parsed = TranscodeConfigSchema.parse({
+      id: '6d032998-6c16-447f-8d9f-a73fcbf02d6e',
+      ...baseConfig(),
+      interlacedOutput: undefined,
+    });
+
+    expect(parsed.interlacedOutput).toBe(false);
+  });
+
+  test('creates, duplicates, and updates interlacedOutput', async ({
+    repo,
+  }) => {
+    const created = await repo.insertConfig(
+      baseConfig({ interlacedOutput: true }),
+    );
+    expect(created.interlacedOutput).toBe(true);
+
+    const fetched = await repo.getById(created.uuid);
+    expect(fetched?.interlacedOutput).toBe(true);
+
+    const duplicated = await repo.duplicateConfig(created.uuid);
+    expect(duplicated.isSuccess()).toBe(true);
+    expect(duplicated.get().interlacedOutput).toBe(true);
+
+    await repo.updateConfig(created.uuid, {
+      id: created.uuid,
+      ...baseConfig({ interlacedOutput: false }),
+    });
+
+    const updated = await repo.getById(created.uuid);
+    expect(updated?.interlacedOutput).toBe(false);
   });
 });

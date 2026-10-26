@@ -11,6 +11,7 @@ export function transcodeConfigOrmToDto(
     aspectRatioMode: config.aspectRatioMode ?? 'preserve',
     normalizeFrameRate: config.normalizeFrameRate ?? false,
     deinterlaceVideo: config.deinterlaceVideo ?? false,
+    interlacedOutput: config.interlacedOutput ?? false,
     isDefault: config.isDefault ?? false,
     disableHardwareDecoder: config.disableHardwareDecoder ?? false,
     disableHardwareEncoding: config.disableHardwareEncoding ?? false,

@@ -130,6 +130,7 @@ export const TranscodeConfigColumns: (keyof TranscodeConfigTable)[] = [
   'audioVolumePercent',
   'aspectRatioMode',
   'deinterlaceVideo',
+  'interlacedOutput',
   'disableChannelOverlay',
   'errorScreen',
   'errorScreenAudio',
@@ -188,6 +189,7 @@ export const TranscodeConfig = sqliteTable(
 
     normalizeFrameRate: integer({ mode: 'boolean' }).default(false),
     deinterlaceVideo: integer({ mode: 'boolean' }).default(true),
+    interlacedOutput: integer({ mode: 'boolean' }).notNull().default(false),
     disableChannelOverlay: integer({ mode: 'boolean' }).default(false),
 
     errorScreen: text({ enum: ErrorScreenTypes }).default('pic').notNull(),
@@ -264,6 +266,7 @@ export const defaultTranscodeConfig = (
     videoBufferSize: 4000,
     videoFormat: 'h264',
     aspectRatioMode: 'preserve',
+    interlacedOutput: false,
     disableChannelOverlay: false,
     normalizeFrameRate: false,
     videoBitDepth: 8,

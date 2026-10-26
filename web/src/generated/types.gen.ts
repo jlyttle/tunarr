@@ -6027,6 +6027,7 @@ export type GetApiChannelsByIdTranscodeConfigResponses = {
         } | null;
         normalizeFrameRate: boolean;
         deinterlaceVideo: boolean;
+        interlacedOutput: boolean;
         disableChannelOverlay: boolean;
         errorScreen: 'static' | 'pic' | 'blank' | 'testsrc' | 'text' | 'kill';
         errorScreenAudio: 'silent' | 'sine' | 'whitenoise';
@@ -9998,6 +9999,7 @@ export type GetApiTranscodeConfigsResponses = {
         } | null;
         normalizeFrameRate: boolean;
         deinterlaceVideo: boolean;
+        interlacedOutput: boolean;
         disableChannelOverlay: boolean;
         errorScreen: 'static' | 'pic' | 'blank' | 'testsrc' | 'text' | 'kill';
         errorScreenAudio: 'silent' | 'sine' | 'whitenoise';
@@ -10054,6 +10056,7 @@ export type PostApiTranscodeConfigsData = {
         } | null;
         normalizeFrameRate: boolean;
         deinterlaceVideo: boolean;
+        interlacedOutput?: boolean;
         disableChannelOverlay: boolean;
         errorScreen: 'static' | 'pic' | 'blank' | 'testsrc' | 'text' | 'kill';
         errorScreenAudio: 'silent' | 'sine' | 'whitenoise';
@@ -10115,6 +10118,7 @@ export type PostApiTranscodeConfigsResponses = {
         } | null;
         normalizeFrameRate: boolean;
         deinterlaceVideo: boolean;
+        interlacedOutput: boolean;
         disableChannelOverlay: boolean;
         errorScreen: 'static' | 'pic' | 'blank' | 'testsrc' | 'text' | 'kill';
         errorScreenAudio: 'silent' | 'sine' | 'whitenoise';
@@ -10214,6 +10218,7 @@ export type GetApiTranscodeConfigsByIdResponses = {
         } | null;
         normalizeFrameRate: boolean;
         deinterlaceVideo: boolean;
+        interlacedOutput: boolean;
         disableChannelOverlay: boolean;
         errorScreen: 'static' | 'pic' | 'blank' | 'testsrc' | 'text' | 'kill';
         errorScreenAudio: 'silent' | 'sine' | 'whitenoise';
@@ -10271,6 +10276,7 @@ export type PutApiTranscodeConfigsByIdData = {
         } | null;
         normalizeFrameRate: boolean;
         deinterlaceVideo: boolean;
+        interlacedOutput?: boolean;
         disableChannelOverlay: boolean;
         errorScreen: 'static' | 'pic' | 'blank' | 'testsrc' | 'text' | 'kill';
         errorScreenAudio: 'silent' | 'sine' | 'whitenoise';
@@ -10334,6 +10340,7 @@ export type PutApiTranscodeConfigsByIdResponses = {
         } | null;
         normalizeFrameRate: boolean;
         deinterlaceVideo: boolean;
+        interlacedOutput: boolean;
         disableChannelOverlay: boolean;
         errorScreen: 'static' | 'pic' | 'blank' | 'testsrc' | 'text' | 'kill';
         errorScreenAudio: 'silent' | 'sine' | 'whitenoise';
@@ -10414,6 +10421,7 @@ export type PostApiTranscodeConfigsByIdCopyResponses = {
         } | null;
         normalizeFrameRate: boolean;
         deinterlaceVideo: boolean;
+        interlacedOutput: boolean;
         disableChannelOverlay: boolean;
         errorScreen: 'static' | 'pic' | 'blank' | 'testsrc' | 'text' | 'kill';
         errorScreenAudio: 'silent' | 'sine' | 'whitenoise';
@@ -13415,6 +13423,7 @@ export type PostApiTroubleshootResponses = {
             } | null;
             normalizeFrameRate: boolean;
             deinterlaceVideo: boolean;
+            interlacedOutput: boolean;
             disableChannelOverlay: boolean;
             errorScreen: 'static' | 'pic' | 'blank' | 'testsrc' | 'text' | 'kill';
             errorScreenAudio: 'silent' | 'sine' | 'whitenoise';

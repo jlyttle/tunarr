@@ -1,0 +1,1 @@
+ALTER TABLE `transcode_config` ADD `interlaced_output` integer DEFAULT false NOT NULL;

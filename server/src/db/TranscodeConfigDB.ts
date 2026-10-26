@@ -65,6 +65,7 @@ export class TranscodeConfigDB implements ITranscodeConfigDB {
     const newConfig: NewTranscodeConfigOrm = {
       ...omit(config, 'id'),
       aspectRatioMode: config.aspectRatioMode ?? 'preserve',
+      interlacedOutput: config.interlacedOutput ?? false,
       uuid: id,
     };
 
@@ -91,6 +92,7 @@ export class TranscodeConfigDB implements ITranscodeConfigDB {
     baseConfig.isDefault = false;
     baseConfig.name = `${baseConfig.name} (copy)`;
     baseConfig.aspectRatioMode = baseConfig.aspectRatioMode ?? 'preserve';
+    baseConfig.interlacedOutput = baseConfig.interlacedOutput ?? false;
 
     return Result.attemptAsync(async () => {
       return head(
@@ -112,6 +114,7 @@ export class TranscodeConfigDB implements ITranscodeConfigDB {
       .set({
         ...omit(updatedConfig, 'id'),
         aspectRatioMode: updatedConfig.aspectRatioMode ?? 'preserve',
+        interlacedOutput: updatedConfig.interlacedOutput ?? false,
       })
       .where(eq(TranscodeConfigTable.uuid, id));
   }

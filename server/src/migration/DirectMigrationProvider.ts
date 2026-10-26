@@ -271,6 +271,9 @@ export class DirectMigrationProvider implements MigrationProvider {
         migration1791321608: makeMigrationFromSqlFile(
           './sql/0053_real_raza.sql',
         ),
+        migration1793040840: makeMigrationFromSqlFile(
+          './sql/0056_interlaced_output.sql',
+        ),
       } satisfies Record<string, TunarrDatabaseMigration>,
       wrapWithTransaction,
     );

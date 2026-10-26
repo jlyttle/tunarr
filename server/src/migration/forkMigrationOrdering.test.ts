@@ -251,6 +251,28 @@ describe('fork and upstream migration ordering', () => {
     ).toEqual({ subtitle_delivery_method: 'burn' });
   });
 
+  test('a database at the running image (e1c72388) gains interlaced_output defaulting off', async ({
+    dbDir,
+  }) => {
+    const freshPath = path.join(dbDir, 'fresh.db');
+    const forkPath = path.join(dbDir, 'fork.db');
+    await createFreshDatabase(freshPath);
+    const conn = connect(forkPath);
+    await conn.syncMigrationTablesIfNecessary();
+    await conn.runDBMigrations('migration1791321608');
+    insertTranscodeConfig(forkPath, 'crop');
+
+    await DBAccess.instance.migrateExistingDatabase(forkPath);
+
+    expect(schemaOf(forkPath)).toEqual(schemaOf(freshPath));
+    expect(
+      row(
+        forkPath,
+        "SELECT interlaced_output, aspect_ratio_mode FROM transcode_config WHERE uuid = 'tc-1'",
+      ),
+    ).toEqual({ interlaced_output: 0, aspect_ratio_mode: 'crop' });
+  });
+
   test('a fresh database accepts every transcode_config the schema allows', async ({
     dbDir,
   }) => {

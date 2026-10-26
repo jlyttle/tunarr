@@ -17,6 +17,7 @@ const defaultNewTranscodeConfig: TranscodeConfig = {
   hardwareAccelerationMode: 'none',
   normalizeFrameRate: false,
   deinterlaceVideo: true,
+  interlacedOutput: false,
   videoBitRate: 3500,
   videoBufferSize: 3500 * 2,
   videoFormat: 'h264',

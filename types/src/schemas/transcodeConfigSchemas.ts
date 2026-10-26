@@ -80,6 +80,7 @@ export const TranscodeConfigSchema = z.object({
   audioLoudnormConfig: LoudnormConfigSchema.nullable(),
   normalizeFrameRate: z.boolean(),
   deinterlaceVideo: z.boolean(),
+  interlacedOutput: z.boolean().default(false),
   disableChannelOverlay: z.boolean(),
   errorScreen: z.enum(SupportedErrorScreens),
   errorScreenAudio: z.enum(SupportedErrorAudioTypes),
