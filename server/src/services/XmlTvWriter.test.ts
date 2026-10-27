@@ -1317,4 +1317,35 @@ describe('XmlTvWriter', () => {
       expect(output.programmes[0]?.video?.present).toBe(false);
     });
   });
+
+  describe('guide titles', () => {
+    it('renders a titled run as one programme with its title and description', async () => {
+      const hour = 3_600_000;
+      const writer = new XmlTvWriter(inMemorySettingsDB());
+      const xml = await writer.serialize([
+        {
+          channel: createChannelOrm({ number: 1, name: 'MTV' }),
+          programs: [
+            {
+              programming: { type: 'flex' },
+              title: 'Alternative Nation',
+              description: 'Alternative & college rock videos.',
+              start: 19 * hour,
+              stop: 20 * hour,
+              durationMs: hour,
+            },
+          ],
+        },
+      ]);
+
+      const programmes = parseXmltv(xml).programmes ?? [];
+      expect(programmes).toHaveLength(1);
+      expect(programmes[0]?.title[0]?._value).toBe('Alternative Nation');
+      expect(programmes[0]?.desc?.[0]?._value).toBe(
+        'Alternative &amp; college rock videos.',
+      );
+      expect(programmes[0]?.start).toEqual(new Date(19 * hour));
+      expect(programmes[0]?.stop).toEqual(new Date(20 * hour));
+    });
+  });
 });

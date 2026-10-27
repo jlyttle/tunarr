@@ -257,6 +257,10 @@ export function TvGuide({ channelId, start, end, showStealth = true }: Props) {
           (program) => program.title,
         )
         .with({ type: 'custom' }, () => '')
+        .with(
+          { type: 'flex', guideDescription: P.string },
+          (p) => p.guideDescription,
+        )
         .otherwise(() => '');
 
       const key = `${title}_${program.start}_${program.stop}`;

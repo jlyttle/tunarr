@@ -14,6 +14,9 @@ dayjsBase.extend(relativeTime);
 
 // Break the OnDemandChannelService -> Scheduler -> container circular chain
 vi.mock('./Scheduler.ts', () => ({ GlobalScheduler: {} }));
+vi.mock('../util/serverUtil.ts', () => ({
+  makeLocalUrl: (path: string) => `http://localhost:8000${path}`,
+}));
 
 import { TVGuideService } from './TvGuideService.ts';
 
@@ -1198,6 +1201,154 @@ describe('TVGuideService', () => {
       for (const redirect of redirects) {
         expect([a.uuid, b.uuid]).toContain(redirect.channelId);
       }
+    });
+  });
+
+  describe('guide titles', () => {
+    const T0 = new Date('2024-01-01T00:00:00Z').getTime();
+    const MIN = 60_000;
+    const HOUR = 60 * MIN;
+
+    type ServiceDeps = ConstructorParameters<typeof TVGuideService>;
+
+    const alt = {
+      guideTitle: 'Alternative Nation',
+      guideDescription: 'Alternative videos.',
+    };
+    const metal = {
+      guideTitle: 'Headbangers Ball',
+      guideDescription: 'Heavy metal videos.',
+    };
+
+    const content = (
+      id: string,
+      durationMs: number,
+      extra?: Partial<LineupItem>,
+    ): LineupItem => ({ type: 'content', id, durationMs, ...extra });
+
+    function makeService(items: LineupItem[]) {
+      const channel = makeChannelOrm({ startTime: T0, guideFlexTitle: 'Off' });
+      const lineups = {
+        [channel.uuid]: { channel, lineup: makeLineup(items) },
+      };
+      const mockWrite = vi.fn().mockResolvedValue(undefined);
+      const service = new TVGuideService(
+        { write: mockWrite } as unknown as ServiceDeps[0],
+        { push: vi.fn() } as unknown as ServiceDeps[1],
+        {
+          loadAllLineups: vi.fn().mockResolvedValue(lineups),
+          syncChannelDuration: vi.fn().mockResolvedValue(false),
+        } as unknown as ServiceDeps[2],
+        {
+          getGuideProgramsByIds: vi.fn().mockResolvedValue(
+            ['before-1', 'before-2', 'after'].map((uuid) => ({
+              uuid,
+              type: 'movie',
+              title: uuid,
+            })),
+          ),
+        } as unknown as ServiceDeps[3],
+        {} as ServiceDeps[4],
+        {
+          featureFlags: () => ({ xmltvCreditImagesEnabled: false }),
+        } as ServiceDeps[5],
+        {} as ServiceDeps[6],
+        {} as ServiceDeps[7],
+        {} as ServiceDeps[8],
+      );
+      return { service, channel, mockWrite };
+    }
+
+    async function buildXmlTvPrograms(items: LineupItem[]) {
+      const { service, mockWrite } = makeService(items);
+      await service.buildAllChannels(dayjs.duration({ hours: 4 }), true, T0);
+      const written = mockWrite.mock.calls.at(
+        -1,
+      )![0] as MaterializedChannelPrograms[];
+      return written[0]!.programs.map((p) => ({
+        start: p.start - T0,
+        stop: p.stop - T0,
+        title: p.title,
+        description: p.description,
+      }));
+    }
+
+    it('collapses a titled run, filler and flex included, into one program', async () => {
+      const programs = await buildXmlTvPrograms([
+        content('before-1', 15 * MIN),
+        content('before-2', 15 * MIN),
+        content('v1', 4 * MIN, alt),
+        content('bumper', MIN, { ...alt, fillerListId: v4() }),
+        content('v2', 4 * MIN, alt),
+        { type: 'offline', durationMs: 51 * MIN, ...alt },
+        content('v3', 30 * MIN, metal),
+        content('v4', 30 * MIN, metal),
+        content('after', 12 * HOUR),
+      ]);
+
+      expect(programs.slice(0, 5)).toEqual([
+        { start: 0, stop: 15 * MIN, title: 'before-1', description: undefined },
+        {
+          start: 15 * MIN,
+          stop: 30 * MIN,
+          title: 'before-2',
+          description: undefined,
+        },
+        {
+          start: 30 * MIN,
+          stop: 90 * MIN,
+          title: 'Alternative Nation',
+          description: 'Alternative videos.',
+        },
+        {
+          start: 90 * MIN,
+          stop: 150 * MIN,
+          title: 'Headbangers Ball',
+          description: 'Heavy metal videos.',
+        },
+        {
+          start: 150 * MIN,
+          stop: 150 * MIN + 12 * HOUR,
+          title: 'after',
+          description: undefined,
+        },
+      ]);
+    });
+
+    it('collapses adjacent slots that share a title', async () => {
+      const programs = await buildXmlTvPrograms([
+        content('v1', 30 * MIN, alt),
+        { type: 'offline', durationMs: 30 * MIN, ...alt },
+        content('v2', 60 * MIN, alt),
+        content('after', 12 * HOUR),
+      ]);
+
+      expect(programs[0]).toEqual({
+        start: 0,
+        stop: 2 * HOUR,
+        title: 'Alternative Nation',
+        description: 'Alternative videos.',
+      });
+    });
+
+    it('serves a titled run to the web guide as one titled program', async () => {
+      const { service, channel } = makeService([]);
+      const program = service['guideItemToProgram'](
+        channel as never,
+        {
+          startTimeMs: T0,
+          lineupItem: content('v1', HOUR, alt),
+        },
+        { type: 'content', id: 'v1', duration: HOUR } as never,
+      );
+
+      expect(program).toMatchObject({
+        type: 'flex',
+        start: T0,
+        stop: T0 + HOUR,
+        title: 'Alternative Nation',
+        guideDescription: 'Alternative videos.',
+      });
     });
   });
 });

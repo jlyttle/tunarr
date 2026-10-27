@@ -44,6 +44,7 @@ import {
   isNull,
   isUndefined,
   keys,
+  last,
   map,
   mapValues,
   nth,
@@ -774,6 +775,23 @@ export class TVGuideService {
     let melded = 0;
 
     const push = (program: GuideItem) => {
+      if (isNonEmptyString(program.lineupItem.guideTitle)) {
+        melded = 0;
+        const previousProgram = last(programs);
+        if (
+          previousProgram?.lineupItem.guideTitle ===
+          program.lineupItem.guideTitle
+        ) {
+          programs[programs.length - 1] = extendGuideItem(
+            previousProgram,
+            program.lineupItem.durationMs,
+          );
+        } else {
+          programs.push(program);
+        }
+        return;
+      }
+
       // Normalize filler items to offline so they always participate
       // in offline melding and never appear as content in the EPG.
       let currentProgram = program.lineupItem;
@@ -801,7 +819,7 @@ export class TVGuideService {
         isProgramOffline(currentProgram, channelWithLineup.channel) &&
         (currentProgram.durationMs <=
           constants.TVGUIDE_MAXIMUM_PADDING_LENGTH_MS ||
-          isProgramOffline(
+          isUntitledOffline(
             previousProgram?.lineupItem,
             channelWithLineup.channel,
           ))
@@ -822,7 +840,7 @@ export class TVGuideService {
         // duration, and push a new flex program.
         if (
           melded > constants.TVGUIDE_MAXIMUM_PADDING_LENGTH_MS &&
-          !isProgramOffline(
+          !isUntitledOffline(
             previousProgram?.lineupItem,
             channelWithLineup.channel,
           )
@@ -1004,7 +1022,7 @@ export class TVGuideService {
     result.programs = [];
     for (const program of programs) {
       await throttle();
-      if (isProgramOffline(program.lineupItem, channelWithLineup.channel)) {
+      if (isUntitledOffline(program.lineupItem, channelWithLineup.channel)) {
         let start = program.startTimeMs;
         let duration = program.lineupItem.durationMs;
         if (start <= currentUpdateTimeMs) {
@@ -1325,13 +1343,27 @@ export class TVGuideService {
       );
     }
 
+    const channelIcon =
+      resolveIconUrl(channel.icon, makeLocalUrl('/images/tunarr.png')) ??
+      makeLocalUrl('/images/tunarr.png');
     const icon = isNonEmptyString(materializedItem.icon)
       ? materializedItem.icon
-      : (resolveIconUrl(channel.icon, makeLocalUrl('/images/tunarr.png')) ??
-        makeLocalUrl('/images/tunarr.png'));
+      : channelIcon;
 
+    const { guideTitle, guideDescription } = guideItem.lineupItem;
     const program = match(materializedItem)
       .returnType<TvGuideProgram>()
+      .when(
+        () => isNonEmptyString(guideTitle),
+        () => ({
+          ...baseItem,
+          type: 'flex',
+          icon: channelIcon,
+          title: guideTitle!,
+          guideTitle,
+          guideDescription,
+        }),
+      )
       .with({ type: 'flex' }, (flex) => ({
         ...baseItem,
         ...flex,
@@ -1414,6 +1446,16 @@ export class TVGuideService {
       stop: currentProgram.startTimeMs + currentProgram.lineupItem.durationMs,
       isPaused,
     } as const;
+
+    const { guideTitle, guideDescription } = currentProgram.lineupItem;
+    if (isNonEmptyString(guideTitle)) {
+      return {
+        ...baseItem,
+        title: isPaused ? `${guideTitle} (paused)` : guideTitle,
+        description: guideDescription,
+        programming: { type: 'flex' },
+      };
+    }
 
     return match(currentProgram.lineupItem)
       .returnType<MaterializedGuideItem>()
@@ -1561,6 +1603,16 @@ export class TVGuideService {
   }
 }
 
+function extendGuideItem(item: GuideItem, durationMs: number): GuideItem {
+  return {
+    ...item,
+    lineupItem: {
+      ...item.lineupItem,
+      durationMs: item.lineupItem.durationMs + durationMs,
+    },
+  };
+}
+
 function isProgramOffline(
   program: Maybe<LineupItem>,
   channel: ChannelOrm,
@@ -1572,5 +1624,14 @@ function isProgramOffline(
       program.durationMs <=
         (channel.guideMinimumDuration ??
           constants.DEFAULT_GUIDE_STEALTH_DURATION))
+  );
+}
+
+function isUntitledOffline(
+  program: Maybe<LineupItem>,
+  channel: ChannelOrm,
+): boolean {
+  return (
+    !isNonEmptyString(program?.guideTitle) && isProgramOffline(program, channel)
   );
 }
