@@ -4479,3 +4479,120 @@ describe('episode cursor', () => {
     );
   });
 });
+
+describe('guide titles', () => {
+  const oneMin = 60 * 1000;
+  const oneHour = 60 * oneMin;
+  const midnight = dayjs('2024-01-01T00:00:00.000Z').utc();
+  const fillerListId = randomUUID();
+
+  const videos: SlotSchedulerProgram[] = Array.from({ length: 10 }, (_, i) => ({
+    ...createFakeProgramOrm({
+      uuid: `video-${i}`,
+      title: `Video ${i}`,
+      type: 'episode',
+      duration: 4 * oneMin,
+      episode: i + 1,
+      tvShowUuid: 'videos',
+      show: { uuid: 'videos' },
+    }),
+    parentFillerLists: [],
+    parentCustomShows: [],
+    parentSmartCollections: [],
+  }));
+
+  const bumpers: SlotSchedulerProgram[] = Array.from({ length: 3 }, (_, i) => ({
+    ...createFakeProgramOrm({
+      uuid: `bumper-${i}`,
+      title: `Bumper ${i}`,
+      type: 'movie',
+      duration: 20 * 1000,
+    }),
+    parentFillerLists: [fillerListId],
+    parentCustomShows: [],
+    parentSmartCollections: [],
+  }));
+
+  const videoSlot = (startTime: number) => ({
+    id: randomUUID(),
+    startTime,
+    type: 'show' as const,
+    showId: 'videos',
+    order: 'next' as const,
+    direction: 'asc' as const,
+    seasonFilter: [],
+    filler: [
+      {
+        types: ['pre' as const, 'tail' as const],
+        fillerListId,
+        fillerOrder: 'shuffle_prefer_short' as const,
+      },
+    ],
+  });
+
+  async function scheduleHalves() {
+    const schedule: TimeSlotSchedule = {
+      type: 'time',
+      period: 'day',
+      maxDays: 1,
+      flexPreference: 'end',
+      padMs: 5 * oneMin,
+      latenessMs: 0,
+      overflow: { type: 'duration', maxMs: 0 },
+      timeZoneOffset: 0,
+      slots: [
+        {
+          ...videoSlot(0),
+          guideTitle: 'Alternative Nation',
+          guideDescription: 'Alternative videos all night.',
+        },
+        videoSlot(12 * oneHour),
+      ],
+    };
+
+    const result = await scheduleTimeSlots(
+      schedule,
+      [...videos, ...bumpers],
+      [42, 99],
+      undefined,
+      midnight,
+    );
+
+    let elapsed = 0;
+    const titled: typeof result.lineup = [];
+    const untitled: typeof result.lineup = [];
+    for (const item of result.lineup) {
+      if (elapsed % (24 * oneHour) < 12 * oneHour) {
+        titled.push(item);
+      } else {
+        untitled.push(item);
+      }
+      elapsed += item.duration;
+    }
+    return { titled, untitled };
+  }
+
+  test('a titled slot stamps its content, filler and flex', async () => {
+    const { titled } = await scheduleHalves();
+
+    expect(titled.some((p) => p.type === 'content')).toBe(true);
+    expect(titled.some((p) => p.type === 'filler')).toBe(true);
+    expect(titled.some((p) => p.type === 'flex')).toBe(true);
+    for (const item of titled) {
+      expect(item).toMatchObject({
+        guideTitle: 'Alternative Nation',
+        guideDescription: 'Alternative videos all night.',
+      });
+    }
+  });
+
+  test('an untitled slot stamps nothing', async () => {
+    const { untitled } = await scheduleHalves();
+
+    expect(untitled.some((p) => p.type === 'content')).toBe(true);
+    for (const item of untitled) {
+      expect(item).not.toHaveProperty('guideTitle');
+      expect(item).not.toHaveProperty('guideDescription');
+    }
+  });
+});

@@ -24,6 +24,10 @@ export const BaseProgramSchema = z.object({
   ]),
   duration: z.number().positive(),
   icon: z.string().optional(),
+  // Set by a time slot with a guide title. The guide shows a run of these
+  // as one program.
+  guideTitle: z.string().optional(),
+  guideDescription: z.string().optional(),
 });
 
 export const OfflineFillerConfigSchema = z.object({

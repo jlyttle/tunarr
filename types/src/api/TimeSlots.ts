@@ -29,6 +29,9 @@ const BaseTimeSlot = z.object({
   padMs: z.number().optional(),
   overflow: OverflowConfig.optional(),
   latenessMs: z.number().optional(),
+  // Shown in the guide as one program spanning everything this slot airs.
+  guideTitle: z.string().optional(),
+  guideDescription: z.string().optional(),
 });
 
 export const MovieProgrammingTimeSlotSchema = z.object({

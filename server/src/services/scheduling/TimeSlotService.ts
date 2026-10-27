@@ -48,6 +48,7 @@ import {
   getFillerIteratorsForSlot,
   maybeAddPrePostFiller,
 } from './slotSchedulerUtil.js';
+import type { GuideFields } from './TimeSlotImpl.js';
 import { TimeSlotImpl } from './TimeSlotImpl.js';
 
 dayjs.extend(duration);
@@ -59,23 +60,30 @@ dayjs.extend(tz);
 const OneHourMillis = 1000 * 60 * 60;
 
 // Adds flex time to the end of a programs array.
-// If the final program is flex itself, just extends it
+// If the final program is flex with the same guide fields, just extends it
 // Returns amount to increment the cursor
 // Mutates the lineup array
 function pushOrExtendFlex(
   lineup: CondensedChannelProgram[],
   flexDurationMs: number,
+  guide: GuideFields,
 ): number {
   if (flexDurationMs <= 0) {
     return 0;
   }
 
   const lastLineupItem = last(lineup);
-  if (lastLineupItem && isFlexProgram(lastLineupItem)) {
+  if (
+    lastLineupItem &&
+    isFlexProgram(lastLineupItem) &&
+    lastLineupItem.guideTitle === guide.guideTitle &&
+    lastLineupItem.guideDescription === guide.guideDescription
+  ) {
     const newDuration = lastLineupItem.duration + flexDurationMs;
     const newItem: FlexProgram = {
       type: 'flex',
       duration: newDuration,
+      ...guide,
     };
     lineup[lineup.length - 1] = newItem;
     return flexDurationMs;
@@ -84,6 +92,7 @@ function pushOrExtendFlex(
   const newItem: FlexProgram = {
     type: 'flex',
     duration: flexDurationMs,
+    ...guide,
   };
 
   lineup.push(newItem);
@@ -182,17 +191,20 @@ export async function scheduleTimeSlots(
 
   let timeCursor = t0;
 
-  const pushFlex = (flexDurationMs: number) => {
-    const inc = pushOrExtendFlex(channelPrograms, flexDurationMs);
+  const pushFlex = (flexDurationMs: number, guide: GuideFields = {}) => {
+    const inc = pushOrExtendFlex(channelPrograms, flexDurationMs, guide);
     timeCursor = timeCursor.add(inc);
   };
 
-  const pushProgram = (program: Nilable<CondensedChannelProgram>) => {
+  const pushProgram = (
+    program: Nilable<CondensedChannelProgram>,
+    guide: GuideFields,
+  ) => {
     if (!program) {
       return;
     }
 
-    channelPrograms.push(program);
+    channelPrograms.push({ ...program, ...guide });
     timeCursor = timeCursor.add(program.duration);
   };
 
@@ -266,6 +278,8 @@ export async function scheduleTimeSlots(
       throw new Error('Could not find a suitable slot');
     }
 
+    const guide = currSlot.guideFields;
+
     let program = currSlot.getNextProgram({
       timeCursor: +timeCursor,
       slotDuration: slotDuration,
@@ -276,12 +290,12 @@ export async function scheduleTimeSlots(
       !isNull(lateMillis) &&
       lateMillis >= effectiveLateness + constants.SLACK
     ) {
-      pushFlex(slotDuration);
+      pushFlex(slotDuration, guide);
       continue;
     }
 
     if (isNull(program) || isFlexProgram(program)) {
-      pushFlex(slotDuration);
+      pushFlex(slotDuration, guide);
       continue;
     }
 
@@ -289,7 +303,7 @@ export async function scheduleTimeSlots(
     // and then continue. There will be no filler or padding,
     // it really isn't necessary.
     if (program.type === 'redirect') {
-      program = { ...program, duration: slotDuration };
+      program = { ...program, duration: slotDuration, ...guide };
       channelPrograms.push(program);
       currSlot.advanceIterator();
       timeCursor = timeCursor.add(program.duration);
@@ -298,7 +312,7 @@ export async function scheduleTimeSlots(
 
     // Program longer than we have left? Add it and move on...
     if (program.duration > slotDuration) {
-      channelPrograms.push(program);
+      channelPrograms.push({ ...program, ...guide });
       currSlot.advanceIterator();
       timeCursor = timeCursor.add(program.duration);
       continue;
@@ -443,11 +457,11 @@ export async function scheduleTimeSlots(
     }
 
     forEach(finalPrograms, ({ program, padMs, filler }) => {
-      pushProgram(filler.head);
-      pushProgram(filler.pre);
-      pushProgram(program);
-      pushProgram(filler.post);
-      pushProgram(filler.tail);
+      pushProgram(filler.head, guide);
+      pushProgram(filler.pre, guide);
+      pushProgram(program, guide);
+      pushProgram(filler.post, guide);
+      pushProgram(filler.tail, guide);
 
       // Special handling for fallback.
       if (padMs > 0) {
@@ -463,12 +477,12 @@ export async function scheduleTimeSlots(
             duration: padMs,
             fillerType: 'fallback',
           } satisfies FillerProgram;
-          pushProgram(filler);
+          pushProgram(filler, guide);
         } else {
-          pushFlex(padMs);
+          pushFlex(padMs, guide);
         }
       } else {
-        pushFlex(padMs);
+        pushFlex(padMs, guide);
       }
     });
   }

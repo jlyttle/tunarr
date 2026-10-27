@@ -1,9 +1,15 @@
 import type { CondensedChannelProgram, FillerProgram } from '@tunarr/types';
 import type { TimeSlot } from '@tunarr/types/api';
+import { isNonEmptyString } from '@tunarr/shared/util';
 import { isNil } from 'lodash-es';
 import type { Random } from 'random-js';
 import type { ProgramIterator } from './ProgramIterator.js';
 import { SlotImpl } from './SlotImpl.js';
+
+export type GuideFields = Pick<
+  CondensedChannelProgram,
+  'guideTitle' | 'guideDescription'
+>;
 
 export class TimeSlotImpl<
   ProgramT extends CondensedChannelProgram,
@@ -38,5 +44,15 @@ export class TimeSlotImpl<
 
   get latenessMs() {
     return this.slot.latenessMs;
+  }
+
+  get guideFields(): GuideFields {
+    if (!isNonEmptyString(this.slot.guideTitle)) {
+      return {};
+    }
+    return {
+      guideTitle: this.slot.guideTitle,
+      guideDescription: this.slot.guideDescription,
+    };
   }
 }

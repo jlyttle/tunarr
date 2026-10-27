@@ -1,10 +1,22 @@
 import type { CondensedChannelProgram } from '@tunarr/types';
+import { isNonEmptyString } from '@tunarr/shared/util';
 import { match } from 'ts-pattern';
 import type { LineupItem } from '../derived_types/Lineup.ts';
 
 export function condensedProgramToLineupItem(
   p: CondensedChannelProgram,
 ): LineupItem {
+  return { ...toLineupItem(p), ...guideFields(p) };
+}
+
+function guideFields(p: CondensedChannelProgram) {
+  if (!isNonEmptyString(p.guideTitle)) {
+    return {};
+  }
+  return { guideTitle: p.guideTitle, guideDescription: p.guideDescription };
+}
+
+function toLineupItem(p: CondensedChannelProgram): LineupItem {
   return match(p)
     .returnType<LineupItem>()
     .with({ type: 'content' }, (program) => ({

@@ -6,6 +6,8 @@ import { z } from 'zod/v4';
 
 const BaseLineupItemSchema = z.object({
   durationMs: z.number().positive(), // Add a max
+  guideTitle: z.string().optional(),
+  guideDescription: z.string().optional(),
 });
 
 const ContentLineupItemSchema = z
