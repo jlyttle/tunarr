@@ -202,7 +202,7 @@ describe('480i output', () => {
     const filters = videoFilters(interlacedState({ path: 'fields' }));
 
     expect(filterStrings(filters)).toEqual([
-      'repeatfields',
+      'fieldorder=tff,repeatfields',
       'setfield=tff,setsar=8/9',
     ]);
     expect(filters.some((step) => step instanceof ScaleFilter)).toBe(false);
@@ -217,8 +217,8 @@ describe('480i output', () => {
       videoFilters(interlacedState({ path: 'fields' })),
     ).join(',');
 
-    expect(chain.startsWith('repeatfields')).toBe(true);
-    expect(chain).not.toContain('fieldorder');
+    // repeatfields rejects BFF frames, so BFF must become TFF before it
+    expect(chain.startsWith('fieldorder=tff,repeatfields')).toBe(true);
     expect(chain.endsWith('setfield=tff,setsar=8/9')).toBe(true);
   });
 
