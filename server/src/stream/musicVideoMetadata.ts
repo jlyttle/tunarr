@@ -13,6 +13,24 @@ function nonEmpty(value: string | null | undefined) {
   return value ? value : undefined;
 }
 
+const GainTagPattern = /^gain:([+-]?\d+(?:\.\d+)?)$/;
+
+export function parseGainTag(tags: string[]): number | null {
+  for (const tag of tags) {
+    const match = GainTagPattern.exec(tag);
+    if (match) {
+      return Number(match[1]);
+    }
+  }
+  return null;
+}
+
+export function programGainDb(
+  program: ProgramOrmWithExternalIds,
+): number | null {
+  return parseGainTag(musicVideoMetadata(program)?.tags ?? []);
+}
+
 export function musicVideoMetadata(
   program: ProgramOrmWithExternalIds,
 ): MusicVideoMetadata | null {

@@ -16,6 +16,7 @@ const DefaultAudioState: AudioState = {
   audioVolume: null,
   normalizeLoudness: false,
   loudnormConfig: null,
+  itemGainDb: null,
 };
 
 export class AudioState {
@@ -28,6 +29,7 @@ export class AudioState {
   audioVolume: Nullable<number>;
   normalizeLoudness: boolean;
   loudnormConfig: Nullable<LoudnormConfig>;
+  itemGainDb: Nullable<number>;
 
   private constructor(fields: Partial<AudioStateFields> = {}) {
     const merged: AudioStateFields = {
@@ -43,6 +45,7 @@ export class AudioState {
     this.audioVolume = merged.audioVolume;
     this.normalizeLoudness = merged.normalizeLoudness ?? false;
     this.loudnormConfig = merged.loudnormConfig;
+    this.itemGainDb = merged.itemGainDb;
   }
 
   static create(fields: Partial<AudioStateFields> = {}) {

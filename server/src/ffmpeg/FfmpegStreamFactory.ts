@@ -46,6 +46,7 @@ import { FfmpegPlaybackParamsCalculator } from './FfmpegPlaybackParamsCalculator
 import { FfmpegProcess } from './FfmpegProcess.ts';
 import { FfmpegTranscodeSession } from './FfmpegTrancodeSession.ts';
 import { enforceInterlaced480 } from './interlaced/Interlaced480.ts';
+import { programGainDb } from '../stream/musicVideoMetadata.ts';
 import { StreamSelector } from './StreamSelector.ts';
 import { SubtitleStreamPicker } from './SubtitleStreamPicker.ts';
 import {
@@ -537,6 +538,7 @@ export class FfmpegStreamFactory {
         ? null
         : duration.asMilliseconds(),
       this.transcodeConfig.audioLoudnormConfig,
+      programGainDb(lineupItem.program),
     );
 
     let audioInput: Nullable<AudioInputSource> = null;
@@ -1048,6 +1050,7 @@ export class FfmpegStreamFactory {
     playbackParams: FfmpegPlaybackParams,
     audioDuration: number | null,
     loudnormConfig?: LoudnormConfig | null,
+    itemGainDb?: number | null,
   ): AudioState {
     return AudioState.create({
       audioEncoder: playbackParams.audioFormat,
@@ -1058,6 +1061,7 @@ export class FfmpegStreamFactory {
       audioVolume: this.transcodeConfig.audioVolumePercent,
       audioDuration,
       loudnormConfig: loudnormConfig ?? null,
+      itemGainDb: itemGainDb ?? null,
     });
   }
 

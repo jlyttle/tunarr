@@ -1,6 +1,6 @@
 import type { ProgramOrmWithExternalIds } from '@/db/schema/derivedTypes.js';
 import { describe, expect, it } from 'vitest';
-import { musicVideoMetadata } from './musicVideoMetadata.ts';
+import { musicVideoMetadata, parseGainTag } from './musicVideoMetadata.ts';
 
 function program(
   overrides: Record<string, unknown> = {},
@@ -50,5 +50,22 @@ describe('musicVideoMetadata', () => {
     );
     expect(result).toEqual({ title: 'Hungry Like the Wolf', tags: [] });
     expect(result).not.toHaveProperty('artist');
+  });
+});
+
+describe('parseGainTag', () => {
+  it('parses signed decimal gains', () => {
+    expect(parseGainTag(['gain:-2.6'])).toBe(-2.6);
+    expect(parseGainTag(['gain:+12.0'])).toBe(12);
+  });
+
+  it('returns the first matching tag', () => {
+    expect(parseGainTag(['80s', 'gain:1.5', 'gain:2'])).toBe(1.5);
+  });
+
+  it('returns null when no tag is a valid gain', () => {
+    expect(parseGainTag(['gain:abc'])).toBeNull();
+    expect(parseGainTag(['new wave'])).toBeNull();
+    expect(parseGainTag([])).toBeNull();
   });
 });

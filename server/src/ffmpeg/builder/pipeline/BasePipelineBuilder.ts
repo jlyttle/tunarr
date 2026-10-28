@@ -21,6 +21,7 @@ import { Vc1Decoder } from '@/ffmpeg/builder/decoder/Vc1Decoder.js';
 import type { VideoEncoder } from '@/ffmpeg/builder/encoder/BaseEncoder.js';
 import { AudioEncoder } from '@/ffmpeg/builder/encoder/BaseEncoder.js';
 import { Encoder } from '@/ffmpeg/builder/encoder/Encoder.js';
+import { AudioGainFilter } from '@/ffmpeg/builder/filter/AudioGainFilter.js';
 import { AudioPadFilter } from '@/ffmpeg/builder/filter/AudioPadFilter.js';
 import { AudioResampleFilter } from '@/ffmpeg/builder/filter/AudioResampleFilter.js';
 import { ComplexFilter } from '@/ffmpeg/builder/filter/ComplexFilter.js';
@@ -744,6 +745,16 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
     }
 
     if (
+      !isNull(this.desiredAudioState.itemGainDb) &&
+      encoder.name !== TranscodeAudioOutputFormat.Copy
+    ) {
+      this.audioInputSource?.filterSteps.push(
+        new AudioGainFilter(
+          this.desiredAudioState.itemGainDb,
+          this.desiredAudioState.audioSampleRate ?? 48,
+        ),
+      );
+    } else if (
       !isNull(this.desiredAudioState.loudnormConfig) &&
       encoder.name !== TranscodeAudioOutputFormat.Copy
     ) {

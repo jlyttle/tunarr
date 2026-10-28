@@ -581,4 +581,55 @@ describe('BasePipelineBuilder', () => {
       expect(args).not.toContain('-alternate_scan');
     });
   });
+  describe('per-item gain', () => {
+    const audioWith = (
+      fields: Partial<Parameters<typeof AudioState.create>[0]>,
+    ) =>
+      AudioInputSource.withStream(
+        new FileStreamSource('/path/to/song.flac'),
+        AudioStream.create({ channels: 2, codec: 'flac', index: 0 }),
+        AudioState.create({
+          audioBitrate: 192,
+          audioBufferSize: 192 * 2,
+          audioChannels: 2,
+          ...fields,
+        }),
+      );
+
+    const audioFilters = (input: AudioInputSource) =>
+      new NoopPipelineBuilder(
+        video,
+        input,
+        null,
+        null,
+        null,
+        EmptyFfmpegCapabilities,
+      )
+        .build(state, frameState, DefaultPipelineOptions)
+        .inputs.audioInput?.filterSteps.map((step) => step.filter);
+
+    test('uses fixed gain and limiter instead of loudnorm', () => {
+      const filters = audioFilters(
+        audioWith({
+          itemGainDb: -3.2,
+          loudnormConfig: { i: -24, lra: 7, tp: -2 },
+        }),
+      );
+
+      expect(filters).toContain(
+        'volume=-3.2dB,alimiter=limit=0.794:level=disabled,aresample=48000',
+      );
+      expect(filters?.some((f) => f.includes('loudnorm'))).toBe(false);
+    });
+
+    test('leaves the loudnorm chain unchanged without a gain', () => {
+      const loudnormConfig = { i: -24, lra: 7, tp: -2 };
+      expect(
+        audioFilters(audioWith({ itemGainDb: null, loudnormConfig })),
+      ).toEqual(audioFilters(audioWith({ loudnormConfig })));
+      expect(audioFilters(audioWith({ loudnormConfig }))).toContain(
+        'loudnorm=I=-24:LRA=7:TP=-2,aresample=48000',
+      );
+    });
+  });
 });
