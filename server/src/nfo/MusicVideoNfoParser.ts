@@ -5,7 +5,7 @@ const ArrayTags = [
   'musicvideo.artist',
   'musicvideo.thumb',
   'musicvideo.genre',
-  'musicvideo.directory',
+  'musicvideo.director',
   'musicvideo.tag',
   'musicvideo.studio',
 ];

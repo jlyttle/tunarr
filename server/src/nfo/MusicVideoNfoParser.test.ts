@@ -1,5 +1,6 @@
 import { readTestFile } from '../testing/util.ts';
 import { MusicVideoNfoParser } from './MusicVideoNfoParser.ts';
+import { nfoToMusicVideo } from '../services/scanner/LocalMusicVideoScanner.ts';
 
 describe('MusicVideo NFO parser', () => {
   test('Kodi sample - ABBA', async () => {
@@ -39,5 +40,48 @@ describe('MusicVideo NFO parser', () => {
     expect(output.plot).toContain('Academy Award');
     expect(output.genre).toBeUndefined();
     expect(output.thumb).toBeUndefined();
+  });
+});
+
+describe('MusicVideo NFO studio and director', () => {
+  const nfo = (body: string) =>
+    `<musicvideo><title>T</title><artist>A</artist>${body}</musicvideo>`;
+
+  test('single director and studio parse as arrays', async () => {
+    const result = await new MusicVideoNfoParser().parse(
+      nfo('<director>Spike Jonze</director><studio>4AD</studio>'),
+    );
+    const output = result.get().musicvideo;
+    expect(output.director).toEqual(['Spike Jonze']);
+    expect(output.studio).toEqual(['4AD']);
+  });
+
+  test('multiple studios are kept', async () => {
+    const result = await new MusicVideoNfoParser().parse(
+      nfo('<studio>4AD</studio><studio>Warner</studio>'),
+    );
+    expect(result.get().musicvideo.studio).toEqual(['4AD', 'Warner']);
+  });
+});
+
+describe('nfoToMusicVideo', () => {
+  const parse = async (body: string) =>
+    (
+      await new MusicVideoNfoParser().parse(
+        `<musicvideo><title>T</title><artist>A</artist>${body}</musicvideo>`,
+      )
+    ).get().musicvideo;
+
+  test('maps studios and directors', async () => {
+    const metadata = nfoToMusicVideo(
+      await parse('<director>Spike Jonze</director><studio>4AD</studio>'),
+    );
+    expect(metadata.studios).toEqual([{ name: '4AD' }]);
+    expect(metadata.directors).toEqual([{ name: 'Spike Jonze' }]);
+  });
+
+  test('falls back to year tag without premiered', async () => {
+    const metadata = nfoToMusicVideo(await parse('<year>1993</year>'));
+    expect(metadata.year).toBe(1993);
   });
 });

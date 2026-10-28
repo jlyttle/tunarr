@@ -41,6 +41,41 @@ import type { LocalScanContext } from './FileSystemScanner.ts';
 import { FileSystemScanner } from './FileSystemScanner.ts';
 import { MediaSourceProgressService } from './MediaSourceProgressService.ts';
 
+export function nfoToMusicVideo(nfo: MusicVideoNfo): MusicVideoMetadata {
+  const releaseDate = nfo.premiered
+    ? Result.attempt(() => dayjs(nfo.premiered, 'YYYY-MM-DD')).orNull()
+    : null;
+
+  const directors = seq.collect(nfo.director, (director) => {
+    return {
+      name: typeof director === 'string' ? director : director['#text'],
+    } satisfies Director;
+  });
+
+  return {
+    identifiers: [],
+    originalTitle: null,
+    releaseDate: releaseDate ? +releaseDate : null,
+    releaseDateString: releaseDate?.format() ?? null,
+    sourceType: 'local',
+    title: nfo.title,
+    sortTitle: titleToSortTitle(nfo.title),
+    uuid: v4(),
+    year: releaseDate?.year() ?? nfo.year ?? null,
+    actors: [],
+    tags: nfo.tag ?? [],
+    artistName: nfo.artist?.join(', ') ?? null,
+    albumName: nfo.album ?? null,
+    type: 'music_video',
+    directors,
+    studios: nfo.studio?.map((name) => ({ name })) ?? [],
+    genres: nfo.genre?.map((g) => ({ name: g })) ?? [],
+    writers: [],
+    artwork: [], // Added later
+    state: 'ok',
+  } satisfies MusicVideoMetadata;
+}
+
 @injectable()
 export class LocalMusicVideoScanner extends FileSystemScanner {
   #pathsComplete: number = 0;
@@ -413,7 +448,7 @@ export class LocalMusicVideoScanner extends FileSystemScanner {
       return parseResult.recast();
     }
 
-    const nfoMetadata = this.nfoToMusicVideo(parseResult.get().musicvideo);
+    const nfoMetadata = nfoToMusicVideo(parseResult.get().musicvideo);
 
     return Result.success({
       ...nfoMetadata,
@@ -469,41 +504,6 @@ export class LocalMusicVideoScanner extends FileSystemScanner {
     }
     this.logger.debug('No nfo file located at %s', nfoPath);
     return;
-  }
-
-  private nfoToMusicVideo(nfo: MusicVideoNfo): MusicVideoMetadata {
-    const releaseDate = nfo.premiered
-      ? Result.attempt(() => dayjs(nfo.premiered, 'YYYY-MM-DD')).orNull()
-      : null;
-
-    const directors = seq.collect(nfo.director, (director) => {
-      return {
-        name: typeof director === 'string' ? director : director['#text'],
-      } satisfies Director;
-    });
-
-    return {
-      identifiers: [],
-      originalTitle: null,
-      releaseDate: releaseDate ? +releaseDate : null,
-      releaseDateString: releaseDate?.format() ?? null,
-      sourceType: 'local',
-      title: nfo.title,
-      sortTitle: titleToSortTitle(nfo.title),
-      uuid: v4(),
-      year: releaseDate?.year() ?? null,
-      actors: [],
-      tags: nfo.tag ?? [],
-      artistName: nfo.artist?.join(', ') ?? null,
-      albumName: nfo.album ?? null,
-      type: 'music_video',
-      directors,
-      studios: nfo.studio ? [{ name: nfo.studio }] : [],
-      genres: nfo.genre?.map((g) => ({ name: g })) ?? [],
-      writers: [],
-      artwork: [], // Added later
-      state: 'ok',
-    } satisfies MusicVideoMetadata;
   }
 
   private async scanVideoArtwork(
