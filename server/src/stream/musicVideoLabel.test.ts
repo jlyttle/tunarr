@@ -78,3 +78,36 @@ describe('buildLabelSpec', () => {
     expect(buildLabelSpec(null, opts)).toBeNull();
   });
 });
+
+describe('buildLabelSpec whitespace', () => {
+  const timing = { streamStartSec: 0, videoDurationSec: 240 };
+
+  test('a whitespace-only artist builds no spec', () => {
+    expect(buildLabelSpec({ ...full, artist: '  ' }, timing)).toBeNull();
+  });
+
+  test('drops lines that are blank after trimming', () => {
+    expect(buildLabelSpec({ ...full, album: '\t' }, timing)?.lines).toEqual([
+      'The Breeders',
+      '"Cannonball"',
+      '4AD',
+    ]);
+  });
+
+  test('collapses embedded line breaks and tabs into single spaces', () => {
+    expect(
+      buildLabelSpec(
+        { ...full, artist: ' The\r\nBreeders ', title: 'Cannon\nball\t' },
+        timing,
+      )?.lines.slice(0, 2),
+    ).toEqual(['The Breeders', '"Cannon ball"']);
+  });
+
+  test('omits the title line when the title is blank', () => {
+    expect(buildLabelSpec({ ...full, title: ' \n ' }, timing)?.lines).toEqual([
+      'The Breeders',
+      'Last Splash',
+      '4AD',
+    ]);
+  });
+});

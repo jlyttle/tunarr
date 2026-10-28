@@ -18,14 +18,19 @@ const StartWindow: LabelWindow = [5, 13];
 const EndWindowLengthSec = 20;
 const SkipTag = 'label:builtin';
 
+function singleLine(value: string | undefined) {
+  return (value ?? '').replace(/[\r\n\t]+/g, ' ').trim();
+}
+
 function labelLines(meta: MusicVideoMetadata) {
+  const title = singleLine(meta.title);
   return [
-    meta.artist,
-    `"${meta.title}"`,
-    meta.album,
-    meta.label,
-    meta.director,
-  ].filter((line): line is string => !!line);
+    singleLine(meta.artist),
+    title && `"${title}"`,
+    singleLine(meta.album),
+    singleLine(meta.label),
+    singleLine(meta.director),
+  ].filter((line) => line.length > 0);
 }
 
 function videoWindows(durationSec: number): LabelWindow[] {
@@ -56,7 +61,7 @@ export function buildLabelSpec(
   meta: MusicVideoMetadata | null,
   { streamStartSec, videoDurationSec }: LabelTiming,
 ): LabelSpec | null {
-  if (!meta?.artist || meta.tags.includes(SkipTag)) {
+  if (!meta || !singleLine(meta.artist) || meta.tags.includes(SkipTag)) {
     return null;
   }
   const windows = toStreamTime(videoWindows(videoDurationSec), streamStartSec);
