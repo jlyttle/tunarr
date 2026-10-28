@@ -64,6 +64,19 @@ describe('MusicVideo NFO studio and director', () => {
   });
 });
 
+describe('MusicVideo NFO tolerance', () => {
+  test('a studio with attributes does not fail the whole NFO', async () => {
+    const result = await new MusicVideoNfoParser().parse(
+      '<musicvideo><title>T</title><artist>A</artist><studio id="1">4AD</studio></musicvideo>',
+    );
+    expect(result.isSuccess()).toBe(true);
+    const output = result.get().musicvideo;
+    expect(output.studio).toBeUndefined();
+    expect(output.title).toBe('T');
+    expect(output.artist).toEqual(['A']);
+  });
+});
+
 describe('nfoToMusicVideo', () => {
   const parse = async (body: string) =>
     (

@@ -622,6 +622,30 @@ describe('BasePipelineBuilder', () => {
       expect(filters?.some((f) => f.includes('loudnorm'))).toBe(false);
     });
 
+    test('ignores the gain when loudnorm is not configured', () => {
+      const filters = audioFilters(audioWith({ itemGainDb: -3.2 }));
+
+      expect(filters).toEqual(audioFilters(audioWith({})));
+      expect(filters?.some((f) => f.includes('volume='))).toBe(false);
+      expect(filters?.some((f) => f.includes('alimiter'))).toBe(false);
+    });
+
+    test('ignores the gain when the audio encoder is copy', () => {
+      const loudnormConfig = { i: -24, lra: 7, tp: -2 };
+      const filters = audioFilters(
+        audioWith({
+          audioEncoder: 'copy',
+          itemGainDb: -3.2,
+          loudnormConfig,
+        }),
+      );
+
+      expect(filters).toEqual(
+        audioFilters(audioWith({ audioEncoder: 'copy', loudnormConfig })),
+      );
+      expect(filters?.some((f) => f.includes('volume='))).toBe(false);
+    });
+
     test('leaves the loudnorm chain unchanged without a gain', () => {
       const loudnormConfig = { i: -24, lra: 7, tp: -2 };
       expect(

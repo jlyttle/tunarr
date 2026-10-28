@@ -245,7 +245,7 @@ const MusicVideoNfo = z.object({
   year: z.coerce.number().int().optional(),
   director: z.array(z.string().or(NfoFieldWithAttrs)).optional(),
   tag: z.array(z.string()).optional(),
-  studio: z.array(z.string()).optional(),
+  studio: z.array(z.string()).optional().catch(undefined),
 });
 
 export type MusicVideoNfo = z.infer<typeof MusicVideoNfo>;

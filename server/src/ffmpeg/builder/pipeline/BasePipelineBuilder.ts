@@ -745,6 +745,7 @@ export abstract class BasePipelineBuilder implements PipelineBuilder {
     }
 
     if (
+      !isNull(this.desiredAudioState.loudnormConfig) &&
       !isNull(this.desiredAudioState.itemGainDb) &&
       encoder.name !== TranscodeAudioOutputFormat.Copy
     ) {
