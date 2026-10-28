@@ -162,7 +162,7 @@ export const ChannelSessionSchema = z.object({
 
 export const ChannelSchema = z.object({
   disableFillerOverlay: z.boolean(),
-  musicVideoLabels: z.boolean().default(false),
+  musicVideoLabels: z.boolean(),
   duration: z.number(),
   fallback: z.array(ProgramSchema).optional(),
   fillerCollections: z.array(FillerCollectionSchema).optional(),
@@ -203,6 +203,7 @@ export const SaveableChannelSchema = ChannelSchema.omit({
 })
   .partial({
     onDemand: true,
+    musicVideoLabels: true,
   })
   .extend({
     icon: StrictChannelIconSchema,

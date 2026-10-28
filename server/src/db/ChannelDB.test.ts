@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { SaveableChannel } from '@tunarr/types';
+import { UpdateChannelRequestSchema } from '@tunarr/types/schemas';
 import tmp from 'tmp-promise';
 import { copyPreMigratedDb } from '../testing/testDbFactory.ts';
 import { mock } from 'ts-mockito';
@@ -266,6 +267,30 @@ describe('ChannelDB', () => {
       expect(updated.channel.uuid).toBe(created.channel.uuid);
       expect(updated.channel.name).toBe('Updated Name');
       expect(updated.channel.number).toBe(201);
+    });
+
+    test('should preserve musicVideoLabels when an update request omits it', async ({
+      channelDb,
+      defaultTranscodeConfigId,
+    }) => {
+      const created = await channelDb.saveChannel(
+        createSaveableChannel(defaultTranscodeConfigId, {
+          musicVideoLabels: true,
+        }),
+      );
+      const { musicVideoLabels: _omitted, ...rest } = createSaveableChannel(
+        defaultTranscodeConfigId,
+      );
+      const updateRequest = UpdateChannelRequestSchema.parse({
+        ...rest,
+        name: 'Renamed',
+      });
+
+      await channelDb.updateChannel(created.channel.uuid, updateRequest);
+
+      expect(
+        (await channelDb.getChannel(created.channel.uuid))?.musicVideoLabels,
+      ).toBe(true);
     });
 
     test('should delete a channel', async ({
