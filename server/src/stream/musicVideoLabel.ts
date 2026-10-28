@@ -7,6 +7,8 @@ export type LabelSpec = {
   windows: LabelWindow[];
 };
 
+export type LabelRender = LabelSpec & { fontFile: string };
+
 type LabelTiming = {
   streamStartSec: number;
   videoDurationSec: number;

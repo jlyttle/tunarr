@@ -326,6 +326,7 @@ export class FfmpegStreamFactory {
       duration,
       realtime,
       watermark,
+      musicVideoLabel,
       streamMode,
       encoding,
       isFirstTranscode,
@@ -489,6 +490,7 @@ export class FfmpegStreamFactory {
         deinterlace: isPassthrough ? false : playbackParams!.deinterlace,
         infiniteLoop: lineupItem.infiniteLoop,
         interlaced: playbackParams?.interlaced ?? null,
+        musicVideoLabel: isPassthrough ? null : (musicVideoLabel ?? null),
       }),
       pipelineOptions,
     );

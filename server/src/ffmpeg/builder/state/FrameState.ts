@@ -5,6 +5,7 @@ import {
 import type { FrameSize } from '@/ffmpeg/builder/types.js';
 import { FrameDataLocation } from '@/ffmpeg/builder/types.js';
 import type { DataProps, Nullable } from '@/types/util.js';
+import type { LabelRender } from '@/stream/musicVideoLabel.js';
 import type { TranscodeAspectRatioMode } from '@tunarr/types';
 import { isEqual, merge } from 'lodash-es';
 import type { MarkOptional } from 'ts-essentials';
@@ -36,6 +37,7 @@ const DefaultFrameState: Omit<
   forceSoftwareOverlay: false,
   infiniteLoop: false,
   interlaced: null,
+  musicVideoLabel: null,
 };
 
 export type FrameStateOpts = MarkOptional<
@@ -62,6 +64,7 @@ export class FrameState {
   pixelFormat!: Nullable<PixelFormat>;
   colorFormat!: Nullable<ColorFormat>;
   interlaced!: Nullable<Interlaced480Plan>;
+  musicVideoLabel!: Nullable<LabelRender>;
   infiniteLoop: boolean = false;
 
   forceSoftwareOverlay = false;

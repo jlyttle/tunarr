@@ -8,6 +8,7 @@ import type {
   StreamSource,
 } from '../stream/types.ts';
 import type { OutputFormat } from './builder/constants.ts';
+import type { LabelRender } from '../stream/musicVideoLabel.ts';
 import type { FfmpegTranscodeSession } from './FfmpegTrancodeSession.ts';
 
 export type TranscodeSessionResult = {
@@ -64,6 +65,7 @@ export type StreamOptions = {
   startTime: Duration;
   duration: Duration;
   watermark?: Watermark;
+  musicVideoLabel?: LabelRender;
   realtime?: boolean; // = true,
   extraInputHeaders?: Record<string, string>;
   outputFormat: OutputFormat;

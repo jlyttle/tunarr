@@ -17,8 +17,15 @@ import { FrameDataLocation } from '@/ffmpeg/builder/types.js';
 import dayjs from '@/util/dayjs.js';
 import type { Watermark } from '@tunarr/types';
 import { filter, first, isEmpty, isNull, some } from 'lodash-es';
-import type { Interlaced480Plan } from '../../../interlaced/Interlaced480.ts';
+import {
+  type Interlaced480Plan,
+  Interlaced480Size,
+} from '../../../interlaced/Interlaced480.ts';
 import { ImageScaleFilter } from '../../filter/ImageScaleFilter.ts';
+import {
+  type LabelCanvas,
+  MusicVideoLabelFilter,
+} from '../../filter/MusicVideoLabelFilter.ts';
 import { FieldPassFilter } from '../../filter/interlaced/FieldPassFilter.ts';
 import { FieldRateFilter } from '../../filter/interlaced/FieldRateFilter.ts';
 import { InterlaceTffFilter } from '../../filter/interlaced/InterlaceTffFilter.ts';
@@ -33,6 +40,12 @@ import {
   BasePipelineBuilder,
   isVideoPipelineContext,
 } from '../BasePipelineBuilder.ts';
+
+const LabelCanvasHeight = 480;
+
+function interlacedLabelCanvas(frameRate: string): LabelCanvas {
+  return { displayWidth: 640, frameSize: Interlaced480Size, frameRate };
+}
 
 export class SoftwarePipelineBuilder extends BasePipelineBuilder {
   protected setupVideoFilters() {
@@ -63,6 +76,11 @@ export class SoftwarePipelineBuilder extends BasePipelineBuilder {
         currentState = this.setScale(currentState);
         currentState = this.setPad(currentState);
         currentState = this.setCrop(currentState);
+        currentState = this.setMusicVideoLabel(currentState, {
+          displayWidth: this.progressiveDisplayWidth(),
+          frameSize: this.progressiveFrameSize(),
+          frameRate: String(this.desiredState.frameRate ?? 30),
+        });
       }
       currentState = this.addSubtitles(currentState);
       currentState = this.setWatermark(currentState);
@@ -106,6 +124,10 @@ export class SoftwarePipelineBuilder extends BasePipelineBuilder {
       cropWidth,
     );
     currentState = this.addFilterToVideoChain(currentState, fieldPass);
+    currentState = this.setMusicVideoLabel(
+      currentState,
+      interlacedLabelCanvas('30000/1001'),
+    );
     return this.addFilterToVideoChain(
       currentState,
       new InterlaceTffFilter(false),
@@ -120,10 +142,43 @@ export class SoftwarePipelineBuilder extends BasePipelineBuilder {
     currentState = this.setScale(currentState);
     currentState = this.setPad(currentState);
     currentState = this.setCrop(currentState);
+    currentState = this.setMusicVideoLabel(
+      currentState,
+      interlacedLabelCanvas('60000/1001'),
+    );
     return this.addFilterToVideoChain(
       currentState,
       new InterlaceTffFilter(true),
     );
+  }
+
+  private setMusicVideoLabel(currentState: FrameState, canvas: LabelCanvas) {
+    const label = this.desiredState.musicVideoLabel;
+    if (!label) {
+      return currentState;
+    }
+
+    return this.addFilterToVideoChain(
+      currentState,
+      new MusicVideoLabelFilter(label, canvas, this.labelClockOffsetSeconds()),
+    );
+  }
+
+  // Burned text subtitles add -copyts, so filter time runs on the source clock.
+  private labelClockOffsetSeconds() {
+    if (!this.subtitleInputSource || !this.context.hasSubtitleTextContext()) {
+      return 0;
+    }
+    return this.ffmpegState.start?.asSeconds() ?? 0;
+  }
+
+  private progressiveFrameSize() {
+    return this.desiredState.croppedSize ?? this.desiredState.paddedSize;
+  }
+
+  private progressiveDisplayWidth() {
+    const { width, height } = this.progressiveFrameSize();
+    return Math.round((LabelCanvasHeight * width) / height / 2) * 2;
   }
 
   protected setDeinterlace(currentState: FrameState): FrameState {

@@ -1,10 +1,12 @@
 import type { ISettingsDB } from '@/db/interfaces/ISettingsDB.js';
+import { globalOptions } from '@/globals.js';
 import type { FfmpegTranscodeSession } from '@/ffmpeg/FfmpegTrancodeSession.js';
 import type { OutputFormat } from '@/ffmpeg/builder/constants.js';
 import type { TranscodeSessionResult } from '@/ffmpeg/types.js';
 import { CacheImageService } from '@/services/cacheImageService.js';
 import { Result } from '@/types/result.js';
 import type { Maybe } from '@/types/util.js';
+import { fileExists } from '@/util/fsUtil.js';
 import { resolveIconUrl } from '@/util/iconUtil.js';
 import type { Logger } from '@/util/logging/LoggerFactory.js';
 import { makeLocalUrl } from '@/util/serverUtil.js';
@@ -12,6 +14,7 @@ import type { Watermark } from '@tunarr/types';
 import dayjs from 'dayjs';
 import { isUndefined } from 'lodash-es';
 import events from 'node:events';
+import path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { match, P } from 'ts-pattern';
 import type {
@@ -32,6 +35,8 @@ import {
   isSuccess,
 } from '../util/index.ts';
 import { InjectLogger } from '../util/inject.ts';
+import { buildLabelSpec, type LabelRender } from './musicVideoLabel.ts';
+import { musicVideoMetadata } from './musicVideoMetadata.ts';
 import type { PlayerContext } from './PlayerStreamContext.ts';
 import { ProgramStreamDetailsFetcher } from './ProgramStreamDetailsFetcher.ts';
 import type { ProgramStreamPlugin } from './plugins/ProgramStreamPlugin.ts';
@@ -131,6 +136,7 @@ export class ProgramStream extends events.EventEmitter<ProgramStreamEvents> {
     }
 
     const watermark = await this.getWatermark();
+    const musicVideoLabel = await this.getMusicVideoLabel(lineupItem);
     const ffmpeg = this.ffmpegFactory(
       this.context.transcodeConfig,
       this.context.sourceChannel,
@@ -146,6 +152,7 @@ export class ProgramStream extends events.EventEmitter<ProgramStreamEvents> {
       startTime: start,
       duration: dayjs.duration(lineupItem.streamDuration),
       watermark,
+      musicVideoLabel,
       realtime: this.context.realtime,
       outputFormat: this.outputFormat,
       streamMode: this.context.streamMode,
@@ -345,6 +352,37 @@ export class ProgramStream extends events.EventEmitter<ProgramStreamEvents> {
       outputFormat: this.outputFormat,
       realtime: true,
     });
+  }
+
+  private async getMusicVideoLabel(
+    lineupItem: ContentBackedStreamLineupItem,
+  ): Promise<Maybe<LabelRender>> {
+    if (!this.context.targetChannel.musicVideoLabels) {
+      return;
+    }
+
+    const spec = buildLabelSpec(musicVideoMetadata(lineupItem.program), {
+      streamStartSec: (lineupItem.startOffset ?? 0) / 1000,
+      videoDurationSec: lineupItem.program.duration / 1000,
+    });
+    if (!spec) {
+      return;
+    }
+
+    const fontFile = path.join(
+      globalOptions().databaseDirectory,
+      'fonts',
+      'KabelBlack.ttf',
+    );
+    if (!(await fileExists(fontFile).catch(() => false))) {
+      this.logger.warn(
+        'Music video label font not found at %s; drawing no label',
+        fontFile,
+      );
+      return;
+    }
+
+    return { ...spec, fontFile };
   }
 
   protected async getWatermark(): Promise<Maybe<Watermark>> {

@@ -1,4 +1,6 @@
 import { FileStreamSource } from '@/stream/types.js';
+import type { LabelRender } from '@/stream/musicVideoLabel.js';
+import dayjs from '@/util/dayjs.js';
 import type { Watermark } from '@tunarr/types';
 import { EmptyFfmpegCapabilities } from '../../capabilities/FfmpegCapabilities.ts';
 import type { Interlaced480Plan } from '../../../interlaced/Interlaced480.ts';
@@ -9,9 +11,16 @@ import { PadFilter } from '../../filter/PadFilter.ts';
 import { ScaleFilter } from '../../filter/ScaleFilter.ts';
 import { OverlayWatermarkFilter } from '../../filter/watermark/OverlayWatermarkFilter.ts';
 import { PixelFormatYuv420P } from '../../format/PixelFormat.ts';
+import { SubtitlesInputSource } from '../../input/SubtitlesInputSource.ts';
 import { VideoInputSource } from '../../input/VideoInputSource.ts';
 import { WatermarkInputSource } from '../../input/WatermarkInputSource.ts';
-import { StillImageStream, VideoStream } from '../../MediaStream.ts';
+import { MusicVideoLabelFilter } from '../../filter/MusicVideoLabelFilter.ts';
+import {
+  EmbeddedSubtitleStream,
+  StillImageStream,
+  SubtitleMethods,
+  VideoStream,
+} from '../../MediaStream.ts';
 import {
   DefaultPipelineOptions,
   FfmpegState,
@@ -76,12 +85,14 @@ function buildPipeline(
   desiredState: FrameState,
   watermark?: WatermarkInputSource,
   video: VideoInputSource = makeVideoInput(),
+  subtitle: SubtitlesInputSource | null = null,
+  start?: number,
 ) {
   const builder = new SoftwarePipelineBuilder(
     video,
     null,
     watermark ?? null,
-    null,
+    subtitle,
     null,
     EmptyFfmpegCapabilities,
   );
@@ -89,6 +100,7 @@ function buildPipeline(
   return builder.build(
     FfmpegState.create({
       version: { versionString: '7.1.1', isUnknown: false },
+      ...(start !== undefined && { start: dayjs.duration(start, 'seconds') }),
     }),
     desiredState,
     DefaultPipelineOptions,
@@ -345,5 +357,168 @@ describe('software watermark looping', () => {
 
   test('software watermark still image without fade does not loop', () => {
     expect(watermarkInputOptions({})).not.toContain('-loop');
+  });
+});
+
+describe('music video label', () => {
+  const Sd = FrameSize.withDimensions(720, 480);
+  const label: LabelRender = {
+    lines: ['2Pac', '"I Ain\'t Mad At Cha"', 'All Eyez On Me', 'Death Row'],
+    windows: [
+      [5, 13],
+      [220, 240],
+    ],
+    fontFile: '/config/tunarr/fonts/KabelBlack.ttf',
+  };
+
+  function labelState(
+    interlaced: Interlaced480Plan | null,
+    musicVideoLabel: LabelRender | null = label,
+  ) {
+    return new FrameState({
+      isAnamorphic: false,
+      resizeMode: 'crop',
+      scaledSize: interlaced ? FrameSize.withDimensions(720, 360) : Sd,
+      paddedSize: Sd,
+      pixelFormat: new PixelFormatYuv420P(),
+      videoFormat: 'mpeg2video',
+      frameRate: 30000 / 1001,
+      interlaced,
+      musicVideoLabel,
+    });
+  }
+
+  function chain(
+    desiredState: FrameState,
+    video: VideoInputSource = makeVideoInput(),
+    subtitle: SubtitlesInputSource | null = null,
+    start?: number,
+  ) {
+    return buildPipeline(desiredState, undefined, video, subtitle, start)
+      .getComplexFilter()!
+      .filterChain.videoFilterSteps.filter((step) => step.filter !== '');
+  }
+
+  const labelFilter = (steps: ReturnType<typeof chain>) =>
+    steps.find((step) => step instanceof MusicVideoLabelFilter)?.filter ?? '';
+
+  test('field-rate path draws the label after scaling and before interlacing', () => {
+    const steps = chain(labelState({ path: 'fieldRate' }));
+    const labelIndex = steps.findIndex(
+      (step) => step instanceof MusicVideoLabelFilter,
+    );
+
+    expect(labelIndex).toBe(3);
+    expect(steps[2]).toBeInstanceOf(PadFilter);
+    expect(steps[4]?.filter).toBe(
+      'interlace=scan=tff:lowpass=linear,setfield=tff,setsar=8/9',
+    );
+    expect(labelFilter(steps)).toContain('r=60000/1001');
+  });
+
+  test('fields path draws the label before setfield', () => {
+    const steps = chain(
+      labelState({ path: 'fields' }),
+      makeSdVideoInput(Sd),
+    );
+
+    expect(steps.map((step) => step.constructor.name)).toEqual([
+      'FieldPassFilter',
+      'MusicVideoLabelFilter',
+      'InterlaceTffFilter',
+    ]);
+    expect(steps[2]?.filter).toBe('setfield=tff,setsar=8/9');
+    expect(labelFilter(steps)).toContain('r=30000/1001');
+  });
+
+  test('progressive path draws the label after crop', () => {
+    const steps = chain(
+      new FrameState({
+        isAnamorphic: false,
+        resizeMode: 'crop',
+        scaledSize: FrameSize.withDimensions(854, 480),
+        paddedSize: FrameSize.withDimensions(640, 480),
+        croppedSize: FrameSize.withDimensions(640, 480),
+        pixelFormat: new PixelFormatYuv420P(),
+        musicVideoLabel: label,
+      }),
+    );
+
+    expect(steps.at(-1)).toBeInstanceOf(MusicVideoLabelFilter);
+    expect(steps.at(-2)).toBeInstanceOf(CropFilter);
+    expect(labelFilter(steps)).toContain(
+      'color=c=black@0:s=640x480:r=30,format=yuva420p',
+    );
+    expect(labelFilter(steps)).toContain('scale=640:480[mvlt]');
+  });
+
+  test('renders on a 640x480 canvas scaled to 720x480 and overlaid', () => {
+    const filter = labelFilter(chain(labelState({ path: 'fieldRate' })));
+
+    expect(filter).toMatch(
+      /^null\[mvlv\];color=c=black@0:s=640x480:r=60000\/1001,format=yuva420p,drawtext=/,
+    );
+    expect(filter).toContain(',scale=720:480[mvlt];[mvlv][mvlt]overlay=');
+    expect(filter).toContain(
+      "overlay=shortest=1:enable='between(t,5,13)+between(t,220,240)'",
+    );
+  });
+
+  test('draws one escaped drawtext per line, bottom line on the title-safe baseline', () => {
+    const filter = labelFilter(chain(labelState({ path: 'fieldRate' })));
+    const drawtexts = filter.split(',').filter((part) => part.startsWith('drawtext='));
+
+    expect(drawtexts.map((part) => /:y=(\d+)-ascent/.exec(part)?.[1])).toEqual(
+      ['360', '384', '408', '432'],
+    );
+    expect(filter).toContain(
+      'drawtext=fontfile=/config/tunarr/fonts/KabelBlack.ttf:expansion=none:text=2Pac:fontsize=20:fontcolor=white:shadowcolor=black@0.8:shadowx=2:shadowy=2:x=64:y=360-ascent:',
+    );
+    expect(filter).toContain(
+      'text="I Ain\\\\\\\'t Mad At Cha":',
+    );
+    expect(filter).toContain(
+      "alpha='clip(min(t-5,13-t)/0.5,0,1)+clip(min(t-220,240-t)/0.5,0,1)':",
+    );
+    expect(filter).toContain(
+      ":enable='between(t,5,13)+between(t,220,240)'",
+    );
+  });
+
+  test('shifts the label clock to source time when text subtitles force -copyts', () => {
+    const subtitle = new SubtitlesInputSource(
+      new FileStreamSource('/path/to/video.mkv'),
+      [new EmbeddedSubtitleStream('subrip', 2, SubtitleMethods.Burn)],
+      SubtitleMethods.Burn,
+    );
+    const filter = labelFilter(
+      chain(labelState({ path: 'fieldRate' }), makeVideoInput(), subtitle, 30),
+    );
+
+    expect(filter).toContain('format=yuva420p,setpts=PTS+30/TB,drawtext=');
+    expect(filter).toContain(
+      "overlay=shortest=1:enable='between(t,35,43)+between(t,250,270)'",
+    );
+  });
+
+  test('no label leaves the chain unchanged', () => {
+    for (const interlaced of [
+      { path: 'fieldRate' },
+      { path: 'fields' },
+      null,
+    ] satisfies Array<Interlaced480Plan | null>) {
+      const video = () =>
+        interlaced?.path === 'fields' ? makeSdVideoInput(Sd) : makeVideoInput();
+      const withNull = chain(labelState(interlaced, null), video());
+      const withoutField = chain(
+        new FrameState({ ...labelState(interlaced, null), musicVideoLabel: undefined }),
+        video(),
+      );
+
+      expect(withNull.some((s) => s instanceof MusicVideoLabelFilter)).toBe(false);
+      expect(withNull.map((s) => s.filter)).toEqual(
+        withoutField.map((s) => s.filter),
+      );
+    }
   });
 });
