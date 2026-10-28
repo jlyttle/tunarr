@@ -203,12 +203,23 @@ export const GuideShowRelationsWithCreditArtwork = guideShowRelations({
 
 /**
  * The relations a program needs to start streaming. Stream code reads media
- * versions, subtitles and external ids, and nothing else. Every stream start
- * and program transition loads this, so parent groupings and their cast stay
- * out.
+ * versions, subtitles and external ids, plus the tags, studios and credits
+ * behind music video labels. Every stream start and program transition loads
+ * this, so parent groupings and their cast stay out.
  */
 export const StreamProgramRelations = {
   externalIds: true,
+  credits: true,
+  studios: {
+    with: {
+      studio: true,
+    },
+  },
+  tags: {
+    with: {
+      tag: true,
+    },
+  },
   ...ProgramStreamRelations,
 } as const;
 
