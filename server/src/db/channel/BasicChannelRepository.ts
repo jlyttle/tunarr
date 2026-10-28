@@ -66,6 +66,7 @@ function updateRequestToChannel(
     guideMinimumDuration: updateReq.guideMinimumDuration,
     groupTitle: updateReq.groupTitle,
     disableFillerOverlay: updateReq.disableFillerOverlay,
+    musicVideoLabels: updateReq.musicVideoLabels,
     startTime:
       updateReq.startTime !== undefined
         ? roundToMinute(updateReq.startTime)
@@ -96,6 +97,7 @@ function createRequestToChannel(saveReq: SaveableChannel): NewChannelOrm {
     guideMinimumDuration: saveReq.guideMinimumDuration,
     groupTitle: saveReq.groupTitle,
     disableFillerOverlay: saveReq.disableFillerOverlay,
+    musicVideoLabels: saveReq.musicVideoLabels,
     startTime: saveReq.startTime,
     offline: saveReq.offline,
     name: saveReq.name,

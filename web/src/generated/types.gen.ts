@@ -2889,6 +2889,131 @@ export type PostApiTasksByIdRunResponses = {
     202: unknown;
 };
 
+export type DeleteApiBreakAnalysisByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/break-analysis/{id}';
+};
+
+export type DeleteApiBreakAnalysisByIdResponses = {
+    /**
+     * Default Response
+     */
+    200: {
+        cancelled: boolean;
+    };
+};
+
+export type DeleteApiBreakAnalysisByIdResponse = DeleteApiBreakAnalysisByIdResponses[keyof DeleteApiBreakAnalysisByIdResponses];
+
+export type GetApiProgramsByIdBreakAnalysisData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: {
+        limit?: number;
+        offset?: number;
+    };
+    url: '/api/programs/{id}/break-analysis';
+};
+
+export type GetApiProgramsByIdBreakAnalysisResponses = {
+    /**
+     * Default Response
+     */
+    200: Array<{
+        id: string;
+        programId?: string;
+        programVersionId?: string;
+        mediaFileId?: string;
+        seriesId?: string;
+        status: 'running' | 'completed' | 'failed' | 'skipped' | 'interrupted';
+        createdAt: number;
+        finishedAt?: number;
+        detectorVersion: string;
+        configHash: string;
+        config: {
+            blackPixelThreshold: number;
+            blackRatio: number;
+            minBlackMs: number;
+            maxBlackMs: number;
+            silenceDb: number;
+            minSilenceMs: number;
+            contextMs: number;
+            visualDifference: number;
+            spatialDifference: number;
+            bumperVisualDifference: number;
+            minMotion: number;
+            startExclusionMs: number;
+            startExclusionFraction: number;
+            endExclusionMs: number;
+            endExclusionFraction: number;
+            chapterMarginMs: number;
+            clusterMs: number;
+            minimumSpacingMs: number;
+            runtimeCaps: Array<{
+                belowMs: number;
+                maxBreaks: number;
+            }>;
+        };
+        sourceFingerprint: string;
+        runtimeMs: number;
+        scanWindow?: {
+            startMs: number;
+            endMs: number;
+        };
+        videoStreamIndex?: number;
+        audioStreamIndex?: number;
+        candidates: Array<{
+            timestampMs: number;
+            confidence: 'low' | 'medium' | 'high';
+            accepted: boolean;
+            reasons: Array<string>;
+            evidence: {
+                blackStartMs: number;
+                blackEndMs: number;
+                silenceOverlapMs: number;
+                fade: boolean;
+                visualDifference: number;
+                spatialDifference?: number;
+                repeatedBumperMatches?: number;
+                motionBefore: number;
+                motionAfter: number;
+                audioContext: boolean;
+                completeContext: boolean;
+            };
+        }>;
+        usableBreaks: Array<{
+            timestampMs: number;
+            confidence: 'low' | 'medium' | 'high';
+            accepted: boolean;
+            reasons: Array<string>;
+            evidence: {
+                blackStartMs: number;
+                blackEndMs: number;
+                silenceOverlapMs: number;
+                fade: boolean;
+                visualDifference: number;
+                spatialDifference?: number;
+                repeatedBumperMatches?: number;
+                motionBefore: number;
+                motionAfter: number;
+                audioContext: boolean;
+                completeContext: boolean;
+            };
+        }>;
+        qualified: boolean;
+        stale: boolean;
+        error?: string;
+    }>;
+};
+
+export type GetApiProgramsByIdBreakAnalysisResponse = GetApiProgramsByIdBreakAnalysisResponses[keyof GetApiProgramsByIdBreakAnalysisResponses];
+
 export type GetChannelsData = {
     body?: never;
     path?: never;
@@ -2911,6 +3036,7 @@ export type GetChannelsResponses = {
      */
     200: Array<{
         disableFillerOverlay: boolean;
+        musicVideoLabels: boolean;
         duration: number;
         fallback?: Array<{
             artistName?: string;
@@ -3029,6 +3155,7 @@ export type CreateChannelV2Data = {
         type: 'new';
         channel: {
             disableFillerOverlay: boolean;
+            musicVideoLabels?: boolean;
             duration: number;
             fillerCollections?: Array<{
                 id: string;
@@ -3121,6 +3248,7 @@ export type CreateChannelV2Responses = {
      */
     201: {
         disableFillerOverlay: boolean;
+        musicVideoLabels: boolean;
         duration: number;
         fallback?: Array<{
             artistName?: string;
@@ -3283,6 +3411,7 @@ export type GetChannelsByNumberV2Responses = {
      */
     200: {
         disableFillerOverlay: boolean;
+        musicVideoLabels: boolean;
         duration: number;
         fallback?: Array<{
             artistName?: string;
@@ -3399,6 +3528,7 @@ export type GetChannelsByNumberV2Response = GetChannelsByNumberV2Responses[keyof
 export type PutApiChannelsByIdData = {
     body: {
         disableFillerOverlay: boolean;
+        musicVideoLabels?: boolean;
         duration: number;
         fillerCollections?: Array<{
             id: string;
@@ -3493,6 +3623,7 @@ export type PutApiChannelsByIdResponses = {
      */
     200: {
         disableFillerOverlay: boolean;
+        musicVideoLabels: boolean;
         duration: number;
         fallback?: Array<{
             artistName?: string;
@@ -3735,6 +3866,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -3744,12 +3877,16 @@ export type GetApiChannelsByIdProgrammingResponses = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
         } | {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -3758,6 +3895,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
             type: 'filler';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             fillerListId: string;
             fillerType?: 'pre' | 'post' | 'head' | 'tail' | 'fallback' | 'mid';
@@ -3765,6 +3904,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
             type: 'redirect';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             channel: string;
             channelNumber: number;
             channelName: string;
@@ -3772,6 +3913,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
             type: 'flex';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             fillerConfig?: {
                 fillerListIds?: Array<string>;
                 fillerRepeatCooldownMs?: number;
@@ -3805,6 +3948,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'movie';
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological';
                 direction: 'asc' | 'desc';
@@ -3849,6 +3994,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'show';
                 showId: string;
                 seasonFilter: Array<number>;
@@ -3886,6 +4033,9 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
                 };
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
             } | {
                 startTime: number;
                 padMs?: number;
@@ -3896,6 +4046,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'flex';
             } | {
                 type: 'redirect';
@@ -3910,6 +4062,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
             } | {
                 startTime: number;
                 padMs?: number;
@@ -3920,6 +4074,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 iterationGroup?: string;
                 linkMode?: 'continue' | 'rerun';
@@ -3993,6 +4149,9 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
                 };
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
                 startTime: number;
                 padMs?: number;
                 overflow?: {
@@ -4002,6 +4161,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
             } | {
                 startTime: number;
                 padMs?: number;
@@ -4012,6 +4173,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'smart-collection';
                 smartCollectionId: string;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological';
@@ -4151,6 +4314,9 @@ export type GetApiChannelsByIdProgrammingResponses = {
                 showId: string;
                 seasonFilter: Array<number>;
                 seasonExcludeFilter: Array<number>;
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
             } | {
                 cooldownMs: number;
                 periodMs?: number;
@@ -4226,6 +4392,9 @@ export type GetApiChannelsByIdProgrammingResponses = {
                 direction: 'asc' | 'desc';
                 type: 'custom-show';
                 customShowId: string;
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
             } | {
                 cooldownMs: number;
                 periodMs?: number;
@@ -4362,12 +4531,16 @@ export type PostApiChannelsByIdProgrammingData = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
         } | {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -4376,6 +4549,8 @@ export type PostApiChannelsByIdProgrammingData = {
             type: 'filler';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             fillerListId: string;
             fillerType?: 'pre' | 'post' | 'head' | 'tail' | 'fallback' | 'mid';
@@ -4383,6 +4558,8 @@ export type PostApiChannelsByIdProgrammingData = {
             type: 'redirect';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             channel: string;
             channelNumber: number;
             channelName: string;
@@ -4390,6 +4567,8 @@ export type PostApiChannelsByIdProgrammingData = {
             type: 'flex';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             fillerConfig?: {
                 fillerListIds?: Array<string>;
                 fillerRepeatCooldownMs?: number;
@@ -4426,6 +4605,8 @@ export type PostApiChannelsByIdProgrammingData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'movie';
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological';
                 direction?: 'asc' | 'desc';
@@ -4470,6 +4651,8 @@ export type PostApiChannelsByIdProgrammingData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'show';
                 showId: string;
                 seasonFilter?: Array<number>;
@@ -4507,6 +4690,9 @@ export type PostApiChannelsByIdProgrammingData = {
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
                 };
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
             } | {
                 startTime: number;
                 padMs?: number;
@@ -4517,6 +4703,8 @@ export type PostApiChannelsByIdProgrammingData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'flex';
             } | {
                 type: 'redirect';
@@ -4531,6 +4719,8 @@ export type PostApiChannelsByIdProgrammingData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
             } | {
                 startTime: number;
                 padMs?: number;
@@ -4541,6 +4731,8 @@ export type PostApiChannelsByIdProgrammingData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 iterationGroup?: string;
                 linkMode?: 'continue' | 'rerun';
@@ -4614,6 +4806,9 @@ export type PostApiChannelsByIdProgrammingData = {
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
                 };
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
                 startTime: number;
                 padMs?: number;
                 overflow?: {
@@ -4623,6 +4818,8 @@ export type PostApiChannelsByIdProgrammingData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
             } | {
                 startTime: number;
                 padMs?: number;
@@ -4633,6 +4830,8 @@ export type PostApiChannelsByIdProgrammingData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'smart-collection';
                 smartCollectionId: string;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological';
@@ -4778,6 +4977,9 @@ export type PostApiChannelsByIdProgrammingData = {
                 showId: string;
                 seasonFilter?: Array<number>;
                 seasonExcludeFilter?: Array<number>;
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
             } | {
                 cooldownMs: number;
                 periodMs?: number;
@@ -4853,6 +5055,9 @@ export type PostApiChannelsByIdProgrammingData = {
                 direction?: 'asc' | 'desc';
                 type: 'custom-show';
                 customShowId: string;
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
             } | {
                 cooldownMs: number;
                 periodMs?: number;
@@ -5006,6 +5211,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -5015,12 +5222,16 @@ export type PostApiChannelsByIdProgrammingResponses = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
         } | {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -5029,6 +5240,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
             type: 'filler';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             fillerListId: string;
             fillerType?: 'pre' | 'post' | 'head' | 'tail' | 'fallback' | 'mid';
@@ -5036,6 +5249,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
             type: 'redirect';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             channel: string;
             channelNumber: number;
             channelName: string;
@@ -5043,6 +5258,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
             type: 'flex';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             fillerConfig?: {
                 fillerListIds?: Array<string>;
                 fillerRepeatCooldownMs?: number;
@@ -5076,6 +5293,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'movie';
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological';
                 direction: 'asc' | 'desc';
@@ -5120,6 +5339,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'show';
                 showId: string;
                 seasonFilter: Array<number>;
@@ -5157,6 +5378,9 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
                 };
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
             } | {
                 startTime: number;
                 padMs?: number;
@@ -5167,6 +5391,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'flex';
             } | {
                 type: 'redirect';
@@ -5181,6 +5407,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
             } | {
                 startTime: number;
                 padMs?: number;
@@ -5191,6 +5419,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 iterationGroup?: string;
                 linkMode?: 'continue' | 'rerun';
@@ -5264,6 +5494,9 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
                 };
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
                 startTime: number;
                 padMs?: number;
                 overflow?: {
@@ -5273,6 +5506,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
             } | {
                 startTime: number;
                 padMs?: number;
@@ -5283,6 +5518,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'smart-collection';
                 smartCollectionId: string;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological';
@@ -5422,6 +5659,9 @@ export type PostApiChannelsByIdProgrammingResponses = {
                 showId: string;
                 seasonFilter: Array<number>;
                 seasonExcludeFilter: Array<number>;
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
             } | {
                 cooldownMs: number;
                 periodMs?: number;
@@ -5497,6 +5737,9 @@ export type PostApiChannelsByIdProgrammingResponses = {
                 direction: 'asc' | 'desc';
                 type: 'custom-show';
                 customShowId: string;
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
             } | {
                 cooldownMs: number;
                 periodMs?: number;
@@ -5658,6 +5901,8 @@ export type GetChannelFallbacksResponses = {
         type: 'content';
         duration: number;
         icon?: string;
+        guideTitle?: string;
+        guideDescription?: string;
         id: string;
         startOffsetMs?: number;
         program: TerminalProgram;
@@ -5705,6 +5950,8 @@ export type GetApiChannelsAllLineupsResponses = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
             program: TerminalProgram;
@@ -5716,6 +5963,8 @@ export type GetApiChannelsAllLineupsResponses = {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -5724,6 +5973,8 @@ export type GetApiChannelsAllLineupsResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -5736,6 +5987,8 @@ export type GetApiChannelsAllLineupsResponses = {
             type: 'redirect';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             channel: string;
             channelNumber: number;
             channelName: string;
@@ -5747,6 +6000,8 @@ export type GetApiChannelsAllLineupsResponses = {
             type: 'flex';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             fillerConfig?: {
                 fillerListIds?: Array<string>;
                 fillerRepeatCooldownMs?: number;
@@ -5815,6 +6070,8 @@ export type GetApiChannelsByIdLineupResponses = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
             program: TerminalProgram;
@@ -5826,6 +6083,8 @@ export type GetApiChannelsByIdLineupResponses = {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -5834,6 +6093,8 @@ export type GetApiChannelsByIdLineupResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -5846,6 +6107,8 @@ export type GetApiChannelsByIdLineupResponses = {
             type: 'redirect';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             channel: string;
             channelNumber: number;
             channelName: string;
@@ -5857,6 +6120,8 @@ export type GetApiChannelsByIdLineupResponses = {
             type: 'flex';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             fillerConfig?: {
                 fillerListIds?: Array<string>;
                 fillerRepeatCooldownMs?: number;
@@ -5910,6 +6175,8 @@ export type GetApiChannelsByIdNowPlayingResponses = {
         type: 'content';
         duration: number;
         icon?: string;
+        guideTitle?: string;
+        guideDescription?: string;
         id: string;
         startOffsetMs?: number;
         program: TerminalProgram;
@@ -5921,6 +6188,8 @@ export type GetApiChannelsByIdNowPlayingResponses = {
         type: 'custom';
         duration: number;
         icon?: string;
+        guideTitle?: string;
+        guideDescription?: string;
         id: string;
         customShowId: string;
         index: number;
@@ -5929,6 +6198,8 @@ export type GetApiChannelsByIdNowPlayingResponses = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
             program: TerminalProgram;
@@ -5941,6 +6212,8 @@ export type GetApiChannelsByIdNowPlayingResponses = {
         type: 'redirect';
         duration: number;
         icon?: string;
+        guideTitle?: string;
+        guideDescription?: string;
         channel: string;
         channelNumber: number;
         channelName: string;
@@ -5952,6 +6225,8 @@ export type GetApiChannelsByIdNowPlayingResponses = {
         type: 'flex';
         duration: number;
         icon?: string;
+        guideTitle?: string;
+        guideDescription?: string;
         fillerConfig?: {
             fillerListIds?: Array<string>;
             fillerRepeatCooldownMs?: number;
@@ -6065,6 +6340,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'movie';
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological';
                 direction?: 'asc' | 'desc';
@@ -6109,6 +6386,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'show';
                 showId: string;
                 seasonFilter?: Array<number>;
@@ -6146,6 +6425,9 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
                 };
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
             } | {
                 startTime: number;
                 padMs?: number;
@@ -6156,6 +6438,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'flex';
             } | {
                 type: 'redirect';
@@ -6170,6 +6454,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
             } | {
                 startTime: number;
                 padMs?: number;
@@ -6180,6 +6466,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 iterationGroup?: string;
                 linkMode?: 'continue' | 'rerun';
@@ -6253,6 +6541,9 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
                 };
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
                 startTime: number;
                 padMs?: number;
                 overflow?: {
@@ -6262,6 +6553,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
             } | {
                 startTime: number;
                 padMs?: number;
@@ -6272,6 +6565,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'smart-collection';
                 smartCollectionId: string;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological';
@@ -6342,12 +6637,16 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsResponses = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
         } | {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -6356,6 +6655,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsResponses = {
             type: 'filler';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             fillerListId: string;
             fillerType?: 'pre' | 'post' | 'head' | 'tail' | 'fallback' | 'mid';
@@ -6363,6 +6664,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsResponses = {
             type: 'redirect';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             channel: string;
             channelNumber: number;
             channelName: string;
@@ -6370,6 +6673,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsResponses = {
             type: 'flex';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             fillerConfig?: {
                 fillerListIds?: Array<string>;
                 fillerRepeatCooldownMs?: number;
@@ -6386,6 +6691,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -6499,6 +6806,9 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                 showId: string;
                 seasonFilter?: Array<number>;
                 seasonExcludeFilter?: Array<number>;
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
             } | {
                 cooldownMs: number;
                 periodMs?: number;
@@ -6574,6 +6884,9 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                 direction?: 'asc' | 'desc';
                 type: 'custom-show';
                 customShowId: string;
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
             } | {
                 cooldownMs: number;
                 periodMs?: number;
@@ -6707,12 +7020,16 @@ export type PostApiChannelsByChannelIdScheduleSlotsResponses = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
         } | {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -6721,6 +7038,8 @@ export type PostApiChannelsByChannelIdScheduleSlotsResponses = {
             type: 'filler';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             fillerListId: string;
             fillerType?: 'pre' | 'post' | 'head' | 'tail' | 'fallback' | 'mid';
@@ -6728,6 +7047,8 @@ export type PostApiChannelsByChannelIdScheduleSlotsResponses = {
             type: 'redirect';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             channel: string;
             channelNumber: number;
             channelName: string;
@@ -6735,6 +7056,8 @@ export type PostApiChannelsByChannelIdScheduleSlotsResponses = {
             type: 'flex';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             fillerConfig?: {
                 fillerListIds?: Array<string>;
                 fillerRepeatCooldownMs?: number;
@@ -6751,6 +7074,8 @@ export type PostApiChannelsByChannelIdScheduleSlotsResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -6798,6 +7123,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'movie';
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological';
                 direction: 'asc' | 'desc';
@@ -6842,6 +7169,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'show';
                 showId: string;
                 seasonFilter: Array<number>;
@@ -6879,6 +7208,9 @@ export type GetApiChannelsByIdScheduleResponses = {
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
                 };
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
                 show: Show | null;
                 /**
                  * A show that existed in the DB at schedule time, but no longer exists.
@@ -6896,6 +7228,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'flex';
             } | {
                 type: 'redirect';
@@ -6910,8 +7244,11 @@ export type GetApiChannelsByIdScheduleResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 channel: {
                     disableFillerOverlay: boolean;
+                    musicVideoLabels: boolean;
                     duration: number;
                     fallback?: Array<{
                         artistName?: string;
@@ -7058,6 +7395,9 @@ export type GetApiChannelsByIdScheduleResponses = {
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
                 };
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
                 startTime: number;
                 padMs?: number;
                 overflow?: {
@@ -7067,6 +7407,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 customShow: {
                     id: string;
                     name: string;
@@ -7088,6 +7430,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 iterationGroup?: string;
                 linkMode?: 'continue' | 'rerun';
@@ -7141,6 +7485,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                     type: 'oneExtra';
                 };
                 latenessMs?: number;
+                guideTitle?: string;
+                guideDescription?: string;
                 type: 'smart-collection';
                 smartCollectionId: string;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological';
@@ -7288,6 +7634,9 @@ export type GetApiChannelsByIdScheduleResponses = {
                 showId: string;
                 seasonFilter: Array<number>;
                 seasonExcludeFilter: Array<number>;
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
                 show: Show | null;
                 /**
                  * A show that existed in the DB at schedule time, but no longer exists.
@@ -7325,6 +7674,7 @@ export type GetApiChannelsByIdScheduleResponses = {
                 channelName?: string;
                 channel: {
                     disableFillerOverlay: boolean;
+                    musicVideoLabels: boolean;
                     duration: number;
                     fallback?: Array<{
                         artistName?: string;
@@ -7482,6 +7832,9 @@ export type GetApiChannelsByIdScheduleResponses = {
                 direction: 'asc' | 'desc';
                 type: 'custom-show';
                 customShowId: string;
+                startProgramId?: string;
+                excludeProgramIds?: Array<string>;
+                playFirstProgramIds?: Array<string>;
                 customShow: {
                     id: string;
                     name: string;
@@ -7700,6 +8053,8 @@ export type GetApiCustomShowsResponses = {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -7708,6 +8063,8 @@ export type GetApiCustomShowsResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -7731,6 +8088,8 @@ export type CreateCustomShowData = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
         }>;
@@ -7756,6 +8115,8 @@ export type CreateCustomShowResponses = {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -7764,6 +8125,8 @@ export type CreateCustomShowResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -7836,6 +8199,8 @@ export type GetApiCustomShowsByIdResponses = {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -7844,6 +8209,8 @@ export type GetApiCustomShowsByIdResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -7867,6 +8234,8 @@ export type PutApiCustomShowsByIdData = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
         }>;
@@ -7908,6 +8277,8 @@ export type PutApiCustomShowsByIdResponses = {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -7916,6 +8287,8 @@ export type PutApiCustomShowsByIdResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -7956,6 +8329,8 @@ export type GetApiCustomShowsByIdProgramsResponses = {
         type: 'custom';
         duration: number;
         icon?: string;
+        guideTitle?: string;
+        guideDescription?: string;
         id: string;
         customShowId: string;
         index: number;
@@ -7964,6 +8339,8 @@ export type GetApiCustomShowsByIdProgramsResponses = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
             program: TerminalProgram;
@@ -8010,6 +8387,8 @@ export type SyncCustomShowResponses = {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -8018,6 +8397,8 @@ export type SyncCustomShowResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -8053,6 +8434,8 @@ export type GetApiFillerListsResponses = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
             program: TerminalProgram;
@@ -8060,6 +8443,8 @@ export type GetApiFillerListsResponses = {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -8068,6 +8453,8 @@ export type GetApiFillerListsResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -8085,6 +8472,8 @@ export type PostApiFillerListsData = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
             program: TerminalProgramInput;
@@ -8092,6 +8481,8 @@ export type PostApiFillerListsData = {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -8100,6 +8491,8 @@ export type PostApiFillerListsData = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgramInput;
@@ -8173,6 +8566,8 @@ export type GetApiFillerListsByIdResponses = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
             program: TerminalProgram;
@@ -8180,6 +8575,8 @@ export type GetApiFillerListsByIdResponses = {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -8188,6 +8585,8 @@ export type GetApiFillerListsByIdResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -8205,6 +8604,8 @@ export type PutApiFillerListsByIdData = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
             program: TerminalProgramInput;
@@ -8212,6 +8613,8 @@ export type PutApiFillerListsByIdData = {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -8220,6 +8623,8 @@ export type PutApiFillerListsByIdData = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgramInput;
@@ -8252,6 +8657,8 @@ export type PutApiFillerListsByIdResponses = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
             program: TerminalProgram;
@@ -8259,6 +8666,8 @@ export type PutApiFillerListsByIdResponses = {
             type: 'custom';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             customShowId: string;
             index: number;
@@ -8267,6 +8676,8 @@ export type PutApiFillerListsByIdResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -8301,6 +8712,8 @@ export type GetApiFillerListsByIdProgramsResponses = {
         type: 'content';
         duration: number;
         icon?: string;
+        guideTitle?: string;
+        guideDescription?: string;
         id: string;
         startOffsetMs?: number;
         program: TerminalProgram;
@@ -8308,6 +8721,8 @@ export type GetApiFillerListsByIdProgramsResponses = {
         type: 'custom';
         duration: number;
         icon?: string;
+        guideTitle?: string;
+        guideDescription?: string;
         id: string;
         customShowId: string;
         index: number;
@@ -8316,6 +8731,8 @@ export type GetApiFillerListsByIdProgramsResponses = {
             type: 'content';
             duration: number;
             icon?: string;
+            guideTitle?: string;
+            guideDescription?: string;
             id: string;
             startOffsetMs?: number;
             program: TerminalProgram;
@@ -8421,6 +8838,8 @@ export type GetApiProgramsByIdDescendantsResponses = {
         type: 'content';
         duration: number;
         icon?: string;
+        guideTitle?: string;
+        guideDescription?: string;
         id: string;
         startOffsetMs?: number;
         program: TerminalProgram;
@@ -9488,6 +9907,8 @@ export type GetApiMediaLibrariesByLibraryIdProgramsResponses = {
         type: 'content';
         duration: number;
         icon?: string;
+        guideTitle?: string;
+        guideDescription?: string;
         id: string;
         startOffsetMs?: number;
         program: TerminalProgram;
@@ -11296,6 +11717,8 @@ export type GetApiGuideChannelsResponses = {
                 type: 'content';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 startOffsetMs?: number;
                 program: TerminalProgram;
@@ -11307,6 +11730,8 @@ export type GetApiGuideChannelsResponses = {
                 type: 'custom';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 id: string;
                 customShowId: string;
                 index: number;
@@ -11315,6 +11740,8 @@ export type GetApiGuideChannelsResponses = {
                     type: 'content';
                     duration: number;
                     icon?: string;
+                    guideTitle?: string;
+                    guideDescription?: string;
                     id: string;
                     startOffsetMs?: number;
                     program: TerminalProgram;
@@ -11327,6 +11754,8 @@ export type GetApiGuideChannelsResponses = {
                 type: 'redirect';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 channel: string;
                 channelNumber: number;
                 channelName: string;
@@ -11338,6 +11767,8 @@ export type GetApiGuideChannelsResponses = {
                 type: 'flex';
                 duration: number;
                 icon?: string;
+                guideTitle?: string;
+                guideDescription?: string;
                 fillerConfig?: {
                     fillerListIds?: Array<string>;
                     fillerRepeatCooldownMs?: number;
@@ -13434,6 +13865,7 @@ export type PostApiTroubleshootResponses = {
         };
         channelConfig?: {
             disableFillerOverlay: boolean;
+            musicVideoLabels: boolean;
             duration: number;
             fallback?: Array<{
                 artistName?: string;

@@ -21,6 +21,7 @@ export function createChannel(overrides?: Partial<Channel>): Channel {
     startTime: faker.date.past().getTime(),
     createdAt: null,
     disableFillerOverlay: faker.datatype.boolean() ? 1 : 0,
+    musicVideoLabels: faker.datatype.boolean() ? 1 : 0,
     name: faker.music.artist(),
     ...(overrides ?? {}),
   } satisfies Channel;
@@ -33,6 +34,7 @@ export function createChannelOrm(overrides?: Partial<ChannelOrm>): ChannelOrm {
     startTime: faker.date.past().getTime(),
     createdAt: null,
     disableFillerOverlay: faker.datatype.boolean(),
+    musicVideoLabels: faker.datatype.boolean(),
     name: faker.music.artist(),
     ...(overrides ?? {}),
   } satisfies ChannelOrm;

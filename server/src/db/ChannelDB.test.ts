@@ -202,6 +202,27 @@ describe('ChannelDB', () => {
       expect(retrieved?.name).toBe(channelData.name);
     });
 
+    test('should round-trip musicVideoLabels and default it to false', async ({
+      channelDb,
+      defaultTranscodeConfigId,
+    }) => {
+      const enabled = await channelDb.saveChannel(
+        createSaveableChannel(defaultTranscodeConfigId, {
+          musicVideoLabels: true,
+        }),
+      );
+      const disabled = await channelDb.saveChannel(
+        createSaveableChannel(defaultTranscodeConfigId),
+      );
+
+      expect(
+        (await channelDb.getChannel(enabled.channel.uuid))?.musicVideoLabels,
+      ).toBe(true);
+      expect(
+        (await channelDb.getChannel(disabled.channel.uuid))?.musicVideoLabels,
+      ).toBe(false);
+    });
+
     test('should retrieve channel by number', async ({
       channelDb,
       defaultTranscodeConfigId,

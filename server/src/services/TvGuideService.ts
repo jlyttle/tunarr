@@ -1575,6 +1575,7 @@ export class TVGuideService {
         position: 'bottom-right',
       },
       disableFillerOverlay: false,
+      musicVideoLabels: false,
       number: 0,
       guideMinimumDuration: 0,
       duration: 0,

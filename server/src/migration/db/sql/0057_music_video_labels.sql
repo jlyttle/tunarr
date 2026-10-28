@@ -1,0 +1,1 @@
+ALTER TABLE `channel` ADD `music_video_labels` integer DEFAULT false NOT NULL;

@@ -28,6 +28,7 @@ export const DefaultChannel: MarkOptional<
   groupTitle: 'tunarr',
   stealth: false,
   disableFillerOverlay: false,
+  musicVideoLabels: false,
   offline: {
     mode: 'pic',
     picture: '',

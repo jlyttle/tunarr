@@ -30,6 +30,7 @@ export const Channel = sqliteTable(
     createdAt: integer(),
     updatedAt: integer(),
     disableFillerOverlay: integer({ mode: 'boolean' }).default(false),
+    musicVideoLabels: integer({ mode: 'boolean' }).notNull().default(false),
     duration: integer().notNull(),
     // millis
     fillerRepeatCooldown: integer(),

@@ -16,6 +16,7 @@ import {
   Skeleton,
   Slider,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from '@mui/material';
@@ -388,6 +389,18 @@ export function ChannelFlexConfig() {
                   <FormControlLabel
                     control={<Checkbox {...field} checked={field.value} />}
                     label={t`Hide watermark during filler`}
+                  />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="musicVideoLabels"
+              render={({ field }) => (
+                <FormControl fullWidth margin="normal">
+                  <FormControlLabel
+                    control={<Switch {...field} checked={field.value} />}
+                    label={t`Show music video labels`}
                   />
                 </FormControl>
               )}

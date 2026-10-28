@@ -6,6 +6,7 @@ const loadedStartTime = 1_700_000_012_345;
 
 const channel: SaveableChannel = {
   disableFillerOverlay: false,
+  musicVideoLabels: false,
   duration: 60000,
   groupTitle: 'test',
   guideMinimumDuration: 30000,

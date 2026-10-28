@@ -162,6 +162,7 @@ export const ChannelSessionSchema = z.object({
 
 export const ChannelSchema = z.object({
   disableFillerOverlay: z.boolean(),
+  musicVideoLabels: z.boolean().default(false),
   duration: z.number(),
   fallback: z.array(ProgramSchema).optional(),
   fillerCollections: z.array(FillerCollectionSchema).optional(),
