@@ -30,23 +30,26 @@ export const TvGuideItem = styled(TvGuideGridChild, {
   const bgLighter = new Color(bgColor).set('oklch.l', (l) => l * 1.05);
   const bgDarker = new Color(bgColor).set('oklch.l', (l) => l * 0.95);
 
-  const background =
-    isUndefined(program) || program.type === 'flex' || program.isPaused
-      ? `repeating-linear-gradient(-45deg,
+  const isDeadAir =
+    isUndefined(program) ||
+    (program.type === 'flex' && !program.guideTitle) ||
+    program.isPaused;
+
+  const background = isDeadAir
+    ? `repeating-linear-gradient(-45deg,
               ${bgColor},
               ${bgColor} 10px,
               ${bgDarker.toString()} 10px,
               ${bgDarker.toString()} 20px)`
-      : bgColor;
+    : bgColor;
 
-  const hoverBackground =
-    isUndefined(program) || program.type === 'flex' || program.isPaused
-      ? `repeating-linear-gradient(-45deg,
+  const hoverBackground = isDeadAir
+    ? `repeating-linear-gradient(-45deg,
   ${bgLighter.toString()},
   ${bgLighter.toString()} 10px,
   ${bgColor} 10px,
   ${bgColor} 20px)`
-      : bgLighter.toString();
+    : bgLighter.toString();
 
   return {
     display: 'flex',

@@ -471,6 +471,46 @@ describe('ChannelDB', () => {
       expect(reloaded.items[0].durationMs).toBe(1000);
     });
 
+    test("keeps a removed program's guide title on its flex", async ({
+      channelDb,
+      defaultTranscodeConfigId,
+    }) => {
+      const created = await channelDb.saveChannel(
+        createSaveableChannel(defaultTranscodeConfigId, {
+          name: 'Guide Title Removal Channel',
+          number: 604,
+        }),
+      );
+
+      const programId = v4();
+      const guide = {
+        guideTitle: 'Alternative Nation',
+        guideDescription: 'Alternative videos.',
+      };
+      await channelDb.saveLineup(created.channel.uuid, {
+        items: [
+          {
+            type: 'content' as const,
+            id: programId,
+            durationMs: 1000,
+            ...guide,
+          } as ContentItem,
+        ],
+        startTimeOffsets: [0],
+      });
+
+      await channelDb.removeProgramsFromLineup(created.channel.uuid, [
+        programId,
+      ]);
+
+      const reloaded = await channelDb.loadLineup(created.channel.uuid);
+      expect(reloaded.items[0]).toEqual({
+        type: 'offline',
+        durationMs: 1000,
+        ...guide,
+      });
+    });
+
     test('should keep where a custom show mid-roll segment resumes', async ({
       channelDb,
       defaultTranscodeConfigId,

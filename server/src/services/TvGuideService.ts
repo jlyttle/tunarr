@@ -816,6 +816,24 @@ export class TVGuideService {
       if (
         programs.length > 0 &&
         !isNil(previousProgram) &&
+        isNonEmptyString(previousProgram.lineupItem.guideTitle) &&
+        !fitsInSchedulePad(currentProgram, channelWithLineup.lineup)
+      ) {
+        melded = 0;
+        if (isProgramOffline(currentProgram, channelWithLineup.channel)) {
+          programs.push({
+            ...program,
+            lineupItem: {
+              type: 'offline',
+              durationMs: currentProgram.durationMs,
+            },
+          });
+        } else {
+          programs.push(program);
+        }
+      } else if (
+        programs.length > 0 &&
+        !isNil(previousProgram) &&
         isProgramOffline(currentProgram, channelWithLineup.channel) &&
         (currentProgram.durationMs <=
           constants.TVGUIDE_MAXIMUM_PADDING_LENGTH_MS ||
@@ -919,11 +937,14 @@ export class TVGuideService {
       }
     });
 
-    let currentProgram = await this.getChannelPlaying(
+    let currentProgram = withGuideBlockStart(
+      await this.getChannelPlaying(
+        channelWithLineup,
+        undefined,
+        timestamp,
+        redirectStack,
+      ),
       channelWithLineup,
-      undefined,
-      timestamp,
-      redirectStack,
     );
 
     if (currentProgram.lineupItem.durationMs <= 0) {
@@ -1601,6 +1622,55 @@ export class TVGuideService {
       ],
     };
   }
+}
+
+/**
+ * The guide is built from the item airing now, which may be partway into a
+ * titled block. Start the block where its first item started so the guide
+ * shows the slot's real start time.
+ */
+function withGuideBlockStart(
+  item: GuideItem,
+  { channel, lineup }: ChannelWithLineup,
+): GuideItem {
+  const { guideTitle } = item.lineupItem;
+  if (
+    !isNonEmptyString(guideTitle) ||
+    isUndefined(item.index) ||
+    item.index < 0 ||
+    item.isPaused ||
+    isDefined(item.redirectChannelId)
+  ) {
+    return item;
+  }
+
+  const count = lineup.items.length;
+  let earlierMs = 0;
+  for (let step = 1; step < count; step++) {
+    const previous = lineup.items[(item.index - step + count) % count]!;
+    if (
+      previous.guideTitle !== guideTitle ||
+      item.startTimeMs - earlierMs - previous.durationMs < channel.startTime
+    ) {
+      break;
+    }
+    earlierMs += previous.durationMs;
+  }
+
+  return earlierMs === 0
+    ? item
+    : extendGuideItem(
+        { ...item, startTimeMs: item.startTimeMs - earlierMs },
+        earlierMs,
+      );
+}
+
+function fitsInSchedulePad(item: LineupItem, lineup: Lineup): boolean {
+  return (
+    item.type === 'offline' &&
+    lineup.schedule?.type === 'time' &&
+    item.durationMs <= lineup.schedule.padMs
+  );
 }
 
 function extendGuideItem(item: GuideItem, durationMs: number): GuideItem {

@@ -9,7 +9,10 @@ export function condensedProgramToLineupItem(
   return { ...toLineupItem(p), ...guideFields(p) };
 }
 
-function guideFields(p: CondensedChannelProgram) {
+export function guideFields(p: {
+  guideTitle?: string;
+  guideDescription?: string;
+}) {
   if (!isNonEmptyString(p.guideTitle)) {
     return {};
   }

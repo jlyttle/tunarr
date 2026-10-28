@@ -95,7 +95,10 @@ import type {
 } from '../schema/derivedTypes.ts';
 import type { DrizzleDBAccess } from '../schema/index.ts';
 import type { ChannelReadOpsRepository } from './ChannelReadOpsRepository.ts';
-import { condensedProgramToLineupItem } from './lineupItemConversion.ts';
+import {
+  condensedProgramToLineupItem,
+  guideFields,
+} from './lineupItemConversion.ts';
 
 // Module-level cache shared within this module
 const fileDbCache: Record<string | number, Low<Lineup>> = {};
@@ -245,6 +248,7 @@ export class LineupRepository {
             return {
               type: 'offline' as const,
               durationMs: item.durationMs,
+              ...guideFields(item),
             };
           } else {
             return item;
@@ -428,6 +432,7 @@ export class LineupRepository {
         return {
           type: 'offline',
           durationMs: item.durationMs,
+          ...guideFields(item),
         };
       } else {
         return item;
@@ -466,6 +471,7 @@ export class LineupRepository {
               return {
                 type: 'offline',
                 durationMs: item.durationMs,
+                ...guideFields(item),
               };
             }
             return item;

@@ -1226,10 +1226,13 @@ describe('TVGuideService', () => {
       extra?: Partial<LineupItem>,
     ): LineupItem => ({ type: 'content', id, durationMs, ...extra });
 
-    function makeService(items: LineupItem[]) {
+    function makeService(items: LineupItem[], schedule?: Lineup['schedule']) {
       const channel = makeChannelOrm({ startTime: T0, guideFlexTitle: 'Off' });
       const lineups = {
-        [channel.uuid]: { channel, lineup: makeLineup(items) },
+        [channel.uuid]: {
+          channel,
+          lineup: { ...makeLineup(items), schedule },
+        },
       };
       const mockWrite = vi.fn().mockResolvedValue(undefined);
       const service = new TVGuideService(
@@ -1259,9 +1262,15 @@ describe('TVGuideService', () => {
       return { service, channel, mockWrite };
     }
 
-    async function buildXmlTvPrograms(items: LineupItem[]) {
-      const { service, mockWrite } = makeService(items);
-      await service.buildAllChannels(dayjs.duration({ hours: 4 }), true, T0);
+    async function buildXmlTvPrograms(
+      items: LineupItem[],
+      {
+        at = T0,
+        schedule,
+      }: { at?: number; schedule?: Lineup['schedule'] } = {},
+    ) {
+      const { service, mockWrite } = makeService(items, schedule);
+      await service.buildAllChannels(dayjs.duration({ hours: 4 }), true, at);
       const written = mockWrite.mock.calls.at(
         -1,
       )![0] as MaterializedChannelPrograms[];
@@ -1329,6 +1338,90 @@ describe('TVGuideService', () => {
         title: 'Alternative Nation',
         description: 'Alternative videos.',
       });
+    });
+
+    it('starts a block already airing at build time at its first item', async () => {
+      const programs = await buildXmlTvPrograms(
+        [
+          content('before-1', 30 * MIN),
+          content('v1', 20 * MIN, alt),
+          content('v2', 20 * MIN, alt),
+          { type: 'offline', durationMs: 20 * MIN, ...alt },
+          content('after', 12 * HOUR),
+        ],
+        { at: T0 + 55 * MIN },
+      );
+
+      expect(programs[0]).toEqual({
+        start: 30 * MIN,
+        stop: 90 * MIN,
+        title: 'Alternative Nation',
+        description: 'Alternative videos.',
+      });
+    });
+
+    it('walks back across the end of the lineup cycle to the block start', async () => {
+      const programs = await buildXmlTvPrograms(
+        [
+          content('v2', 30 * MIN, alt),
+          content('after', 60 * MIN),
+          content('v1', 30 * MIN, alt),
+        ],
+        { at: T0 + 130 * MIN },
+      );
+
+      expect(programs[0]).toEqual({
+        start: 90 * MIN,
+        stop: 150 * MIN,
+        title: 'Alternative Nation',
+        description: 'Alternative videos.',
+      });
+    });
+
+    it('does not stretch a block over untitled flex longer than the pad', async () => {
+      const programs = await buildXmlTvPrograms(
+        [
+          content('v1', 30 * MIN, alt),
+          content('v2', 30 * MIN, alt),
+          { type: 'offline', durationMs: 3 * MIN },
+          { type: 'offline', durationMs: 20 * MIN },
+          content('after', 12 * HOUR),
+        ],
+        {
+          schedule: {
+            type: 'time',
+            flexPreference: 'end',
+            latenessMs: 0,
+            maxDays: 1,
+            overflow: { type: 'duration', maxMs: 0 },
+            padMs: 5 * MIN,
+            period: 'day',
+            slots: [],
+            timeZoneOffset: 0,
+          },
+        },
+      );
+
+      expect(programs.slice(0, 3)).toEqual([
+        {
+          start: 0,
+          stop: 63 * MIN,
+          title: 'Alternative Nation',
+          description: 'Alternative videos.',
+        },
+        {
+          start: 63 * MIN,
+          stop: 83 * MIN,
+          title: 'Off',
+          description: undefined,
+        },
+        {
+          start: 83 * MIN,
+          stop: 83 * MIN + 12 * HOUR,
+          title: 'after',
+          description: undefined,
+        },
+      ]);
     });
 
     it('serves a titled run to the web guide as one titled program', async () => {
