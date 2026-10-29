@@ -3,6 +3,7 @@ import {
   MidRollConfigSchema,
   SlotFiller,
   SlotProgrammingFillerOrder,
+  SmartCollectionProgrammingSlot,
 } from '@tunarr/types/api';
 import {
   CustomShowSchema,
@@ -108,6 +109,8 @@ export const CommonRedirectSlotViewModel = z.object({
 export const CommonSmartCollectionViewModel = z.object({
   ...LinkableSlot.shape,
   ...BaseSlotOrdering.shape,
+  order: SmartCollectionProgrammingSlot.shape.order,
+  rotation: SmartCollectionProgrammingSlot.shape.rotation,
   ...WithSlotFiller.shape,
   type: z.literal('smart-collection'),
   smartCollectionId: z.uuid(),
@@ -186,7 +189,8 @@ export type SlotLinkingContent =
       type: 'smart-collection';
       smartCollectionId: string;
       smartCollection: CommonSmartCollectionViewModel['smartCollection'];
-      order: z.infer<typeof BaseSlotOrdering>['order'];
+      order: CommonSmartCollectionViewModel['order'];
+      rotation?: CommonSmartCollectionViewModel['rotation'];
       direction: z.infer<typeof BaseSlotOrdering>['direction'];
       isMissing: boolean;
       filler?: WithSlotFiller['filler'];
