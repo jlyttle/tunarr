@@ -211,10 +211,45 @@ export const FillerProgrammingSlotSchema = z.object({
 
 export type FillerProgrammingSlot = z.infer<typeof FillerProgrammingSlotSchema>;
 
+export const RotationTierSchema = z.enum(['heavy', 'medium', 'light']);
+
+export type RotationTier = z.infer<typeof RotationTierSchema>;
+
+const TierNumbers = z.object({
+  heavy: z.number().positive(),
+  medium: z.number().positive(),
+  light: z.number().positive(),
+});
+
+export const RotationParamsSchema = z.object({
+  tierWeights: TierNumbers.partial().optional(),
+  targetIntervalMs: TierNumbers.partial().optional(),
+  songGapMs: z.number().nonnegative().optional(),
+  artistGapMs: z.number().nonnegative().optional(),
+});
+
+export type RotationParams = z.infer<typeof RotationParamsSchema>;
+
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+export const DefaultRotationParams = {
+  tierWeights: { heavy: 3, medium: 2, light: 1 },
+  targetIntervalMs: {
+    heavy: 2 * DAY_MS,
+    medium: 5 * DAY_MS,
+    light: 10 * DAY_MS,
+  },
+  songGapMs: 24 * HOUR_MS,
+  artistGapMs: HOUR_MS,
+} as const;
+
 export const SmartCollectionProgrammingSlot = z.object({
   type: z.literal('smart-collection'),
   smartCollectionId: z.uuid(),
   ...BaseSlotOrdering.shape,
+  order: z.enum([...SlotProgrammingOrderSchema.options, 'weighted_rotation']),
+  rotation: RotationParamsSchema.optional(),
   ...Slot.shape,
 });
 

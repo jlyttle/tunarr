@@ -499,6 +499,8 @@ export function createSlotProgramIterator(
             random,
             slot.direction === 'asc',
           );
+        case 'weighted_rotation':
+          throw new Error('weighted_rotation iterator is not wired yet');
       }
     })
     .exhaustive();
