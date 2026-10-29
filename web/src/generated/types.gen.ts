@@ -4178,13 +4178,21 @@ export type GetApiChannelsByIdProgrammingResponses = {
                 type: 'smart-collection';
                 smartCollectionId: string;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological' | 'weighted_rotation';
+                direction: 'asc' | 'desc';
                 rotation?: {
-                    tierWeights?: {heavy?: number; medium?: number; light?: number;};
-                    targetIntervalMs?: {heavy?: number; medium?: number; light?: number;};
+                    tierWeights?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    targetIntervalMs?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
                     songGapMs?: number;
                     artistGapMs?: number;
                 };
-                direction: 'asc' | 'desc';
                 id: string;
                 iterationGroup?: string;
                 linkMode?: 'continue' | 'rerun';
@@ -4494,15 +4502,23 @@ export type GetApiChannelsByIdProgrammingResponses = {
                 weight: number;
                 index?: number;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological' | 'weighted_rotation';
-                rotation?: {
-                    tierWeights?: {heavy?: number; medium?: number; light?: number;};
-                    targetIntervalMs?: {heavy?: number; medium?: number; light?: number;};
-                    songGapMs?: number;
-                    artistGapMs?: number;
-                };
                 direction: 'asc' | 'desc';
                 type: 'smart-collection';
                 smartCollectionId: string;
+                rotation?: {
+                    tierWeights?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    targetIntervalMs?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    songGapMs?: number;
+                    artistGapMs?: number;
+                };
             }>;
             timeZoneOffset?: number;
             randomDistribution: 'uniform' | 'weighted' | 'none';
@@ -4847,13 +4863,21 @@ export type PostApiChannelsByIdProgrammingData = {
                 type: 'smart-collection';
                 smartCollectionId: string;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological' | 'weighted_rotation';
+                direction?: 'asc' | 'desc';
                 rotation?: {
-                    tierWeights?: {heavy?: number; medium?: number; light?: number;};
-                    targetIntervalMs?: {heavy?: number; medium?: number; light?: number;};
+                    tierWeights?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    targetIntervalMs?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
                     songGapMs?: number;
                     artistGapMs?: number;
                 };
-                direction?: 'asc' | 'desc';
                 id: string;
                 iterationGroup?: string;
                 linkMode?: 'continue' | 'rerun';
@@ -5169,15 +5193,23 @@ export type PostApiChannelsByIdProgrammingData = {
                 weight: number;
                 index?: number;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological' | 'weighted_rotation';
-                rotation?: {
-                    tierWeights?: {heavy?: number; medium?: number; light?: number;};
-                    targetIntervalMs?: {heavy?: number; medium?: number; light?: number;};
-                    songGapMs?: number;
-                    artistGapMs?: number;
-                };
                 direction?: 'asc' | 'desc';
                 type: 'smart-collection';
                 smartCollectionId: string;
+                rotation?: {
+                    tierWeights?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    targetIntervalMs?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    songGapMs?: number;
+                    artistGapMs?: number;
+                };
             }>;
             timeZoneOffset?: number;
             randomDistribution: 'uniform' | 'weighted' | 'none';
@@ -5547,13 +5579,21 @@ export type PostApiChannelsByIdProgrammingResponses = {
                 type: 'smart-collection';
                 smartCollectionId: string;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological' | 'weighted_rotation';
+                direction: 'asc' | 'desc';
                 rotation?: {
-                    tierWeights?: {heavy?: number; medium?: number; light?: number;};
-                    targetIntervalMs?: {heavy?: number; medium?: number; light?: number;};
+                    tierWeights?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    targetIntervalMs?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
                     songGapMs?: number;
                     artistGapMs?: number;
                 };
-                direction: 'asc' | 'desc';
                 id: string;
                 iterationGroup?: string;
                 linkMode?: 'continue' | 'rerun';
@@ -5863,15 +5903,23 @@ export type PostApiChannelsByIdProgrammingResponses = {
                 weight: number;
                 index?: number;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological' | 'weighted_rotation';
-                rotation?: {
-                    tierWeights?: {heavy?: number; medium?: number; light?: number;};
-                    targetIntervalMs?: {heavy?: number; medium?: number; light?: number;};
-                    songGapMs?: number;
-                    artistGapMs?: number;
-                };
                 direction: 'asc' | 'desc';
                 type: 'smart-collection';
                 smartCollectionId: string;
+                rotation?: {
+                    tierWeights?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    targetIntervalMs?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    songGapMs?: number;
+                    artistGapMs?: number;
+                };
             }>;
             timeZoneOffset?: number;
             randomDistribution: 'uniform' | 'weighted' | 'none';
@@ -6606,13 +6654,21 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                 type: 'smart-collection';
                 smartCollectionId: string;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological' | 'weighted_rotation';
+                direction?: 'asc' | 'desc';
                 rotation?: {
-                    tierWeights?: {heavy?: number; medium?: number; light?: number;};
-                    targetIntervalMs?: {heavy?: number; medium?: number; light?: number;};
+                    tierWeights?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    targetIntervalMs?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
                     songGapMs?: number;
                     artistGapMs?: number;
                 };
-                direction?: 'asc' | 'desc';
                 id: string;
                 iterationGroup?: string;
                 linkMode?: 'continue' | 'rerun';
@@ -7022,15 +7078,23 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                 weight: number;
                 index?: number;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological' | 'weighted_rotation';
-                rotation?: {
-                    tierWeights?: {heavy?: number; medium?: number; light?: number;};
-                    targetIntervalMs?: {heavy?: number; medium?: number; light?: number;};
-                    songGapMs?: number;
-                    artistGapMs?: number;
-                };
                 direction?: 'asc' | 'desc';
                 type: 'smart-collection';
                 smartCollectionId: string;
+                rotation?: {
+                    tierWeights?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    targetIntervalMs?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    songGapMs?: number;
+                    artistGapMs?: number;
+                };
             }>;
             timeZoneOffset?: number;
             randomDistribution: 'uniform' | 'weighted' | 'none';
@@ -7538,13 +7602,21 @@ export type GetApiChannelsByIdScheduleResponses = {
                 type: 'smart-collection';
                 smartCollectionId: string;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological' | 'weighted_rotation';
+                direction: 'asc' | 'desc';
                 rotation?: {
-                    tierWeights?: {heavy?: number; medium?: number; light?: number;};
-                    targetIntervalMs?: {heavy?: number; medium?: number; light?: number;};
+                    tierWeights?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    targetIntervalMs?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
                     songGapMs?: number;
                     artistGapMs?: number;
                 };
-                direction: 'asc' | 'desc';
                 id: string;
                 iterationGroup?: string;
                 linkMode?: 'continue' | 'rerun';
@@ -7999,15 +8071,23 @@ export type GetApiChannelsByIdScheduleResponses = {
                 weight: number;
                 index?: number;
                 order: 'next' | 'shuffle' | 'ordered_shuffle' | 'alphanumeric' | 'chronological' | 'weighted_rotation';
-                rotation?: {
-                    tierWeights?: {heavy?: number; medium?: number; light?: number;};
-                    targetIntervalMs?: {heavy?: number; medium?: number; light?: number;};
-                    songGapMs?: number;
-                    artistGapMs?: number;
-                };
                 direction: 'asc' | 'desc';
                 type: 'smart-collection';
                 smartCollectionId: string;
+                rotation?: {
+                    tierWeights?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    targetIntervalMs?: {
+                        heavy?: number;
+                        medium?: number;
+                        light?: number;
+                    };
+                    songGapMs?: number;
+                    artistGapMs?: number;
+                };
             }>;
             timeZoneOffset?: number;
             randomDistribution: 'uniform' | 'weighted' | 'none';

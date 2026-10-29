@@ -83,6 +83,9 @@ import {
   ProgramShuffleIteratorImpl,
 } from './ShuffleProgramIterator.ts';
 import type { SlotImpl } from './SlotImpl.ts';
+import { resolveRotationParams } from './rotation/resolveRotationParams.ts';
+import type { RotationState } from './rotation/RotationState.ts';
+import { WeightedRotationProgramIterator } from './rotation/WeightedRotationProgramIterator.ts';
 import { StaticProgramIterator } from './StaticProgramIterator.ts';
 import { WeightedFillerProgramIterator } from './WeightedFillerProgramIterator.ts';
 
@@ -377,6 +380,7 @@ export function createSlotProgramIterator(
   slot: BaseSlot,
   programBySlotType: ProgramMapping,
   random: Random,
+  rotationState: RotationState,
 ): ProgramIterator {
   return match(slot)
     .with(
@@ -500,7 +504,12 @@ export function createSlotProgramIterator(
             slot.direction === 'asc',
           );
         case 'weighted_rotation':
-          throw new Error('weighted_rotation iterator is not wired yet');
+          return new WeightedRotationProgramIterator(
+            programs,
+            rotationState,
+            random,
+            resolveRotationParams(slot.rotation),
+          );
       }
     })
     .exhaustive();
@@ -537,6 +546,7 @@ export function createSlotIterators(
   slots: BaseSlot[],
   programBySlotType: ProgramMapping,
   random: Random,
+  rotationState: RotationState,
 ): SlotIteratorResult {
   const result = new Map<string, ProgramIterator>();
   const resetPeriodCallbacks: (() => void)[] = [];
@@ -589,7 +599,12 @@ export function createSlotIterators(
   ): RecordingProgramIterator => {
     const existing = groupRecorders.get(group);
     if (existing) return existing;
-    const base = createSlotProgramIterator(slot, programBySlotType, random);
+    const base = createSlotProgramIterator(
+      slot,
+      programBySlotType,
+      random,
+      rotationState,
+    );
     const recorder = new RecordingProgramIterator(base);
     groupRecorders.set(group, recorder);
     resetPeriodCallbacks.push(() => recorder.resetPeriod());
@@ -604,7 +619,12 @@ export function createSlotIterators(
 
     const iterator = (() => {
       if (!group) {
-        return createSlotProgramIterator(slot, programBySlotType, random);
+        return createSlotProgramIterator(
+          slot,
+          programBySlotType,
+          random,
+          rotationState,
+        );
       }
 
       const classification = groupClassification.get(group);
@@ -618,6 +638,7 @@ export function createSlotIterators(
           slot,
           programBySlotType,
           random,
+          rotationState,
         );
         const meta = rerunGroupMeta.get(group);
         if (!meta) {
@@ -638,6 +659,7 @@ export function createSlotIterators(
           slot,
           programBySlotType,
           random,
+          rotationState,
         );
         groupIterators.set(compositeKey, newIterator);
         return newIterator;

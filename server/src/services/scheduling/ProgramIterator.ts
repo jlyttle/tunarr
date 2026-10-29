@@ -109,15 +109,6 @@ export class RerunProgramIterator<
   }
 }
 
-// Dummy state used when calling current() from next() for recording.
-// Safe because content iterators (IndexBasedProgramIterator) ignore the state
-// param. Only FlexProgramIterator and WeightedFillerProgramIterator use it,
-// and neither appears as the main iterator in a linked group.
-const DummyIterationState: IterationState = {
-  slotDuration: 0,
-  timeCursor: 0,
-};
-
 /**
  * Wraps a base iterator for "continue" slots in a mixed-mode group.
  * Delegates current()/next() to the inner iterator while recording each
@@ -129,15 +120,19 @@ export class RecordingProgramIterator<
 > implements ProgramIterator<ProgramT>
 {
   #periodBuffer: ProgramT[] = [];
+  // next() re-reads current() to record it. State-aware inner iterators
+  // (weighted rotation) must see the placement state, not a dummy one.
+  #lastState: IterationState = { slotDuration: 0, timeCursor: 0 };
 
   constructor(private inner: ProgramIterator<ProgramT>) {}
 
   current(state: IterationState): ProgramT | null {
+    this.#lastState = state;
     return this.inner.current(state);
   }
 
   next(): void {
-    const curr = this.inner.current(DummyIterationState);
+    const curr = this.inner.current(this.#lastState);
     if (curr !== null) {
       this.#periodBuffer.push(curr);
     }

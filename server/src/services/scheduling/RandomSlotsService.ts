@@ -27,6 +27,7 @@ import type { Nilable } from '../../types/util.ts';
 import { isNonEmptyArray, zipWithIndex } from '../../util/index.ts';
 import { type IterationState } from './ProgramIterator.ts';
 import { RandomSlotImpl } from './RandomSlotImpl.ts';
+import { RotationState } from './rotation/RotationState.ts';
 import type {
   PaddedProgram,
   SlotSchedulerProgram,
@@ -89,10 +90,12 @@ class ScheduleContext {
       programMap,
       this.#random,
     );
+    const rotationState = new RotationState();
     const { iterators: slotIterators } = createSlotIterators(
       schedule.slots,
       programMap,
       this.#random,
+      rotationState,
     );
     this.#startTime = this.#timeCursor = startTime;
     const seenLinkGroups = new Set<string>();
@@ -102,7 +105,12 @@ class ScheduleContext {
         new RandomSlotImpl(
           slot,
           ('id' in slot ? slotIterators.get(slot.id) : undefined) ??
-            createSlotProgramIterator(slot, programMap, this.#random),
+            createSlotProgramIterator(
+              slot,
+              programMap,
+              this.#random,
+              rotationState,
+            ),
           this.#random,
           getFillerIteratorsForSlot(slot, fillerIterators, seenLinkGroups),
         ),

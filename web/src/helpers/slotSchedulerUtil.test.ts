@@ -7,6 +7,7 @@ import {
   OneDayMillis,
   slotDayOfWeek,
   slotPeriodMillis,
+  slotOrderOptions,
   slotsForDayColumn,
   unavailableCustomShowSlotIndexes,
   withSlotDayOfWeek,
@@ -186,5 +187,22 @@ describe('offsets stay inside the schedule period', () => {
     expect(withSlotTimeOfDay(2 * OneDayMillis, 9, 0, 'week')).toBe(
       2 * OneDayMillis + 9 * HOUR,
     );
+  });
+});
+
+describe('slotOrderOptions', () => {
+  test('offers weighted rotation only for smart collections', () => {
+    const rotation = {
+      value: 'weighted_rotation',
+      description: 'Weighted rotation (tiers + artist spacing)',
+    };
+    expect(slotOrderOptions('smart-collection')).toContainEqual(
+      expect.objectContaining(rotation),
+    );
+    for (const type of ['movie', 'show', 'custom-show', 'filler'] as const) {
+      expect(slotOrderOptions(type).map((o) => o.value)).not.toContain(
+        'weighted_rotation',
+      );
+    }
   });
 });

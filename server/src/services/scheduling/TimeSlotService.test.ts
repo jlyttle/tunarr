@@ -14,6 +14,7 @@ import {
   deduplicateSlotIds,
   getFillerIteratorsForSlot,
 } from './slotSchedulerUtil.js';
+import { RotationState } from './rotation/RotationState.ts';
 import { scheduleTimeSlots } from './TimeSlotService.ts';
 import { MersenneTwister19937, Random } from 'random-js';
 
@@ -63,6 +64,7 @@ describe('createSlotIterators unit', () => {
       [slotA, slotB],
       programMap,
       random,
+      new RotationState(),
     );
 
     const itA = iterators.get(slotA.id)!;
@@ -145,7 +147,12 @@ describe('createSlotIterators unit', () => {
     // After dedup, the IDs should be unique
     expect(slots[0].id).not.toBe(slots[1].id);
 
-    const { iterators } = createSlotIterators(slots, programMap, random);
+    const { iterators } = createSlotIterators(
+      slots,
+      programMap,
+      random,
+      new RotationState(),
+    );
 
     const itA = iterators.get(slots[0].id)!;
     const itB = iterators.get(slots[1].id)!;
@@ -275,6 +282,7 @@ describe('createSlotIterators unit', () => {
       [slotA, slotB],
       programMap,
       random,
+      new RotationState(),
     );
 
     const itA = iterators.get(slotA.id)!;
@@ -336,6 +344,7 @@ describe('createSlotIterators unit', () => {
       [slotA, slotB, slotC],
       programMap,
       random,
+      new RotationState(),
     );
 
     const itA = iterators.get(slotA.id)!;
@@ -395,7 +404,12 @@ describe('createSlotIterators unit', () => {
     const mt = MersenneTwister19937.seed(42);
     const random = new Random(mt);
     const programMap = createProgramMap(episodes);
-    const { iterators } = createSlotIterators([slotA], programMap, random);
+    const { iterators } = createSlotIterators(
+      [slotA],
+      programMap,
+      random,
+      new RotationState(),
+    );
 
     const itA = iterators.get(slotA.id)!;
     const state = { slotDuration: 60 * 60 * 1000, timeCursor: 0 };
@@ -457,6 +471,7 @@ describe('createSlotIterators unit', () => {
       [continueSlot, rerunSlot],
       programMap,
       random,
+      new RotationState(),
     );
 
     const itContinue = iterators.get(continueSlot.id)!;
@@ -536,6 +551,7 @@ describe('createSlotIterators unit', () => {
       [continueSlot, rerunSlot],
       programMap,
       random,
+      new RotationState(),
     );
 
     const itContinue = iterators.get(continueSlot.id)!;
@@ -609,6 +625,7 @@ describe('createSlotIterators unit', () => {
       [continueSlot, rerunSlot],
       programMap,
       random,
+      new RotationState(),
     );
 
     const itContinue = iterators.get(continueSlot.id)!;

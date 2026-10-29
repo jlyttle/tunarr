@@ -33,6 +33,7 @@ import type {
   PaddedProgram,
   SlotSchedulerProgram,
 } from './slotSchedulerUtil.js';
+import { RotationState } from './rotation/RotationState.ts';
 import {
   addHeadAndTailFillerToSlot,
   applyMidRollBreaks,
@@ -134,8 +135,9 @@ export async function scheduleTimeSlots(
     programMap,
     random,
   );
+  const rotationState = new RotationState();
   const { iterators: slotIterators, resetPeriodCallbacks } =
-    createSlotIterators(schedule.slots, programMap, random);
+    createSlotIterators(schedule.slots, programMap, random, rotationState);
 
   const periodDuration = dayjs.duration(1, schedule.period);
   const periodMs = dayjs.duration(1, schedule.period).asMilliseconds();
@@ -170,7 +172,7 @@ export async function scheduleTimeSlots(
       new TimeSlotImpl(
         slot,
         ('id' in slot ? slotIterators.get(slot.id) : undefined) ??
-          createSlotProgramIterator(slot, programMap, random),
+          createSlotProgramIterator(slot, programMap, random, rotationState),
         random,
         getFillerIteratorsForSlot(slot, fillerIterators, seenLinkGroups),
       ),

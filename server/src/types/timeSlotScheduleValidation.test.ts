@@ -1,6 +1,7 @@
 import {
   StrictTimeSlotScheduleSchema,
   TimeSlotScheduleSchema,
+  UpdateChannelProgrammingRequestSchema,
   type TimeSlotSchedule,
 } from '@tunarr/types/api';
 import { randomUUID } from 'node:crypto';
@@ -84,4 +85,39 @@ describe('StrictTimeSlotScheduleSchema', () => {
       expect(TimeSlotScheduleSchema.safeParse(schedule).success).toBe(true);
     },
   );
+});
+
+describe('weighted_rotation smart-collection slot', () => {
+  const rotationSchedule = {
+    ...valid,
+    slots: [
+      {
+        id: randomUUID(),
+        startTime: 0,
+        type: 'smart-collection' as const,
+        smartCollectionId: randomUUID(),
+        order: 'weighted_rotation' as const,
+        direction: 'asc' as const,
+        rotation: { tierWeights: { heavy: 5 }, artistGapMs: 30 * 60 * 1000 },
+      },
+    ],
+  };
+
+  test('is accepted by the strict schedule schema', () => {
+    const parsed = StrictTimeSlotScheduleSchema.safeParse(rotationSchedule);
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.slots[0]).toMatchObject({
+      order: 'weighted_rotation',
+      rotation: { tierWeights: { heavy: 5 }, artistGapMs: 30 * 60 * 1000 },
+    });
+  });
+
+  test('is accepted by the POST /channels/:id/programming body schema', () => {
+    const parsed = UpdateChannelProgrammingRequestSchema.safeParse({
+      type: 'time',
+      programs: [],
+      schedule: rotationSchedule,
+    });
+    expect(parsed.success).toBe(true);
+  });
 });

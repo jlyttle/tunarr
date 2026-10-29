@@ -308,6 +308,10 @@ const OrderedShuffleSortOpt = {
   value: 'ordered_shuffle',
   description: 'Ordered Shuffle',
 } as const;
+const WeightedRotationSortOpt = {
+  value: 'weighted_rotation',
+  description: 'Weighted rotation (tiers + artist spacing)',
+} as const;
 const ShufflePreferLongSortOpt = {
   value: 'shuffle_prefer_long',
   description: 'Shuffle (prefer long)',
@@ -349,6 +353,7 @@ export function slotOrderOptions(
       ShuffleSortOpt,
       NextEpSortOpt,
       OrderedShuffleSortOpt,
+      WeightedRotationSortOpt,
     ])
     .exhaustive();
 }
