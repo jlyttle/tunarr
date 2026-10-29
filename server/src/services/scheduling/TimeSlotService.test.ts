@@ -1457,7 +1457,7 @@ describe('TimeSlotService', () => {
           programs,
           undefined,
           undefined,
-          dayjs().startOf('day'),
+          dayjs('2024-01-10'),
         );
 
         expect(result.lineup).toBeDefined();
