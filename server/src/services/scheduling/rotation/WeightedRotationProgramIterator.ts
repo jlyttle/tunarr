@@ -56,6 +56,7 @@ export class WeightedRotationProgramIterator
 {
   private readonly entries: RotationEntry[];
   private picked: Nullable<RotationEntry> = null;
+  private pickedAtVersion = -1;
   private lastTimeCursor = 0;
 
   constructor(
@@ -71,7 +72,13 @@ export class WeightedRotationProgramIterator
 
   current(iterState: IterationState): Nullable<CondensedContentProgram> {
     this.lastTimeCursor = iterState.timeCursor;
-    this.picked ??= this.pick(iterState.timeCursor);
+    if (this.pickedAtVersion !== this.state.version) {
+      this.picked = null;
+    }
+    if (this.picked === null) {
+      this.picked = this.pick(iterState.timeCursor);
+      this.pickedAtVersion = this.state.version;
+    }
     return this.picked?.minted ?? null;
   }
 

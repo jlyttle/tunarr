@@ -232,6 +232,91 @@ describe('WeightedRotationProgramIterator', () => {
       null,
     );
     iterator.next();
+    expect(
+      iterator.current({ slotDuration: HOUR, timeCursor: START + HOUR }),
+    ).toBe(null);
+  });
+
+  test('a stale pick is redone when another iterator airs the same artist', () => {
+    const state = new RotationState();
+    const params = resolveRotationParams({ tierWeights: { heavy: 1e9 } });
+    const x = new WeightedRotationProgramIterator(
+      [
+        makeProgram(0, { artist: 'A', tier: 'heavy' }),
+        makeProgram(1, { artist: 'B' }),
+      ],
+      state,
+      new Random(MersenneTwister19937.seed(1)),
+      params,
+    );
+    const y = new WeightedRotationProgramIterator(
+      [makeProgram(2, { artist: 'A' })],
+      state,
+      new Random(MersenneTwister19937.seed(2)),
+      params,
+    );
+    expect(x.current({ slotDuration: HOUR, timeCursor: START })?.id).toBe(
+      'p0000',
+    );
+    expect(y.current({ slotDuration: HOUR, timeCursor: START })?.id).toBe(
+      'p0002',
+    );
+    y.next();
+    expect(
+      x.current({ slotDuration: HOUR, timeCursor: START + 4 * MINUTE })?.id,
+    ).toBe('p0001');
+  });
+
+  test('a song-gap-only candidate beats song-blocked ones', () => {
+    const params = resolveRotationParams({ tierWeights: { heavy: 1e9 } });
+    for (let seed = 0; seed < 20; seed++) {
+      const state = new RotationState();
+      const programs = [
+        makeProgram(0, { artist: 'A' }),
+        ...Array.from({ length: 20 }, (_, i) =>
+          makeProgram(i + 1, { artist: `Other ${i}`, tier: 'heavy' }),
+        ),
+      ];
+      state.record(programs[0]!, START - 30 * DAY);
+      for (const p of programs.slice(1)) {
+        state.record(p, START - HOUR);
+      }
+      state.record(makeProgram(99, { artist: 'A' }), START - MINUTE);
+      const iterator = new WeightedRotationProgramIterator(
+        programs,
+        state,
+        new Random(MersenneTwister19937.seed(seed)),
+        params,
+      );
+      expect(
+        iterator.current({ slotDuration: HOUR, timeCursor: START })?.id,
+      ).toBe('p0000');
+    }
+  });
+
+  test('all-zero weights fall back to the least recently aired', () => {
+    const params = {
+      ...resolveRotationParams({ songGapMs: 0, artistGapMs: 0 }),
+      tierWeights: { heavy: 0, medium: 0, light: 0 },
+    };
+    for (let seed = 0; seed < 20; seed++) {
+      const state = new RotationState();
+      const programs = [0, 1, 2].map((i) =>
+        makeProgram(i, { artist: `Artist ${i}` }),
+      );
+      state.record(programs[0]!, START - 5 * MINUTE);
+      state.record(programs[1]!, START - 10 * MINUTE);
+      state.record(programs[2]!, START - MINUTE);
+      const iterator = new WeightedRotationProgramIterator(
+        programs,
+        state,
+        new Random(MersenneTwister19937.seed(seed)),
+        params,
+      );
+      expect(
+        iterator.current({ slotDuration: HOUR, timeCursor: START })?.id,
+      ).toBe('p0001');
+    }
   });
 });
 
@@ -242,6 +327,14 @@ describe('RotationState', () => {
     expect(state.songLastAired.get('p0000')).toBe(123);
     expect(state.artistLastAired.get('roots')).toBe(123);
     expect(state.artistLastAired.get('erykah badu')).toBe(123);
+  });
+
+  test('every record bumps the version', () => {
+    const state = new RotationState();
+    expect(state.version).toBe(0);
+    state.record(makeProgram(0, { artist: 'A' }), 1);
+    state.record(makeProgram(0, { artist: 'A' }), 2);
+    expect(state.version).toBe(2);
   });
 });
 
