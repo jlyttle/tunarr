@@ -294,6 +294,31 @@ describe('WeightedRotationProgramIterator', () => {
     }
   });
 
+  test('when no candidate meets the artist gap, the stalest artist airs', () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const state = new RotationState();
+      const programs = [
+        makeProgram(0, { artist: 'R.E.M.' }),
+        makeProgram(1, { artist: 'R.E.M.' }),
+        makeProgram(2, { artist: 'R.E.M.' }),
+        makeProgram(3, { artist: 'Weezer' }),
+        makeProgram(4, { artist: 'Blur' }),
+      ];
+      state.record(makeProgram(90, { artist: 'R.E.M.' }), START - MINUTE);
+      state.record(makeProgram(91, { artist: 'Weezer' }), START - 30 * MINUTE);
+      state.record(makeProgram(92, { artist: 'Blur' }), START - 50 * MINUTE);
+      const iterator = new WeightedRotationProgramIterator(
+        programs,
+        state,
+        new Random(MersenneTwister19937.seed(seed)),
+        resolveRotationParams(),
+      );
+      expect(
+        iterator.current({ slotDuration: HOUR, timeCursor: START })?.id,
+      ).toBe('p0004');
+    }
+  });
+
   test('the song-blocked fallback still prefers an artist-gap-safe candidate', () => {
     const params = resolveRotationParams({ artistGapMs: 10 * MINUTE });
     for (let seed = 0; seed < 20; seed++) {
