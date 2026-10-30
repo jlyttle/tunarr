@@ -19,6 +19,7 @@ type RotationEntry = {
   targetIntervalMs: number;
   // Scratch values rewritten by every pick.
   level: number;
+  artistGapOk: boolean;
   weight: number;
   lastAired: number;
 };
@@ -46,6 +47,7 @@ function toEntry(
     tierWeight: params.tierWeights[tier],
     targetIntervalMs: params.targetIntervalMs[tier],
     level: 0,
+    artistGapOk: true,
     weight: 0,
     lastAired: -Infinity,
   };
@@ -107,6 +109,7 @@ export class WeightedRotationProgramIterator
     return (
       this.weightedPick(SONG_AND_ARTIST_GAP) ??
       this.weightedPick(SONG_GAP_ONLY) ??
+      this.leastRecentlyAired(0, true) ??
       this.leastRecentlyAired(0)
     );
   }
@@ -115,22 +118,17 @@ export class WeightedRotationProgramIterator
     const lastAired = this.state.songLastAired.get(entry.program.uuid);
     const since = lastAired === undefined ? undefined : atMs - lastAired;
     entry.lastAired = lastAired ?? -Infinity;
-    entry.level = this.gapLevel(entry, since, atMs);
+    entry.artistGapOk = this.artistGapSatisfied(entry, atMs);
+    entry.level = this.gapLevel(entry, since);
     entry.weight =
       entry.tierWeight * recoveryFactor(since, entry.targetIntervalMs);
   }
 
-  private gapLevel(
-    entry: RotationEntry,
-    sinceSongMs: Maybe<number>,
-    atMs: number,
-  ): number {
+  private gapLevel(entry: RotationEntry, sinceSongMs: Maybe<number>): number {
     if (sinceSongMs !== undefined && sinceSongMs < this.params.songGapMs) {
       return 0;
     }
-    return this.artistGapSatisfied(entry, atMs)
-      ? SONG_AND_ARTIST_GAP
-      : SONG_GAP_ONLY;
+    return entry.artistGapOk ? SONG_AND_ARTIST_GAP : SONG_GAP_ONLY;
   }
 
   private artistGapSatisfied(entry: RotationEntry, atMs: number): boolean {
@@ -181,11 +179,22 @@ export class WeightedRotationProgramIterator
     return lastEligible;
   }
 
-  private leastRecentlyAired(minLevel: number): Nullable<RotationEntry> {
+  private isCandidate(
+    entry: RotationEntry,
+    minLevel: number,
+    artistGapOnly: boolean,
+  ): boolean {
+    return entry.level >= minLevel && (!artistGapOnly || entry.artistGapOk);
+  }
+
+  private leastRecentlyAired(
+    minLevel: number,
+    artistGapOnly = false,
+  ): Nullable<RotationEntry> {
     let oldest = Infinity;
     let ties = 0;
     for (const entry of this.entries) {
-      if (entry.level < minLevel) {
+      if (!this.isCandidate(entry, minLevel, artistGapOnly)) {
         continue;
       }
       if (entry.lastAired < oldest) {
@@ -198,17 +207,26 @@ export class WeightedRotationProgramIterator
     if (ties === 0) {
       return null;
     }
-    return this.nthAiredAt(minLevel, oldest, this.random.integer(0, ties - 1));
+    return this.nthAiredAt(
+      minLevel,
+      artistGapOnly,
+      oldest,
+      this.random.integer(0, ties - 1),
+    );
   }
 
   private nthAiredAt(
     minLevel: number,
+    artistGapOnly: boolean,
     lastAired: number,
     n: number,
   ): Nullable<RotationEntry> {
     let seen = 0;
     for (const entry of this.entries) {
-      if (entry.level >= minLevel && entry.lastAired === lastAired) {
+      if (
+        this.isCandidate(entry, minLevel, artistGapOnly) &&
+        entry.lastAired === lastAired
+      ) {
         if (seen === n) {
           return entry;
         }

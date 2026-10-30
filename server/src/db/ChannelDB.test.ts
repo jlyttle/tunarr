@@ -26,6 +26,9 @@ import { LineupRepository } from './channel/LineupRepository.ts';
 import { ChannelConfigRepository } from './channel/ChannelConfigRepository.ts';
 import { ChannelReadOpsRepository } from './channel/ChannelReadOpsRepository.ts';
 import { MaterializeLineupCommand } from '../commands/MaterializeLineupCommand.ts';
+import { Tag, TagRelations } from './schema/Tag.ts';
+import { SlotSchedulerHelper } from '../services/scheduling/SlotSchedulerHelper.ts';
+import { tierOf } from '../services/scheduling/rotation/artistKeys.ts';
 
 type Fixture = {
   db: string;
@@ -1059,6 +1062,53 @@ describe('ChannelDB', () => {
     test('is a no-op for an empty id set', async ({ channelDb }) => {
       expect(await channelDb.removeProgramsFromAllLineups([])).toBe(0);
       expect(await channelDb.removeProgramsFromAllLineups(new Set())).toBe(0);
+    });
+  });
+
+  describe('Channel-sourced slot programming', () => {
+    test('keeps tier tags on programs loaded from the channel', async ({
+      channelDb,
+      defaultTranscodeConfigId,
+      drizzle,
+    }) => {
+      const created = await channelDb.saveChannel(
+        createSaveableChannel(defaultTranscodeConfigId, { number: 820 }),
+      );
+      const programId = v4();
+      await drizzle.insert(Program).values({
+        uuid: programId,
+        duration: 240000,
+        type: 'music_video',
+        sourceType: 'plex',
+        externalKey: faker.string.alphanumeric({ length: 16 }),
+        externalSourceId: faker.string.alphanumeric({ length: 16 }),
+        title: 'Heavy Song',
+      });
+      const tagId = v4();
+      await drizzle.insert(Tag).values({ uuid: tagId, tag: 'tier:heavy' });
+      await drizzle.insert(TagRelations).values({ tagId, programId });
+      await drizzle.insert(ChannelPrograms).values({
+        channelUuid: created.channel.uuid,
+        programUuid: programId,
+      });
+
+      const helper = new SlotSchedulerHelper(
+        {} as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        channelDb,
+      );
+      const programs = await helper.collectSlotProgramming({
+        type: 'channel',
+        channelId: created.channel.uuid,
+        schedule: { slots: [] },
+      } as any);
+
+      expect(programs).toHaveLength(1);
+      expect(tierOf((programs[0]!.tags ?? []).map((t) => t.tag.tag))).toBe(
+        'heavy',
+      );
     });
   });
 

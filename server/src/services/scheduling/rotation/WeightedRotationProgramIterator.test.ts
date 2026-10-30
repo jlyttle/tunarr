@@ -294,6 +294,29 @@ describe('WeightedRotationProgramIterator', () => {
     }
   });
 
+  test('the song-blocked fallback still prefers an artist-gap-safe candidate', () => {
+    const params = resolveRotationParams({ artistGapMs: 10 * MINUTE });
+    for (let seed = 0; seed < 20; seed++) {
+      const state = new RotationState();
+      const programs = [
+        makeProgram(0, { artist: 'A' }),
+        makeProgram(1, { artist: 'B' }),
+      ];
+      state.record(programs[0]!, START - 30 * MINUTE);
+      state.record(programs[1]!, START - 20 * MINUTE);
+      state.record(makeProgram(99, { artist: 'A' }), START - MINUTE);
+      const iterator = new WeightedRotationProgramIterator(
+        programs,
+        state,
+        new Random(MersenneTwister19937.seed(seed)),
+        params,
+      );
+      expect(
+        iterator.current({ slotDuration: HOUR, timeCursor: START })?.id,
+      ).toBe('p0001');
+    }
+  });
+
   test('all-zero weights fall back to the least recently aired', () => {
     const params = {
       ...resolveRotationParams({ songGapMs: 0, artistGapMs: 0 }),
