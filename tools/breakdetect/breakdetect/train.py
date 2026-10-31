@@ -1,0 +1,78 @@
+from collections.abc import Iterable
+from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+
+from breakdetect.cache import FeatureCache
+from breakdetect.candidates import Candidate, find_candidates
+from breakdetect.features import Features
+from breakdetect.labels import ShowLabels, data_dir, labels_dir, load_labels
+from breakdetect.model import LogisticModel
+from breakdetect.signals import SIGNAL_NAMES, candidate_signals
+
+MATCH_WINDOW_MS = 1500
+
+Episode = tuple[Features, list[Candidate], list[int]]
+
+
+@dataclass
+class TrainingSet:
+    X: np.ndarray
+    y: np.ndarray
+    episodes: int = 0
+
+
+def _is_positive(c: Candidate, truth_ms: list[int]) -> bool:
+    return any(abs(c.cut_ms - t) <= MATCH_WINDOW_MS for t in truth_ms)
+
+
+def build_training_set(episodes: Iterable[Episode]) -> tuple[np.ndarray, np.ndarray]:
+    rows, labels = [], []
+    for features, candidates, truth_ms in episodes:
+        for c in candidates:
+            rows.append(candidate_signals(c, features, None))
+            labels.append(1 if _is_positive(c, truth_ms) else 0)
+    return np.array(rows).reshape(-1, len(SIGNAL_NAMES)), np.array(labels, dtype=np.int64)
+
+
+def model_path() -> Path:
+    return data_dir() / "models" / "global.json"
+
+
+def _trainable(labels: ShowLabels, roots: list[Path]) -> list[tuple[Path, list[int]]]:
+    found = []
+    for rel, entry in labels.episodes.items():
+        truth = labels.ground_truth(rel, roots)
+        if truth is None or entry.held_out:
+            continue
+        path = next(root / rel for root in roots if (root / rel).exists())
+        found.append((path, truth))
+    return found
+
+
+def _label_files() -> list[str]:
+    return sorted(p.stem for p in labels_dir().glob("*.json"))
+
+
+def load_training_episodes(cache: FeatureCache, roots: list[Path]) -> list[Episode]:
+    episodes = []
+    for slug in _label_files():
+        for path, truth in _trainable(load_labels(slug), roots):
+            features = cache.ensure(path)
+            episodes.append((features, find_candidates(features), truth))
+    return episodes
+
+
+def train(cache: FeatureCache, roots: list[Path]) -> tuple[int, int, int]:
+    episodes = load_training_episodes(cache, roots)
+    X, y = build_training_set(episodes)
+    positives = int((y == 1).sum())
+    if positives == 0:
+        raise ValueError(f"no positive candidates across {len(episodes)} episodes; refusing to write a model")
+    if positives == len(y):
+        raise ValueError("no negative candidates; refusing to write a model")
+    dest = model_path()
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(LogisticModel.fit(X, y).to_json())
+    return len(episodes), positives, len(y) - positives

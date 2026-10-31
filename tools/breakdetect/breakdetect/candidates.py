@@ -27,12 +27,20 @@ class Candidate:
     min_rms_db: float | None
 
 
+def dark_threshold(luma: np.ndarray) -> float:
+    return min(max(DARK_FLOOR, float(np.percentile(luma, 2)) + DARK_MARGIN), DARK_CEILING)
+
+
+def quiet_threshold(rms_db: np.ndarray) -> float:
+    return max(float(np.percentile(rms_db, 5)) - QUIET_MARGIN_DB, QUIET_FLOOR_DB)
+
+
 def _dark_mask(luma: np.ndarray) -> np.ndarray:
-    return luma < min(max(DARK_FLOOR, float(np.percentile(luma, 2)) + DARK_MARGIN), DARK_CEILING)
+    return luma < dark_threshold(luma)
 
 
 def _quiet_mask(rms_db: np.ndarray) -> np.ndarray:
-    return rms_db < max(float(np.percentile(rms_db, 5)) - QUIET_MARGIN_DB, QUIET_FLOOR_DB)
+    return rms_db < quiet_threshold(rms_db)
 
 
 def _runs(mask: np.ndarray) -> list[Span]:
