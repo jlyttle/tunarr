@@ -151,3 +151,11 @@ def test_unreadable_cache_entry_is_a_miss(monkeypatch, media, cache):
     [entry] = [p for p in cache.root.rglob("*.npz")]
     entry.chmod(0)
     assert cache.get(media) is None
+
+
+def test_discover_episodes_skips_plex_extras_case_insensitively(tmp_path):
+    extras = ["Featurettes", "behind the scenes", "Deleted Scenes", "INTERVIEWS", "Scenes", "Shorts", "Trailers", "Other", "extras", "specials"]
+    for name in ["Season 1", *extras]:
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "x.mkv").write_bytes(b"")
+    assert discover_episodes(tmp_path) == [tmp_path / "Season 1" / "x.mkv"]

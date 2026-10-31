@@ -45,7 +45,10 @@ def probe(path: Path) -> Probe:
 
 DEFAULT_ROOT = "/Volumes/plex"
 VIDEO_EXTENSIONS = {".mkv", ".mp4", ".avi", ".m4v", ".mpg", ".ts"}
-SKIPPED_DIRS = {"Specials"}
+SKIPPED_DIRS = {
+    "featurettes", "behind the scenes", "deleted scenes", "interviews", "scenes",
+    "shorts", "trailers", "other", "extras", "specials",
+}
 
 
 def default_roots() -> list[Path]:
@@ -78,6 +81,6 @@ def identity_key(identity: str) -> str:
 def discover_episodes(show_dir: Path) -> list[Path]:
     found = []
     for dirpath, dirnames, filenames in os.walk(show_dir):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIPPED_DIRS)
+        dirnames[:] = sorted(d for d in dirnames if d.lower() not in SKIPPED_DIRS)
         found += [Path(dirpath) / f for f in sorted(filenames) if Path(f).suffix.lower() in VIDEO_EXTENSIONS and not f.startswith(".")]
     return found
