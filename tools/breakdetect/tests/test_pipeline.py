@@ -62,3 +62,17 @@ def test_library_shaped_tree_exports_one_marker_per_show(library):
         with np.load(p, allow_pickle=False) as z:
             show = SHOWS[p.name.rsplit("-", 1)[0]]
             assert all(str(r).startswith(f"Kids TV/{show}/") for r in z["rels"])
+
+
+def test_export_refuses_show_whose_signals_changed_since_evaluate(library, capsys):
+    cache = str(library / "cache" / "features")
+    assert main(["train", "--cache", cache]) == 0
+    assert main(["evaluate", "--cache", cache]) == 0
+    season = library / "media" / "Kids TV" / "Show A" / "Season 1"
+    shutil.copy(season / "e00.mkv", season / "e99.mkv")
+    assert main(["extract", str(season / "e99.mkv"), "--cache", cache]) == 0
+    capsys.readouterr()
+    assert main(["export", "--all-enabled", "--cache", cache]) == 1
+    assert "breakdetect evaluate" in capsys.readouterr().err
+    markers = library / "data" / "markers"
+    assert sorted(p.name for p in markers.glob("*.json")) == ["show-b.json"]

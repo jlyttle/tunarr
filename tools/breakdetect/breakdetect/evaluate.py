@@ -11,8 +11,8 @@ from breakdetect.cache import FeatureCache
 from breakdetect.candidates import Candidate
 from breakdetect.labels import data_dir, load_labels, slugify
 from breakdetect.model import LogisticModel
-from breakdetect.showsignals import ShowSignals
-from breakdetect.train import MATCH_WINDOW_MS, _episode_signals, _label_files, build_training_set, model_path
+from breakdetect.showsignals import ShowSignals, signals_key
+from breakdetect.train import MATCH_WINDOW_MS, _episode_signals, _label_files, _show_dir, build_training_set, model_path
 
 MIN_GAP_MS = 120_000
 MIN_PRECISION = 0.95
@@ -31,6 +31,7 @@ class GtEpisode:
     candidates: list[Candidate]
     X: np.ndarray
     truth: list[int]
+    show_dir: Path | None = None
 
 
 @dataclass
@@ -226,7 +227,7 @@ def load_gt_pool(cache: FeatureCache, roots: list[Path]) -> list[GtEpisode]:
     pool = []
     for slug, rel, held_out, path, truth in found:
         candidates, X = _episode_signals(cache, shows, rel, path)
-        pool.append(GtEpisode(slug, rel, held_out, candidates, X, truth))
+        pool.append(GtEpisode(slug, rel, held_out, candidates, X, truth, _show_dir(rel, path)))
     return pool
 
 
@@ -234,13 +235,30 @@ def load_gt_pool(cache: FeatureCache, roots: list[Path]) -> list[GtEpisode]:
 class Evaluation:
     reports: list[ShowReport]
     model_json: str | None
+    signals_keys: dict[str, str | None] = field(default_factory=dict)
+
+
+@dataclass
+class ShowThreshold:
+    threshold: float
+    signals_key: str | None
+
+
+def _signals_keys(pool: list[GtEpisode], cache: FeatureCache) -> dict[str, str | None]:
+    dirs: dict[str, set[Path | None]] = {}
+    for e in pool:
+        dirs.setdefault(e.slug, set()).add(e.show_dir)
+    return {
+        slug: signals_key(next(iter(found)), cache) if len(found) == 1 and None not in found else None
+        for slug, found in dirs.items()
+    }
 
 
 def evaluate(cache: FeatureCache, roots: list[Path], model_fitter: ModelFitter = LogisticModel.fit) -> Evaluation:
     pool = load_gt_pool(cache, roots)
     reports = [evaluate_show(slug, pool, model_fitter) for slug in _label_files()]
     global_model = _fit_on([e for e in pool if not e.held_out], model_fitter)
-    return Evaluation(reports, global_model.to_json() if global_model else None)
+    return Evaluation(reports, global_model.to_json() if global_model else None, _signals_keys(pool, cache))
 
 
 def thresholds_path() -> Path:
@@ -251,12 +269,21 @@ def model_sha(text: str) -> str:
     return hashlib.sha1(text.encode()).hexdigest()
 
 
-def load_thresholds() -> tuple[str, dict[str, float]]:
+def _parse_show_threshold(raw) -> ShowThreshold | None:
+    if not isinstance(raw, dict) or not isinstance(raw.get("threshold"), (int, float)) or "signals_key" not in raw:
+        return None
+    return ShowThreshold(float(raw["threshold"]), raw["signals_key"])
+
+
+def load_thresholds() -> tuple[str, dict[str, ShowThreshold]]:
     dest = thresholds_path()
     if not dest.exists():
         return "", {}
     raw = json.loads(dest.read_text())
-    return raw["model_sha"], raw["thresholds"]
+    parsed = {slug: _parse_show_threshold(v) for slug, v in raw.get("thresholds", {}).items()}
+    if any(v is None for v in parsed.values()):
+        return "", {}
+    return raw.get("model_sha", ""), {slug: v for slug, v in parsed.items() if v is not None}
 
 
 def thresholds_out_of_date(model_text: str) -> bool:
@@ -265,7 +292,11 @@ def thresholds_out_of_date(model_text: str) -> bool:
 
 
 def save_evaluation(evaluation: Evaluation) -> None:
-    enabled = {r.show: r.threshold for r in evaluation.reports if r.enabled and r.threshold is not None}
+    enabled = {
+        r.show: {"threshold": r.threshold, "signals_key": evaluation.signals_keys.get(r.show)}
+        for r in evaluation.reports
+        if r.enabled and r.threshold is not None
+    }
     sha = ""
     if evaluation.model_json is not None:
         model_path().parent.mkdir(parents=True, exist_ok=True)

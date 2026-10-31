@@ -151,6 +151,7 @@ def test_thresholds_carry_model_sha_of_written_model(tmp_path, monkeypatch):
     save_evaluation(evaluation)
     sha, thresholds = load_thresholds()
     assert list(thresholds) == ["show"]
+    assert thresholds["show"].threshold == evaluation.reports[0].threshold
     assert sha == model_sha((tmp_path / "models" / "global.json").read_text())
 
 
@@ -222,3 +223,15 @@ def test_show_with_four_clean_held_out_predictions_is_not_enabled():
 
 def test_show_with_five_clean_held_out_predictions_is_enabled():
     assert evaluate_show("show", _pool_with_held_out_breaks(5)).enabled
+
+
+def test_thresholds_record_the_signals_key_used_by_evaluate(tmp_path, monkeypatch):
+    monkeypatch.setenv("BREAKDETECT_DATA", str(tmp_path))
+    show_dir = tmp_path / "media" / "Kids" / "Show"
+    pool = [_episode("show", "show/a.mkv"), _episode("show", "show/b.mkv"), _episode("show", "show/c.mkv", held_out=True)]
+    for e in pool:
+        e.show_dir = show_dir
+    _patch_pool(monkeypatch, ["show"], pool)
+    monkeypatch.setattr("breakdetect.evaluate.signals_key", lambda d, cache: f"key-of-{d.name}")
+    save_evaluation(evaluate(FeatureCache(tmp_path / "features", []), []))
+    assert load_thresholds()[1]["show"].signals_key == "key-of-Show"

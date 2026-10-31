@@ -8,12 +8,12 @@ import numpy as np
 
 from breakdetect.cache import FeatureCache
 from breakdetect.candidates import Candidate
-from breakdetect.evaluate import MIN_GAP_MS, _select_indices, load_thresholds, model_sha
+from breakdetect.evaluate import MIN_GAP_MS, ShowThreshold, _select_indices, load_thresholds, model_sha
 from breakdetect.features import EXTRACTOR_VERSION
 from breakdetect.labels import DEDUPE_WINDOW_MS, ShowLabels, data_dir, load_labels, slugify
 from breakdetect.media import discover_episodes
 from breakdetect.model import LogisticModel
-from breakdetect.showsignals import show_signals
+from breakdetect.showsignals import show_signals, signals_key
 from breakdetect.train import _show_dir, model_path
 
 SCHEMA = 1
@@ -21,6 +21,10 @@ USER_BREAK_SCORE = 1.0
 
 
 class ExportError(Exception):
+    pass
+
+
+class StaleSignalsError(Exception):
     pass
 
 
@@ -38,7 +42,7 @@ def marker_path(show_slug: str) -> Path:
     return markers_dir() / f"{show_slug}.json"
 
 
-def load_approved_model() -> tuple[str, LogisticModel, dict[str, float]]:
+def load_approved_model() -> tuple[str, LogisticModel, dict[str, ShowThreshold]]:
     if not model_path().exists():
         raise ExportError(f"{model_path()} is missing; run `breakdetect train` and `breakdetect evaluate`")
     text = model_path().read_text()
@@ -122,12 +126,18 @@ def export_show(show_dir: Path, cache: FeatureCache) -> Path | None:
     if slug not in thresholds:
         dest.unlink(missing_ok=True)
         return None
-    episodes = _episodes(show_dir, cache, model, _labels_or_none(slug), thresholds[slug])
+    if signals_key(show_dir, cache) != thresholds[slug].signals_key:
+        dest.unlink(missing_ok=True)
+        raise StaleSignalsError(
+            f"{show_dir.name}: cached features changed since evaluate; marker removed, run `breakdetect evaluate` again"
+        )
+    threshold = thresholds[slug].threshold
+    episodes = _episodes(show_dir, cache, model, _labels_or_none(slug), threshold)
     _write_atomic(dest, {
         "schema": SCHEMA,
         "detector": f"breakdetect/{EXTRACTOR_VERSION}/{sha[:8]}",
         "show": show_dir.name,
-        "threshold": thresholds[slug],
+        "threshold": threshold,
         "episodes": episodes,
     })
     return dest

@@ -7,7 +7,7 @@ import pytest
 from breakdetect import export as export_module
 from breakdetect.candidates import Candidate
 from breakdetect.evaluate import model_sha
-from breakdetect.export import ExportError, export_show, markers_dir, remove_stale_markers
+from breakdetect.export import ExportError, StaleSignalsError, export_show, markers_dir, remove_stale_markers
 from breakdetect.labels import Decision, EpisodeLabels, ShowLabels, save_labels
 from breakdetect.model import LogisticModel
 from breakdetect.signals import SIGNAL_NAMES
@@ -58,13 +58,19 @@ def env(tmp_path, monkeypatch):
     return SimpleNamespace(data=data, show_dir=show_dir, model_text=text)
 
 
+SIGNALS_KEY = "signals-at-evaluate"
+
+
 def _enable(env, thresholds=None):
-    payload = {"model_sha": model_sha(env.model_text), "thresholds": thresholds if thresholds is not None else {"show": THRESHOLD}}
+    enabled = thresholds if thresholds is not None else {"show": THRESHOLD}
+    shows = {slug: {"threshold": t, "signals_key": SIGNALS_KEY} for slug, t in enabled.items()}
+    payload = {"model_sha": model_sha(env.model_text), "thresholds": shows}
     (env.data / "models" / "thresholds.json").write_text(json.dumps(payload))
 
 
-def _signals_for(monkeypatch, per_rel):
+def _signals_for(monkeypatch, per_rel, key=SIGNALS_KEY):
     monkeypatch.setattr(export_module, "show_signals", lambda show_dir, cache: per_rel)
+    monkeypatch.setattr(export_module, "signals_key", lambda show_dir, cache: key)
 
 
 def _label(decisions):
@@ -191,3 +197,20 @@ def test_user_breaks_close_together_are_both_exported(env, monkeypatch):
     _label([Decision(600_000, "break", "user"), Decision(660_000, "break", "user")])
     marker = _export(env, monkeypatch, {REL: _signals([])})
     assert [b["offsetMs"] for b in marker["episodes"][0]["breaks"]] == [600_000, 660_000]
+
+
+def test_changed_signals_refuse_export_and_remove_marker(env, monkeypatch):
+    _enable(env)
+    markers_dir().mkdir(parents=True)
+    (markers_dir() / "show.json").write_text("{}")
+    _signals_for(monkeypatch, {REL: _signals([(300_000, 5.0)])}, key="more-siblings-now")
+    with pytest.raises(StaleSignalsError, match="breakdetect evaluate"):
+        export_show(env.show_dir, FakeCache({REL: 1}))
+    assert not (markers_dir() / "show.json").exists()
+
+
+def test_old_thresholds_format_is_treated_as_empty(env, monkeypatch):
+    from breakdetect.evaluate import load_thresholds
+
+    (env.data / "models" / "thresholds.json").write_text(json.dumps({"model_sha": model_sha(env.model_text), "thresholds": {"show": 0.5}}))
+    assert load_thresholds() == ("", {})

@@ -3,8 +3,16 @@ import sys
 from pathlib import Path
 
 from breakdetect.cache import BatchResult, FeatureCache, default_cache_root, run_batch
-from breakdetect.evaluate import evaluate, format_table, save_evaluation, show_dirs_to_slugs, thresholds_out_of_date, write_report
-from breakdetect.export import ExportError, export_show, load_approved_model, locate_show_dir, remove_stale_markers, summarize
+from breakdetect.evaluate import (
+    ShowThreshold,
+    evaluate,
+    format_table,
+    save_evaluation,
+    show_dirs_to_slugs,
+    thresholds_out_of_date,
+    write_report,
+)
+from breakdetect.export import ExportError, StaleSignalsError, export_show, load_approved_model, locate_show_dir, remove_stale_markers, summarize
 from breakdetect.labels import import_seeds, load_or_empty, merge_labels, save_labels
 from breakdetect.media import default_roots, discover_episodes
 from breakdetect.review.server import make_server
@@ -91,16 +99,20 @@ def _evaluate(args: argparse.Namespace) -> int:
 
 
 def _export_one(show_dir: Path, cache: FeatureCache) -> bool:
-    marker = export_show(show_dir, cache)
+    try:
+        marker = export_show(show_dir, cache)
+    except StaleSignalsError as e:
+        print(f"export: {e}", file=sys.stderr)
+        return False
     if marker is None:
         print(f"{show_dir.name}: not enabled, nothing exported")
-        return False
+        return True
     summary = summarize(marker)
     print(f"{show_dir.name}: {summary.episodes} episodes, {summary.breaks} breaks -> {marker}")
     return True
 
 
-def _all_enabled_dirs(thresholds: dict[str, float]) -> tuple[list[Path], list[str]]:
+def _all_enabled_dirs(thresholds: dict[str, ShowThreshold]) -> tuple[list[Path], list[str]]:
     located = {slug: locate_show_dir(slug, default_roots()) for slug in thresholds}
     return [d for d in located.values() if d is not None], [s for s, d in located.items() if d is None]
 
@@ -115,14 +127,13 @@ def _export(args: argparse.Namespace) -> int:
             show_dirs += found
             for slug in remove_stale_markers(set(thresholds)):
                 print(f"removed stale marker: {slug}")
-        for show_dir in show_dirs:
-            _export_one(show_dir, cache)
+        failed = [d for d in show_dirs if not _export_one(d, cache)]
     except ExportError as e:
         print(f"export: {e}", file=sys.stderr)
         return 1
     for slug in missing:
         print(f"export: cannot locate show directory for {slug}", file=sys.stderr)
-    return 1 if missing else 0
+    return 1 if missing or failed else 0
 
 
 def _parser() -> argparse.ArgumentParser:

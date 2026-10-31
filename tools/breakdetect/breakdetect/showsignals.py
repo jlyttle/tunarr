@@ -113,6 +113,10 @@ def _store(result: ShowSignals, dest: Path) -> None:
         raise
 
 
+def signals_key(show_dir: Path, cache: FeatureCache) -> str:
+    return _signals_key(cache, _cached_paths(cache, show_dir))
+
+
 def show_signals(show_dir: Path, cache: FeatureCache) -> ShowSignals:
     paths = _cached_paths(cache, show_dir)
     dest = signals_dir(cache) / f"{slugify(show_dir.name)}-{_signals_key(cache, paths)}.npz"
