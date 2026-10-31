@@ -1,6 +1,6 @@
 import pytest
 
-from breakdetect.candidates import find_candidates
+from breakdetect.candidates import MAX_SPAN_MS, find_candidates
 from breakdetect.features import extract_features
 
 
@@ -19,6 +19,7 @@ def test_black_gap_is_candidate(black_gap):
     assert len(candidates) == 1
     assert abs(candidates[0].cut_ms - 70250) <= 150
     assert candidates[0].kind == "dark+quiet"
+    assert candidates[0].end_ms - candidates[0].start_ms <= 2000
 
 
 def test_fade_gap_is_candidate(fade_gap):
@@ -55,3 +56,17 @@ def test_cut_is_midpoint_of_span(black_gap):
     c = find_candidates(black_gap)[0]
     assert c.cut_ms == (c.start_ms + c.end_ms) // 2
     assert c.min_luma < 0.05
+
+
+def test_long_chain_does_not_drag_cut_away_from_real_gap(make_clip):
+    chain = [seg for _ in range(7) for seg in (("black", 0.3), ("content", 0.5))]
+    f = extract_features(make_clip([("content", 70), *chain, ("black", 0.5), ("content", 70)]))
+    real_gap_ms = 76_200
+    candidates = find_candidates(f)
+    assert all(c.end_ms - c.start_ms <= MAX_SPAN_MS for c in candidates)
+    assert any(abs(c.cut_ms - real_gap_ms) <= 250 for c in candidates)
+
+
+def test_dim_only_episode_stays_bounded(make_clip):
+    f = extract_features(make_clip([("darkscene", 130)]))
+    assert all(c.end_ms - c.start_ms <= MAX_SPAN_MS for c in find_candidates(f))
