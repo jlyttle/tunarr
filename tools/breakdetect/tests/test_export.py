@@ -177,3 +177,17 @@ def test_cli_refuses_with_nonzero_exit_on_mismatch(env, capsys, tmp_path):
     assert main(["export", str(env.show_dir), "--cache", str(tmp_path / "f")]) == 1
     assert "different model" in capsys.readouterr().err
     assert not markers_dir().exists()
+
+
+def test_user_break_beats_saturated_model_candidate_within_gap(env, monkeypatch):
+    _enable(env)
+    _label([Decision(600_000, "break", "user")])
+    marker = _export(env, monkeypatch, {REL: _signals([(660_000, 50.0)])})
+    assert marker["episodes"][0]["breaks"] == [{"offsetMs": 600_000, "score": 1.0}]
+
+
+def test_user_breaks_close_together_are_both_exported(env, monkeypatch):
+    _enable(env)
+    _label([Decision(600_000, "break", "user"), Decision(660_000, "break", "user")])
+    marker = _export(env, monkeypatch, {REL: _signals([])})
+    assert [b["offsetMs"] for b in marker["episodes"][0]["breaks"]] == [600_000, 660_000]

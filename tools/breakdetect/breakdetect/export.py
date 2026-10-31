@@ -8,7 +8,7 @@ import numpy as np
 
 from breakdetect.cache import FeatureCache
 from breakdetect.candidates import Candidate
-from breakdetect.evaluate import MIN_GAP_MS, load_thresholds, model_sha, select_breaks
+from breakdetect.evaluate import MIN_GAP_MS, _select_indices, load_thresholds, model_sha
 from breakdetect.features import EXTRACTOR_VERSION
 from breakdetect.labels import DEDUPE_WINDOW_MS, ShowLabels, data_dir, load_labels, slugify
 from breakdetect.media import discover_episodes
@@ -53,25 +53,23 @@ def _user_decisions(labels: ShowLabels | None, rel: str, label: str) -> list[int
     return [d.cut_ms for d in entry.decisions if d.source == "user" and d.label == label] if entry else []
 
 
-def _near_any(cut_ms: int, others: list[int]) -> bool:
-    return any(abs(cut_ms - o) <= DEDUPE_WINDOW_MS for o in others)
-
-
-def _user_candidate(cut_ms: int) -> Candidate:
-    return Candidate(cut_ms, cut_ms, cut_ms, "user", 0.0, None)
+def _near_any_within(cut_ms: int, others: list[int], window_ms: int) -> bool:
+    return any(abs(cut_ms - o) <= window_ms for o in others)
 
 
 def episode_breaks(
     candidates: list[Candidate], scores: np.ndarray, rejected: list[int], confirmed: list[int], threshold: float
 ) -> list[dict]:
-    kept = [(c, float(s)) for c, s in zip(candidates, scores) if not _near_any(c.cut_ms, rejected + confirmed)]
-    kept += [(_user_candidate(cut), USER_BREAK_SCORE) for cut in confirmed]
-    combined = [c for c, _ in kept]
-    combined_scores = np.array([s for _, s in kept], dtype=np.float64)
-    best = {}
-    for c, s in kept:
-        best[c.cut_ms] = max(s, best.get(c.cut_ms, s))
-    return [{"offsetMs": cut, "score": best[cut]} for cut in select_breaks(combined, combined_scores, threshold, MIN_GAP_MS)]
+    remaining = [
+        i
+        for i, c in enumerate(candidates)
+        if not _near_any_within(c.cut_ms, rejected, DEDUPE_WINDOW_MS)
+        and not _near_any_within(c.cut_ms, confirmed, MIN_GAP_MS)
+    ]
+    chosen = _select_indices([candidates[i] for i in remaining], scores[remaining], threshold, MIN_GAP_MS)
+    model_breaks = [{"offsetMs": candidates[remaining[k]].cut_ms, "score": float(scores[remaining[k]])} for k in chosen]
+    user_breaks = [{"offsetMs": cut, "score": USER_BREAK_SCORE} for cut in confirmed]
+    return sorted(user_breaks + model_breaks, key=lambda b: b["offsetMs"])
 
 
 def _labels_or_none(slug: str) -> ShowLabels | None:
