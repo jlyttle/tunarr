@@ -11,7 +11,7 @@ from breakdetect.signals import SIGNAL_NAMES, candidate_signals
 from breakdetect.cache import FeatureCache
 from breakdetect.labels import Decision, EpisodeLabels, ShowLabels, save_labels
 from breakdetect.media import file_identity
-from breakdetect.train import build_training_set, load_training_episodes, train
+from breakdetect.train import _show_dir, build_training_set, load_training_episodes, train
 
 
 def _auc(scores: np.ndarray, y: np.ndarray) -> float:
@@ -120,7 +120,7 @@ def test_training_episodes_use_show_siblings_including_unlabeled_cached(make_cli
     monkeypatch.setenv("BREAKDETECT_DATA", str(tmp_path / "data"))
     clip = make_clip(TWO_GAPS)
     roots = [tmp_path / "media"]
-    season = roots[0] / "Show" / "Season 1"
+    season = roots[0] / "Library" / "Show" / "Season 1"
     season.mkdir(parents=True)
     for name in ("a.mkv", "b.mkv", "c.mkv", "uncached.mkv"):
         shutil.copy(clip, season / name)
@@ -128,9 +128,15 @@ def test_training_episodes_use_show_siblings_including_unlabeled_cached(make_cli
     cache.ensure(season / "c.mkv")
     entries = {}
     for name in ("a.mkv", "b.mkv"):
-        entries[f"Show/Season 1/{name}"] = _episode(season / name)
+        entries[f"Library/Show/Season 1/{name}"] = _episode(season / name)
     save_labels(ShowLabels(show="Show", episodes=entries))
     loaded = load_training_episodes(cache, roots)
     X, _ = build_training_set(loaded)
     assert len(loaded) == 2
     assert X[:, SIGNAL_NAMES.index("series_offset_support")].min() == 1.0
+
+
+def test_show_dir_is_library_plus_show(tmp_path):
+    rel = "Kids TV/Rugrats/Season 2/x.mkv"
+    assert _show_dir(rel, tmp_path / rel) == tmp_path / "Kids TV" / "Rugrats"
+    assert _show_dir("Kids TV/x.mkv", tmp_path / "Kids TV" / "x.mkv") is None

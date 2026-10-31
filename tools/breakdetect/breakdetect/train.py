@@ -49,7 +49,7 @@ def _label_files() -> list[str]:
 
 def _show_dir(rel: str, path: Path) -> Path | None:
     depth = len(PurePosixPath(rel).parts)
-    return path.parents[depth - 2] if depth > 1 else None
+    return path.parents[depth - 3] if depth >= 3 else None
 
 
 def _standalone(cache: FeatureCache, path: Path) -> tuple[list[Candidate], np.ndarray]:
