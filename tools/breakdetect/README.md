@@ -23,6 +23,10 @@ Serves a local review page on 127.0.0.1. Keys: `b` break, `n` not a break, `u` u
 Use Chrome or Firefox. Safari cannot play `.mkv`, so the full-episode player stays at 0:00 there.
 Decisions are saved to `data/labels/<show>.json` as you go; clips are cached in `.local/breakdetect/clips/`.
 
+### What counts as a break
+
+Mark every point where the show itself is built to cut away: an act-out fade, the gap between two stories, the end of a cold open before the title card. Do not decide whether you'd *want* a commercial there; spacing and position preferences (no break in the first minutes, a minimum gap between breaks) are applied per channel in Tunarr. Mark dips inside title cards, credits, or fade-ins that follow a break you already marked as Not a break.
+
 ## Precision gate
 
 `breakdetect evaluate` enables a show only when every condition holds. The constants are at the top of `breakdetect/evaluate.py`.

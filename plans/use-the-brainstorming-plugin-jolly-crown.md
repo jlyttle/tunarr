@@ -72,6 +72,11 @@ Two phases, in this order:
 - **Media source:** episodes come from the Plex server "Runewasters" (libraries "Kids TV" and "TV Shows"). The Mac sees them at `/Volumes/plex/...`, and Plex reports its own paths. *(Claude's call)* Markers match programs by Plex item ID (the program's external key). The fallback key is the path relative to the library root plus duration, so the three machines' different mount paths don't matter.
 - **Where the detector runs on Unraid (Claude's call):** in its own container or script beside Tunarr, not inside the Tunarr image. Markers are pushed through a Tunarr import API or CLI.
 - Markers get into Tunarr via an import path (CLI or API) writing to a DB table. *(Claude's call: reuse/adapt `program_break_analysis` from migration `0046` if it fits, else a new Drizzle table.)*
+- **Labels vs. placement (decided by the user, 2026-10-31):** labels and markers record *where the show is structured to break* (act-out fades, the gap between stories, the end of a cold open before the titles), independent of taste. Whether a break is *used* is a per-channel/per-slot placement policy in Tunarr, applied to the detected markers:
+  - minimum time before the first break (e.g. 5 min on Nickelodeon drops the cold-open break; ~1 min suits MST3K)
+  - minimum time between used breaks (drops a break a few minutes after the previous one)
+  - minimum time before the end of the episode
+  - maximum breaks per episode
 - Slot-scheduler behavior change ⇒ add a row to `architecture/infinite-schedules/parity-checklist.md`; update docs.
 
 ## Left to the builder
