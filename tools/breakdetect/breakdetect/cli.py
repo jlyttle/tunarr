@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 from breakdetect.cache import BatchResult, FeatureCache, default_cache_root, run_batch
+from breakdetect.evaluate import evaluate, format_table, show_dirs_to_slugs, update_thresholds, write_report
 from breakdetect.labels import import_seeds, load_or_empty, merge_labels, save_labels
 from breakdetect.media import default_roots, discover_episodes
 from breakdetect.review.server import make_server
@@ -71,6 +72,15 @@ def _train(args: argparse.Namespace) -> int:
     return 0
 
 
+def _evaluate(args: argparse.Namespace) -> int:
+    cache = FeatureCache(args.cache)
+    reports = evaluate(cache, default_roots(), show_dirs_to_slugs(args.show_dirs))
+    update_thresholds(reports)
+    print(format_table(reports))
+    print(f"report: {write_report(reports, cache)}")
+    return 0
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="breakdetect")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -92,6 +102,10 @@ def _parser() -> argparse.ArgumentParser:
     fit = sub.add_parser("train", help="fit the scoring model on complete, non-held-out labelled episodes")
     fit.add_argument("--cache", type=Path, default=default_cache_root())
     fit.set_defaults(handler=_train)
+    ev = sub.add_parser("evaluate", help="leave-one-episode-out evaluation and per-show precision gate")
+    ev.add_argument("show_dirs", nargs="*", type=Path)
+    ev.add_argument("--cache", type=Path, default=default_cache_root())
+    ev.set_defaults(handler=_evaluate)
     return parser
 
 

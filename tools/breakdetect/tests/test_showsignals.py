@@ -44,3 +44,11 @@ def test_adding_an_episode_invalidates_stored_signals(make_clip, tmp_path):
     again = show_signals(show_dir, cache)
     assert len(again) == 3
     assert len(list(signals_dir(cache).glob("show-*.npz"))) == 2
+
+
+def test_source_hash_is_part_of_the_signals_key(make_clip, tmp_path, monkeypatch):
+    show_dir, cache = _show(make_clip, tmp_path, ["a.mkv", "b.mkv"])
+    show_signals(show_dir, cache)
+    monkeypatch.setattr("breakdetect.showsignals._code_hash", lambda: "edited")
+    show_signals(show_dir, cache)
+    assert len(list(signals_dir(cache).glob("show-*.npz"))) == 2

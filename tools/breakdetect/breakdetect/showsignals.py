@@ -6,6 +6,9 @@ from pathlib import Path
 
 import numpy as np
 
+from breakdetect import candidates as candidates_module
+from breakdetect import series as series_module
+from breakdetect import signals as signals_module
 from breakdetect.cache import FeatureCache
 from breakdetect.candidates import Candidate, find_candidates
 from breakdetect.features import Features
@@ -25,9 +28,14 @@ def _cached_paths(cache: FeatureCache, show_dir: Path) -> list[Path]:
     return [p for p in discover_episodes(show_dir) if cache.has(p)]
 
 
+def _code_hash() -> str:
+    sources = [Path(m.__file__).read_text() for m in (candidates_module, series_module, signals_module)]
+    return hashlib.sha1("\0".join(sources).encode()).hexdigest()
+
+
 def _signals_key(cache: FeatureCache, paths: list[Path]) -> str:
     entries = sorted((cache.rel_path(p), cache.key(p)) for p in paths)
-    return hashlib.sha1(repr((SIGNALS_VERSION, entries)).encode()).hexdigest()
+    return hashlib.sha1(repr((SIGNALS_VERSION, SIGNAL_NAMES, _code_hash(), entries)).encode()).hexdigest()
 
 
 def _load_cached(cache: FeatureCache, path: Path) -> Features:
