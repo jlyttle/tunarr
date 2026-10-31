@@ -117,6 +117,20 @@ class ReviewApp:
             save_labels(labels)
         return {"ok": True}
 
+    def mark_rest_not_break(self, rel: str) -> dict:
+        path = self.resolve(rel)
+        features = self.features(path)
+        with self.labels_lock:
+            labels = load_or_empty(self.slug, self.show)
+            entry = self._entry(labels, path)
+            for row in build_rows(features, entry.decisions):
+                if not is_user_decided(row):
+                    entry.decisions = [d for d in entry.decisions if abs(d.cut_ms - row["cut_ms"]) > DEDUPE_WINDOW_MS]
+                    entry.decisions.append(Decision(row["cut_ms"], "not_break", "user"))
+            entry.decisions.sort(key=lambda d: d.cut_ms)
+            save_labels(labels)
+        return self.episode(rel)
+
     def _entry(self, labels: ShowLabels, path: Path) -> EpisodeLabels:
         entry = labels.episodes.setdefault(relative_path(path, self.roots), EpisodeLabels())
         if not entry.identity:
@@ -151,8 +165,12 @@ class ReviewApp:
         return encode_jpeg(strip_image(self.features(self.resolve(rel)), ms))
 
 
+def is_user_decided(row: dict) -> bool:
+    return row["decision"] is not None and row["decision"]["source"] == "user"
+
+
 def all_decided(rows: list[dict]) -> bool:
-    return all(r["decision"] is not None and r["decision"]["source"] == "user" for r in rows)
+    return all(is_user_decided(r) for r in rows)
 
 
 def _nearest_candidate(decision: Decision, candidates: list) -> int | None:
@@ -314,6 +332,8 @@ def make_handler(app: ReviewApp) -> type[BaseHTTPRequestHandler]:
                 self._json(app.set_decision(body["rel"], int(body["cut_ms"]), body["label"]))
             elif route == "/api/add-break":
                 self._json(app.set_decision(body["rel"], int(body["ms"]), "break"))
+            elif route == "/api/mark-rest-not-break":
+                self._json(app.mark_rest_not_break(body["rel"]))
             elif route == "/api/complete":
                 self._json(app.complete(body["rel"], bool(body["complete"]), bool(body.get("held_out", False))))
             else:

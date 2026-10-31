@@ -164,6 +164,25 @@ async function complete() {
   }
 }
 
+async function markRest() {
+  const count = state.rows.filter((row) => !isDecided(row)).length;
+  if (state.pending || count === 0) return;
+  const message = `Mark ${count} undecided rows as Not a break?\n\nOnly do this after you have watched the whole episode and marked or added every real break.`;
+  if (!confirm(message)) return;
+  state.pending = true;
+  document.body.classList.add("pending");
+  showError("");
+  try {
+    await request("/api/mark-rest-not-break", { rel: state.rel });
+    await reload();
+  } catch (e) {
+    showError(`Rows NOT marked: ${e.message}`);
+  } finally {
+    state.pending = false;
+    document.body.classList.remove("pending");
+  }
+}
+
 async function addBreak() {
   const ms = Math.round(el("full").currentTime * 1000);
   showError("");
@@ -201,6 +220,7 @@ async function reviewEpisode() {
     el("scrub").hidden = false;
     el("full").src = `/video?rel=${encodeURIComponent(state.rel)}`;
     el("complete").addEventListener("click", complete);
+    el("mark-rest").addEventListener("click", markRest);
     el("add-break").addEventListener("click", addBreak);
     document.addEventListener("keydown", onKey);
   } catch (e) {

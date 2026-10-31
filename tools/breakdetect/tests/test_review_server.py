@@ -193,3 +193,52 @@ def test_text_plain_post_rejected_and_labels_unchanged(served):
 def test_missing_body_keys_are_400(served, path, body):
     response, _ = call(served, "POST", path, body, {"Content-Type": "application/json"})
     assert response.status == 400
+
+
+def mark_rest(server):
+    return call(server, "POST", "/api/mark-rest-not-break", {"rel": REL})
+
+
+def test_mark_rest_converts_undecided_and_seed_rows_to_user_not_break(served):
+    rows = get_rows(served)
+    save_labels(ShowLabels("Show", {REL: EpisodeLabels(decisions=[Decision(rows[0]["cut_ms"], "unsure", "seed")])}))
+    response, data = mark_rest(served)
+    assert response.status == 200
+    updated = json.loads(data)["rows"]
+    assert len(updated) == len(rows)
+    assert all(r["decision"] == {"label": "not_break", "source": "user"} for r in updated)
+    assert not load_labels("show").episodes[REL].complete
+
+
+def test_mark_rest_leaves_existing_user_decisions_untouched(served):
+    rows = get_rows(served)
+    assert len(rows) >= 1
+    call(served, "POST", "/api/add-break", {"rel": REL, "ms": 5000})
+    call(served, "POST", "/api/decision", {"rel": REL, "cut_ms": rows[0]["cut_ms"], "label": "unsure"})
+    mark_rest(served)
+    by_cut = {r["cut_ms"]: r["decision"] for r in get_rows(served)}
+    assert by_cut[5000] == {"label": "break", "source": "user"}
+    assert by_cut[rows[0]["cut_ms"]] == {"label": "unsure", "source": "user"}
+    assert all(d["source"] == "user" for d in by_cut.values())
+
+
+def test_mark_rest_keeps_user_not_break(served):
+    cut_ms = get_rows(served)[0]["cut_ms"]
+    call(served, "POST", "/api/decision", {"rel": REL, "cut_ms": cut_ms, "label": "not_break"})
+    mark_rest(served)
+    assert Decision(cut_ms, "not_break", "user") in load_labels("show").episodes[REL].decisions
+
+
+def test_complete_succeeds_after_mark_rest(served):
+    mark_rest(served)
+    response, _ = call(served, "POST", "/api/complete", {"rel": REL, "complete": True, "held_out": False})
+    assert response.status == 200
+
+
+def test_mark_rest_text_plain_rejected(served):
+    conn = http.client.HTTPConnection("127.0.0.1", served.server_port, timeout=30)
+    conn.request("POST", "/api/mark-rest-not-break", json.dumps({"rel": REL}), {"Content-Type": "text/plain"})
+    response = conn.getresponse()
+    response.read()
+    conn.close()
+    assert response.status == 415
