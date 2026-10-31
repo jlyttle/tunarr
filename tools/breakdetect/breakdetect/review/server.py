@@ -158,6 +158,14 @@ class ReviewApp:
             entry.identity = file_identity(path)
         return entry
 
+    def set_held_out(self, rel: str, held_out: bool) -> dict:
+        path = self.resolve(rel)
+        with self.labels_lock:
+            labels = load_or_empty(self.slug, self.show)
+            self._entry(labels, path).held_out = held_out
+            save_labels(labels)
+        return {"ok": True}
+
     def complete(self, rel: str, complete: bool, held_out: bool, acknowledge_stale: bool = False) -> dict:
         path = self.resolve(rel)
         features = self.features(path)
@@ -379,6 +387,8 @@ def make_handler(app: ReviewApp) -> type[BaseHTTPRequestHandler]:
                 self._json(app.add_break(body["rel"], int(body["ms"])))
             elif route == "/api/mark-rest-not-break":
                 self._json(app.mark_rest_not_break(body["rel"]))
+            elif route == "/api/held-out":
+                self._json(app.set_held_out(body["rel"], bool(body["held_out"])))
             elif route == "/api/complete":
                 self._json(app.complete(
                     body["rel"], bool(body["complete"]), bool(body.get("held_out", False)), bool(body.get("acknowledge_stale", False))

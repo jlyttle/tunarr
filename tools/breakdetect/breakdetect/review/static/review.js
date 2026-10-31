@@ -162,6 +162,17 @@ async function decide(index, label) {
 const STALE_CONFIRM =
   "This file changed since these labels were saved, so every decision may be at the wrong time.\n\nMark complete only if you have re-checked every row against the current file.";
 
+async function setHeldOut() {
+  const box = el("held-out");
+  showError("");
+  try {
+    await request("/api/held-out", { rel: state.rel, held_out: box.checked });
+  } catch (e) {
+    box.checked = !box.checked;
+    showError(`Held-out NOT saved: ${e.message}`);
+  }
+}
+
 async function complete() {
   if (state.stale && !confirm(STALE_CONFIRM)) return;
   showError("");
@@ -229,6 +240,7 @@ async function reviewEpisode() {
     el("scrub").hidden = false;
     el("full").src = `/video?rel=${encodeURIComponent(state.rel)}`;
     el("complete").addEventListener("click", complete);
+    el("held-out").addEventListener("change", setHeldOut);
     el("mark-rest").addEventListener("click", markRest);
     el("add-break").addEventListener("click", addBreak);
     document.addEventListener("keydown", onKey);

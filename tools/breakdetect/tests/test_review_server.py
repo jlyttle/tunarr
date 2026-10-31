@@ -367,3 +367,11 @@ def test_show_hides_episodes_shorter_than_minimum(served, monkeypatch):
     monkeypatch.setattr("breakdetect.candidates.MIN_EPISODE_MS", 15 * 60_000)
     _, data = call(served, "GET", "/api/show")
     assert json.loads(data)["episodes"] == []
+
+
+def test_held_out_saved_immediately_and_survives_decisions(served):
+    status, _ = call(served, "POST", "/api/held-out", {"rel": REL, "held_out": True})
+    assert status == 200
+    call(served, "POST", "/api/add-break", {"rel": REL, "ms": ADDED_MS})
+    _, data = call(served, "GET", f"/api/episode?rel={REL}")
+    assert json.loads(data)["held_out"] is True
