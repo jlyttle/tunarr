@@ -17,6 +17,13 @@ BLACK = f"color=c=black:s={SIZE}:r={FPS}"
 DARK = "lutyuv=y=val*0.24"
 
 
+@pytest.fixture(autouse=True, scope="session")
+def no_minimum_episode_length():
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr("breakdetect.candidates.MIN_EPISODE_MS", 0)
+        yield
+
+
 def _video_source(kind: str, duration: float) -> tuple[str, str | None]:
     if kind in ("content", "noaudio"):
         return TESTSRC, None

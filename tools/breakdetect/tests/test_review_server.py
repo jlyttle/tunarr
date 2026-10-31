@@ -361,3 +361,9 @@ def test_unexpected_errors_are_json_500_and_logged(served, monkeypatch, caplog, 
     assert response.status == 500
     assert str(error) in json.loads(data)["error"]
     assert str(error) in caplog.text
+
+
+def test_show_hides_episodes_shorter_than_minimum(served, monkeypatch):
+    monkeypatch.setattr("breakdetect.candidates.MIN_EPISODE_MS", 15 * 60_000)
+    _, data = call(served, "GET", "/api/show")
+    assert json.loads(data)["episodes"] == []

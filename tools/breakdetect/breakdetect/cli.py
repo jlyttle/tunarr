@@ -33,12 +33,13 @@ def _format_result(r: BatchResult) -> str:
 def _summary(results: list[BatchResult]) -> str:
     extracted = [r for r in results if r.status == "extracted"]
     failed = sum(r.status == "failed" for r in results)
+    skipped = sum(r.status == "skipped" for r in results)
     total = sum(r.seconds for r in extracted)
     media_minutes = sum(r.media_seconds for r in extracted) / 60
     per_minute = f"{total / media_minutes:.2f}" if media_minutes else "n/a"
     return (
         f"{len(results)} episodes: {len(extracted)} extracted, "
-        f"{len(results) - len(extracted) - failed} cached, {failed} failed; "
+        f"{len(results) - len(extracted) - failed - skipped} cached, {skipped} skipped (short), {failed} failed; "
         f"{total:.1f}s extraction, {per_minute} s per media-minute"
     )
 

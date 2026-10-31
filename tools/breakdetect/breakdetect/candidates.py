@@ -13,6 +13,7 @@ DARK_MARGIN = 0.03
 DARK_CEILING = 0.15
 QUIET_FLOOR_DB = -50.0
 QUIET_MARGIN_DB = 3.0
+MIN_EPISODE_MS = 15 * 60_000
 
 Span = tuple[int, int]
 
@@ -107,9 +108,13 @@ def aligned(f: Features) -> tuple[np.ndarray, np.ndarray | None]:
     return f.luma[:n], f.audio_rms_db[:n]
 
 
+def is_short(duration_ms: int) -> bool:
+    return duration_ms < MIN_EPISODE_MS
+
+
 def find_candidates(f: Features, edge_ms: int = 60_000) -> list[Candidate]:
     luma, rms_db = aligned(f)
-    if len(luma) == 0:
+    if len(luma) == 0 or is_short(f.duration_ms):
         return []
     dark = _runs(_dark_mask(luma))
     quiet = _runs(_quiet_mask(rms_db)) if rms_db is not None else []

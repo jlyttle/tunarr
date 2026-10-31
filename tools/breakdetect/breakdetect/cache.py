@@ -7,8 +7,9 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
+from breakdetect.candidates import is_short
 from breakdetect.features import EXTRACTOR_VERSION, Features, extract_features, load_features, save_features
-from breakdetect.media import default_roots, file_identity, identity_key, relative_path
+from breakdetect.media import default_roots, file_identity, identity_key, probe, relative_path
 
 CACHE_ENV = "BREAKDETECT_CACHE"
 FILE_MODE = 0o644
@@ -80,6 +81,13 @@ class BatchResult:
     media_seconds: float = 0.0
 
 
+def _too_short(path: Path) -> bool:
+    try:
+        return is_short(probe(path).duration_ms)
+    except Exception:
+        return False
+
+
 def _process(path: Path, cache: FeatureCache, hwaccel: str | None) -> BatchResult:
     started = time.monotonic()
     try:
@@ -88,6 +96,8 @@ def _process(path: Path, cache: FeatureCache, hwaccel: str | None) -> BatchResul
         return BatchResult(str(path), "failed", 0.0, str(e))
     try:
         was_cached = cache.get(path) is not None
+        if not was_cached and _too_short(path):
+            return BatchResult(rel, "skipped", time.monotonic() - started, None)
         features = cache.ensure(path, hwaccel=hwaccel)
     except Exception as e:
         return BatchResult(rel, "failed", time.monotonic() - started, f"{type(e).__name__}: {e}")
