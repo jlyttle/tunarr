@@ -5,16 +5,14 @@ import numpy as np
 
 from breakdetect.cache import FeatureCache
 from breakdetect.candidates import Candidate, find_candidates
-from breakdetect.features import Features
 from breakdetect.labels import ShowLabels, data_dir, labels_dir, load_labels
-from breakdetect.media import discover_episodes
 from breakdetect.model import LogisticModel
-from breakdetect.series import SeriesContext, build_series_context_from
+from breakdetect.showsignals import ShowSignals, show_signals
 from breakdetect.signals import SIGNAL_NAMES, candidate_signals
 
 MATCH_WINDOW_MS = 1500
 
-Episode = tuple[Features, list[Candidate], list[int], str, SeriesContext | None]
+Episode = tuple[list[Candidate], np.ndarray, list[int]]
 
 
 def _is_positive(c: Candidate, truth_ms: list[int]) -> bool:
@@ -22,12 +20,12 @@ def _is_positive(c: Candidate, truth_ms: list[int]) -> bool:
 
 
 def build_training_set(episodes: Iterable[Episode]) -> tuple[np.ndarray, np.ndarray]:
-    rows, labels = [], []
-    for features, candidates, truth_ms, rel, series in episodes:
-        for c in candidates:
-            rows.append(candidate_signals(c, features, series, rel))
-            labels.append(1 if _is_positive(c, truth_ms) else 0)
-    return np.array(rows).reshape(-1, len(SIGNAL_NAMES)), np.array(labels, dtype=np.int64)
+    blocks, labels = [], []
+    for candidates, X, truth_ms in episodes:
+        blocks.append(X)
+        labels += [1 if _is_positive(c, truth_ms) else 0 for c in candidates]
+    X = np.vstack(blocks) if blocks else np.empty((0, len(SIGNAL_NAMES)))
+    return X, np.array(labels, dtype=np.int64)
 
 
 def model_path() -> Path:
@@ -49,41 +47,37 @@ def _label_files() -> list[str]:
     return sorted(p.stem for p in labels_dir().glob("*.json"))
 
 
-def _cached_siblings(cache: FeatureCache, show_dir: Path) -> Iterable[tuple[str, Features, list[Candidate]]]:
-    for path in discover_episodes(show_dir):
-        features = cache.get(path)
-        if features is not None:
-            yield cache.rel_path(path), features, find_candidates(features)
-
-
 def _show_dir(rel: str, path: Path) -> Path | None:
     depth = len(PurePosixPath(rel).parts)
     return path.parents[depth - 2] if depth > 1 else None
 
 
-def _series_for(cache: FeatureCache, contexts: dict[Path, SeriesContext], rel: str, path: Path) -> SeriesContext | None:
+def _standalone(cache: FeatureCache, path: Path) -> tuple[list[Candidate], np.ndarray]:
+    features = cache.ensure(path)
+    candidates = find_candidates(features)
+    rows = [candidate_signals(c, features) for c in candidates]
+    return candidates, np.array(rows, dtype=np.float64).reshape(-1, len(SIGNAL_NAMES))
+
+
+def _episode_signals(cache: FeatureCache, shows: dict[Path, ShowSignals], rel: str, path: Path) -> tuple[list[Candidate], np.ndarray]:
     show_dir = _show_dir(rel, path)
     if show_dir is None:
-        return None
-    if show_dir not in contexts:
-        contexts[show_dir] = build_series_context_from(_cached_siblings(cache, show_dir))
-    return contexts[show_dir]
-
-
-def _ensured_trainables(cache: FeatureCache, roots: list[Path]) -> list[tuple[str, Path, list[int], Features]]:
-    return [
-        (rel, path, truth, cache.ensure(path))
-        for slug in _label_files()
-        for rel, path, truth in _trainable(load_labels(slug), roots)
-    ]
+        return _standalone(cache, path)
+    if show_dir not in shows:
+        shows[show_dir] = show_signals(show_dir, cache)
+    return shows[show_dir][rel]
 
 
 def load_training_episodes(cache: FeatureCache, roots: list[Path]) -> list[Episode]:
-    contexts: dict[Path, SeriesContext] = {}
-    return [
-        (features, find_candidates(features), truth, rel, _series_for(cache, contexts, rel, path))
-        for rel, path, truth, features in _ensured_trainables(cache, roots)
-    ]
+    trainables = [t for slug in _label_files() for t in _trainable(load_labels(slug), roots)]
+    for _, path, _ in trainables:
+        cache.ensure(path)
+    shows: dict[Path, ShowSignals] = {}
+    episodes = []
+    for rel, path, truth in trainables:
+        candidates, X = _episode_signals(cache, shows, rel, path)
+        episodes.append((candidates, X, truth))
+    return episodes
 
 
 def train(cache: FeatureCache, roots: list[Path]) -> tuple[int, int, int]:

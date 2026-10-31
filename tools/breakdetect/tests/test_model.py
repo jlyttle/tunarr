@@ -7,7 +7,7 @@ from breakdetect.cli import main
 from breakdetect.candidates import find_candidates
 from breakdetect.features import extract_features
 from breakdetect.model import LogisticModel
-from breakdetect.signals import SIGNAL_NAMES
+from breakdetect.signals import SIGNAL_NAMES, candidate_signals
 from breakdetect.cache import FeatureCache
 from breakdetect.labels import Decision, EpisodeLabels, ShowLabels, save_labels
 from breakdetect.media import file_identity
@@ -52,7 +52,8 @@ def test_from_json_rejects_mismatched_signal_names(blobs):
 def test_build_training_set_labels_candidates_near_truth(make_clip):
     f = extract_features(make_clip([("content", 70), ("black", 0.5), ("content", 70)]))
     candidates = find_candidates(f)
-    X, y = build_training_set([(f, candidates, [70250], "a.mkv", None), (f, candidates, [], "a.mkv", None)])
+    X0 = np.array([candidate_signals(c, f) for c in candidates])
+    X, y = build_training_set([(candidates, X0, [70250]), (candidates, X0, [])])
     assert X.shape == (2, len(SIGNAL_NAMES))
     assert y.tolist() == [1, 0]
 
@@ -115,7 +116,7 @@ def test_train_writes_loadable_model(make_clip, tmp_path, monkeypatch):
     assert len(model.weights) == len(SIGNAL_NAMES)
 
 
-def test_training_episodes_share_show_context_with_unlabeled_cached_siblings(make_clip, tmp_path, monkeypatch):
+def test_training_episodes_use_show_siblings_including_unlabeled_cached(make_clip, tmp_path, monkeypatch):
     monkeypatch.setenv("BREAKDETECT_DATA", str(tmp_path / "data"))
     clip = make_clip(TWO_GAPS)
     roots = [tmp_path / "media"]
@@ -130,8 +131,6 @@ def test_training_episodes_share_show_context_with_unlabeled_cached_siblings(mak
         entries[f"Show/Season 1/{name}"] = _episode(season / name)
     save_labels(ShowLabels(show="Show", episodes=entries))
     loaded = load_training_episodes(cache, roots)
-    context = loaded[0][4]
-    assert context is not None and loaded[1][4] is context
-    assert sorted(context.offsets_by_episode) == ["Show/Season 1/a.mkv", "Show/Season 1/b.mkv", "Show/Season 1/c.mkv"]
     X, _ = build_training_set(loaded)
+    assert len(loaded) == 2
     assert X[:, SIGNAL_NAMES.index("series_offset_support")].min() == 1.0

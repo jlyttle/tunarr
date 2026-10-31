@@ -16,7 +16,9 @@ RELATIVE_TOLERANCE = 0.02
 SAME_SEASON_WEIGHT = 1.0
 OTHER_SEASON_WEIGHT = 0.5
 MIN_OTHER_EPISODES = 2
-COARSE_BLOCK_H, COARSE_BLOCK_W = 12, 16
+DOWNSAMPLE = 2
+SEQ_H, SEQ_W = THUMB_H // DOWNSAMPLE, THUMB_W // DOWNSAMPLE
+COARSE_BLOCK_H, COARSE_BLOCK_W = 6, 8
 REFINE_CHUNK = 32
 SEASON_PATTERN = re.compile(r"season\s+(\d+)", re.IGNORECASE)
 
@@ -48,6 +50,12 @@ def sibling_weight(a: int | None, b: int | None) -> float:
     return SAME_SEASON_WEIGHT if a is not None and a == b else OTHER_SEASON_WEIGHT
 
 
+def _downsample(frames: np.ndarray) -> Transition:
+    count = len(frames)
+    blocks = frames.reshape(count, SEQ_H, DOWNSAMPLE, SEQ_W, DOWNSAMPLE)
+    return (blocks.sum(axis=(2, 4), dtype=np.uint16) // (DOWNSAMPLE * DOWNSAMPLE)).astype(np.uint8)
+
+
 def bumper_sequence(f: Features, c: Candidate) -> Transition | None:
     luma, _ = aligned(f)
     gap = c.start_ms // SAMPLE_MS
@@ -56,7 +64,7 @@ def bumper_sequence(f: Features, c: Candidate) -> Transition | None:
         return None
     if float(luma[first:stop].mean()) < dark_threshold(luma):
         return None
-    return f.thumbs[first:stop]
+    return _downsample(f.thumbs[first:stop])
 
 
 def _coarse(sequence: Transition) -> np.ndarray:
@@ -79,8 +87,8 @@ def build_series_context_from(items: Iterable[EpisodeItem]) -> SeriesContext:
         offsets[rel], durations[rel], seasons[rel] = cuts, f.duration_ms, season_of(rel)
         rows += [seq.copy() for _, seq in sequences]
         keys += [(rel, cut) for cut, _ in sequences]
-    size = TRANSITION_FRAMES * THUMB_H * THUMB_W
-    stacked = np.stack(rows) if rows else np.empty((0, TRANSITION_FRAMES, THUMB_H, THUMB_W), dtype=np.uint8)
+    size = TRANSITION_FRAMES * SEQ_H * SEQ_W
+    stacked = np.stack(rows) if rows else np.empty((0, TRANSITION_FRAMES, SEQ_H, SEQ_W), dtype=np.uint8)
     owner_index = {rel: i for i, rel in enumerate(offsets)}
     transitions: dict[str, dict[int, Transition]] = {rel: {} for rel in offsets}
     for row, (rel, cut) in zip(stacked, keys):
@@ -136,7 +144,7 @@ def _similarity(rows: np.ndarray, query: np.ndarray) -> np.ndarray:
 
 
 def _best_similarity(ctx: SeriesContext, query: np.ndarray, others: np.ndarray) -> float:
-    query_coarse = _coarse(query.reshape(TRANSITION_FRAMES, THUMB_H, THUMB_W))
+    query_coarse = _coarse(query.reshape(TRANSITION_FRAMES, SEQ_H, SEQ_W))
     bound = np.abs(ctx.coarse[others] - query_coarse).sum(axis=1) / query.size
     order = np.argsort(bound)
     best = 0.0

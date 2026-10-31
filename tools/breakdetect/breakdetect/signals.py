@@ -4,6 +4,8 @@ from breakdetect.candidates import SAMPLE_MS, Candidate, aligned, dark_threshold
 from breakdetect.features import Features
 from breakdetect.series import SeriesContext, bumper_match, offset_support
 
+SIGNALS_VERSION = "2"
+
 SIGNAL_NAMES = [
     "dark_depth",
     "dark_ms",

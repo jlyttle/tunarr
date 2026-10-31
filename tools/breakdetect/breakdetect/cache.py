@@ -35,6 +35,9 @@ class FeatureCache:
         key = self.key(path)
         return self.root / key[:2] / f"{key}.npz"
 
+    def has(self, path: Path) -> bool:
+        return self._entry(path).exists()
+
     def get(self, path: Path) -> Features | None:
         entry = self._entry(path)
         return load_features(entry) if entry.exists() else None

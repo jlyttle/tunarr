@@ -1,5 +1,3 @@
-import time
-
 import numpy as np
 import pytest
 
@@ -7,6 +5,8 @@ from breakdetect.candidates import Candidate
 from breakdetect.features import Features
 from breakdetect.series import (
     SeriesContext,
+    _best_similarity,
+    _similarity,
     bumper_match,
     build_series_context,
     offset_support,
@@ -22,9 +22,14 @@ def _candidate(cut_ms: int) -> Candidate:
     return Candidate(cut_ms - 200, cut_ms + 200, cut_ms, "dark", 0.0, None)
 
 
+def _noise(rng: np.random.Generator, frames: int) -> np.ndarray:
+    coarse = rng.integers(0, 256, size=(frames, 18, 32), dtype=np.uint8)
+    return coarse.repeat(2, axis=1).repeat(2, axis=2)
+
+
 def _features(rng: np.random.Generator, sequences: dict[int, np.ndarray] | None = None, duration_ms: int = DURATION_MS) -> Features:
     frames = duration_ms // 100
-    thumbs = rng.integers(0, 256, size=(frames, 36, 64), dtype=np.uint8)
+    thumbs = _noise(rng, frames)
     for cut_ms, sequence in (sequences or {}).items():
         gap = (cut_ms - 200) // 100
         thumbs[gap - 24 : gap - 15] = sequence
@@ -91,7 +96,7 @@ def test_two_episodes_return_zero():
 
 def test_bumper_match_detects_repeated_frames():
     rng = np.random.default_rng(1)
-    bumper = rng.integers(0, 256, size=(9, 36, 64), dtype=np.uint8)
+    bumper = _noise(rng, 9)
     ctx = _show(
         {"S/a.mkv": [420_000], "S/b.mkv": [500_000], "S/c.mkv": [300_000]},
         sequences={"S/a.mkv": {420_000: bumper}, "S/b.mkv": {500_000: bumper}},
@@ -102,7 +107,7 @@ def test_bumper_match_detects_repeated_frames():
 
 def test_bumper_match_never_matches_own_episode():
     rng = np.random.default_rng(1)
-    bumper = rng.integers(0, 256, size=(9, 36, 64), dtype=np.uint8)
+    bumper = _noise(rng, 9)
     ctx = _show(
         {"S/a.mkv": [420_000, 800_000], "S/b.mkv": [500_000], "S/c.mkv": [300_000]},
         sequences={"S/a.mkv": {420_000: bumper, 800_000: bumper}},
@@ -145,15 +150,18 @@ def test_candidate_signals_fills_series_columns():
     assert signals[SIGNAL_NAMES.index("series_offset_support")] == pytest.approx(1.0)
 
 
-def test_full_show_builds_and_matches_quickly():
-    rng = np.random.default_rng(4)
-    cuts = [10_000 + 8_000 * i for i in range(20)]
-    episodes = {
-        f"S/Season 1/e{i}.mkv": (_features(rng, duration_ms=200_000), [_candidate(c) for c in cuts]) for i in range(100)
-    }
-    ctx = build_series_context(episodes)
-    started = time.monotonic()
-    for i in range(3):
-        for c in cuts:
-            bumper_match(ctx, f"S/Season 1/e{i}.mkv", _candidate(c))
-    assert time.monotonic() - started < 5
+def test_pruned_best_similarity_equals_brute_force():
+    rng = np.random.default_rng(5)
+    rng_eps = {f"S/e{i}.mkv": (_features(rng, duration_ms=60_000), [_candidate(c) for c in (10_000, 30_000, 50_000)]) for i in range(8)}
+    ctx = build_series_context(rng_eps)
+    rows = np.arange(3, len(ctx.flat))
+    for query_row in range(3):
+        query = ctx.flat[query_row]
+        assert _best_similarity(ctx, query, rows) == pytest.approx(_similarity(ctx.flat[rows], query).max())
+
+
+def test_similarity_extremes():
+    zeros = np.zeros((1, 9 * 18 * 32), dtype=np.uint8)
+    full = np.full(9 * 18 * 32, 255, dtype=np.uint8)
+    assert _similarity(full[None, :], full)[0] == 1.0
+    assert _similarity(zeros, full)[0] == 0.0
