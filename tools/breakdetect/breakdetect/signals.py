@@ -1,6 +1,6 @@
 import numpy as np
 
-from breakdetect.candidates import SAMPLE_MS, Candidate, _aligned, dark_threshold, quiet_threshold
+from breakdetect.candidates import SAMPLE_MS, Candidate, aligned, dark_threshold, quiet_threshold
 from breakdetect.features import Features
 
 SIGNAL_NAMES = [
@@ -68,7 +68,7 @@ def _near_chapter(f: Features, c: Candidate) -> float:
 
 
 def candidate_signals(c: Candidate, f: Features, series: object | None = None) -> np.ndarray:
-    luma, rms_db = _aligned(f)
+    luma, rms_db = aligned(f)
     dark_samples = int((luma[_span(c)] < dark_threshold(luma)).sum())
     quiet_depth, quiet_ms, context_db, audio_missing = _audio_signals(rms_db, c)
     return np.array(

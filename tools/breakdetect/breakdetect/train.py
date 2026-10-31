@@ -1,5 +1,4 @@
 from collections.abc import Iterable
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -14,13 +13,6 @@ from breakdetect.signals import SIGNAL_NAMES, candidate_signals
 MATCH_WINDOW_MS = 1500
 
 Episode = tuple[Features, list[Candidate], list[int]]
-
-
-@dataclass
-class TrainingSet:
-    X: np.ndarray
-    y: np.ndarray
-    episodes: int = 0
 
 
 def _is_positive(c: Candidate, truth_ms: list[int]) -> bool:
@@ -70,8 +62,6 @@ def train(cache: FeatureCache, roots: list[Path]) -> tuple[int, int, int]:
     positives = int((y == 1).sum())
     if positives == 0:
         raise ValueError(f"no positive candidates across {len(episodes)} episodes; refusing to write a model")
-    if positives == len(y):
-        raise ValueError("no negative candidates; refusing to write a model")
     dest = model_path()
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(LogisticModel.fit(X, y).to_json())

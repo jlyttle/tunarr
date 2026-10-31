@@ -19,6 +19,8 @@ class LogisticModel:
 
     @classmethod
     def fit(cls, X: np.ndarray, y: np.ndarray, l2: float = 1.0) -> "LogisticModel":
+        if len(np.unique(y)) < 2:
+            raise ValueError("training needs both positive and negative examples")
         mean = X.mean(axis=0)
         std = np.where(X.std(axis=0) == 0, 1.0, X.std(axis=0))
         design = np.hstack([(X - mean) / std, np.ones((len(X), 1))])

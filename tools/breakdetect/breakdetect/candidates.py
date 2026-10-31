@@ -100,7 +100,7 @@ def _build(span: Span, luma: np.ndarray, rms_db: np.ndarray | None, dark: list[S
     )
 
 
-def _aligned(f: Features) -> tuple[np.ndarray, np.ndarray | None]:
+def aligned(f: Features) -> tuple[np.ndarray, np.ndarray | None]:
     if f.audio_rms_db is None:
         return f.luma, None
     n = min(len(f.luma), len(f.audio_rms_db))
@@ -108,7 +108,7 @@ def _aligned(f: Features) -> tuple[np.ndarray, np.ndarray | None]:
 
 
 def find_candidates(f: Features, edge_ms: int = 60_000) -> list[Candidate]:
-    luma, rms_db = _aligned(f)
+    luma, rms_db = aligned(f)
     if len(luma) == 0:
         return []
     dark = _runs(_dark_mask(luma))
