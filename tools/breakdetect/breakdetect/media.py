@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,3 +40,38 @@ def probe(path: Path) -> Probe:
         chapters_ms=_chapter_starts_ms(info.get("chapters", [])),
         video_codec=video["codec_name"] if video else "",
     )
+
+
+DEFAULT_ROOT = "/Volumes/plex"
+VIDEO_EXTENSIONS = {".mkv", ".mp4", ".avi", ".m4v", ".mpg", ".ts"}
+SKIPPED_DIRS = {"Specials"}
+
+
+def default_roots() -> list[Path]:
+    configured = os.environ.get("BREAKDETECT_ROOTS")
+    if not configured:
+        return [Path(DEFAULT_ROOT)]
+    return [Path(r) for r in configured.split(os.pathsep) if r]
+
+
+def relative_path(path: Path, roots: list[Path]) -> str:
+    absolute = Path(os.path.abspath(path))
+    for root in roots:
+        try:
+            return absolute.relative_to(Path(os.path.abspath(root))).as_posix()
+        except ValueError:
+            continue
+    raise ValueError(f"{path} is not under any root: {[str(r) for r in roots]}")
+
+
+def file_identity(path: Path) -> str:
+    st = path.stat()
+    return f"{st.st_size}:{st.st_mtime_ns}"
+
+
+def discover_episodes(show_dir: Path) -> list[Path]:
+    found = []
+    for dirpath, dirnames, filenames in os.walk(show_dir):
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIPPED_DIRS)
+        found += [Path(dirpath) / f for f in sorted(filenames) if Path(f).suffix.lower() in VIDEO_EXTENSIONS and not f.startswith(".")]
+    return found
