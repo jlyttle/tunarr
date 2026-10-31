@@ -19,7 +19,8 @@ from breakdetect.cache import FeatureCache
 from breakdetect.candidates import find_candidates, is_short
 from breakdetect.features import FPS, Features
 from breakdetect.labels import DEDUPE_WINDOW_MS, Decision, EpisodeLabels, ShowLabels, is_stale, load_or_empty, save_labels, slugify
-from breakdetect.media import default_roots, discover_episodes, file_identity, probe, relative_path
+from breakdetect.durations import DurationCache
+from breakdetect.media import default_roots, discover_episodes, file_identity, relative_path
 
 STATIC_DIR = Path(__file__).parent / "static"
 LABELS = {"break", "not_break", "unsure"}
@@ -51,7 +52,7 @@ class ReviewApp:
         self.clips_dir = self.cache.root.parent / "clips"
         self.labels_lock = threading.Lock()
         self.extract_lock = threading.Lock()
-        self.durations: dict[Path, int] = {}
+        self.durations = DurationCache(self.cache.root.parent / "durations.json", self.roots)
 
     def resolve(self, rel: str | None) -> Path:
         if not rel or ".." in Path(rel).parts or Path(rel).is_absolute():
@@ -80,14 +81,9 @@ class ReviewApp:
 
     def show_summary(self) -> dict:
         labels = load_or_empty(self.slug, self.show)
-        paths = [p for p in discover_episodes(self.show_dir) if not is_short(self._duration_ms(p))]
+        durations = self.durations.lookup(discover_episodes(self.show_dir))
+        paths = [p for p, ms in durations.items() if not is_short(ms)]
         return {"show": self.show, "episodes": [self._episode_summary(p, labels) for p in paths]}
-
-    def _duration_ms(self, path: Path) -> int:
-        if path not in self.durations:
-            cached = self.cache.get(path)
-            self.durations[path] = cached.duration_ms if cached is not None else probe(path).duration_ms
-        return self.durations[path]
 
     def _episode_summary(self, path: Path, labels: ShowLabels) -> dict:
         rel = relative_path(path, self.roots)
