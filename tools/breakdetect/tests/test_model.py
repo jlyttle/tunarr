@@ -52,7 +52,7 @@ def test_from_json_rejects_mismatched_signal_names(blobs):
 def test_build_training_set_labels_candidates_near_truth(make_clip):
     f = extract_features(make_clip([("content", 70), ("black", 0.5), ("content", 70)]))
     candidates = find_candidates(f)
-    X, y = build_training_set([(f, candidates, [70250]), (f, candidates, [])])
+    X, y = build_training_set([(f, candidates, [70250], "a.mkv", None), (f, candidates, [], "a.mkv", None)])
     assert X.shape == (2, len(SIGNAL_NAMES))
     assert y.tolist() == [1, 0]
 
@@ -113,3 +113,25 @@ def test_train_writes_loadable_model(make_clip, tmp_path, monkeypatch):
     assert counts == (1, 1, 1)
     model = LogisticModel.from_json((tmp_path / "data" / "models" / "global.json").read_text())
     assert len(model.weights) == len(SIGNAL_NAMES)
+
+
+def test_training_episodes_share_show_context_with_unlabeled_cached_siblings(make_clip, tmp_path, monkeypatch):
+    monkeypatch.setenv("BREAKDETECT_DATA", str(tmp_path / "data"))
+    clip = make_clip(TWO_GAPS)
+    roots = [tmp_path / "media"]
+    season = roots[0] / "Show" / "Season 1"
+    season.mkdir(parents=True)
+    for name in ("a.mkv", "b.mkv", "c.mkv", "uncached.mkv"):
+        shutil.copy(clip, season / name)
+    cache = FeatureCache(tmp_path / "cache", roots)
+    cache.ensure(season / "c.mkv")
+    entries = {}
+    for name in ("a.mkv", "b.mkv"):
+        entries[f"Show/Season 1/{name}"] = _episode(season / name)
+    save_labels(ShowLabels(show="Show", episodes=entries))
+    loaded = load_training_episodes(cache, roots)
+    context = loaded[0][4]
+    assert context is not None and loaded[1][4] is context
+    assert sorted(context.offsets_by_episode) == ["Show/Season 1/a.mkv", "Show/Season 1/b.mkv", "Show/Season 1/c.mkv"]
+    X, _ = build_training_set(loaded)
+    assert X[:, SIGNAL_NAMES.index("series_offset_support")].min() == 1.0
