@@ -1,5 +1,6 @@
 import http.client
 import json
+import os
 import shutil
 import threading
 from pathlib import Path
@@ -41,7 +42,7 @@ def served(tmp_path, media):
 def call(server, method, path, body=None, headers=None):
     conn = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=120)
     payload = json.dumps(body) if body is not None else None
-    conn.request(method, path, payload, headers or {})
+    conn.request(method, path, payload, headers or {"Content-Type": "application/json"})
     response = conn.getresponse()
     data = response.read()
     conn.close()
@@ -176,3 +177,19 @@ def test_index_lists_episode_progress(served):
     _, data = call(served, "GET", "/api/show")
     episode = json.loads(data)["episodes"][0]
     assert (episode["rel"], episode["user_decisions"], episode["complete"]) == (REL, 1, False)
+
+
+def test_text_plain_post_rejected_and_labels_unchanged(served):
+    conn = http.client.HTTPConnection("127.0.0.1", served.server_port, timeout=30)
+    conn.request("POST", "/api/add-break", json.dumps({"rel": REL, "ms": 5000}), {"Content-Type": "text/plain"})
+    response = conn.getresponse()
+    response.read()
+    conn.close()
+    assert response.status == 415
+    assert not (Path(os.environ["BREAKDETECT_DATA"]) / "labels").exists()
+
+
+@pytest.mark.parametrize("path,body", [("/api/decision", {"rel": REL}), ("/api/add-break", {"rel": REL}), ("/api/complete", {"rel": REL})])
+def test_missing_body_keys_are_400(served, path, body):
+    response, _ = call(served, "POST", path, body, {"Content-Type": "application/json"})
+    assert response.status == 400

@@ -1,6 +1,6 @@
 const LABELS = { break: "Break", not_break: "Not a break", unsure: "Unsure" };
 const KEYS = { b: "break", n: "not_break", u: "unsure" };
-const state = { rel: null, rows: [], focus: 0, complete: false };
+const state = { rel: null, rows: [], focus: 0, complete: false, pending: false };
 
 const el = (id) => document.getElementById(id);
 const make = (tag, className, text) => {
@@ -138,7 +138,9 @@ async function reload() {
 
 async function decide(index, label) {
   const row = state.rows[index];
-  if (!row) return;
+  if (!row || state.pending) return;
+  state.pending = true;
+  document.body.classList.add("pending");
   showError("");
   try {
     await request("/api/decision", { rel: state.rel, cut_ms: row.cut_ms, label });
@@ -146,6 +148,9 @@ async function decide(index, label) {
     setFocus(index + 1);
   } catch (e) {
     showError(`Decision NOT saved: ${e.message}`);
+  } finally {
+    state.pending = false;
+    document.body.classList.remove("pending");
   }
 }
 

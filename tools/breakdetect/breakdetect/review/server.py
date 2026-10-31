@@ -261,7 +261,9 @@ def make_handler(app: ReviewApp) -> type[BaseHTTPRequestHandler]:
                 self._json({"error": str(e)}, e.status)
             except (BrokenPipeError, ConnectionResetError):
                 pass
-            except (subprocess.CalledProcessError, ValueError, KeyError, TypeError, json.JSONDecodeError) as e:
+            except json.JSONDecodeError as e:
+                self._json({"error": f"invalid JSON: {e}"}, HTTPStatus.BAD_REQUEST)
+            except (subprocess.CalledProcessError, ValueError, KeyError, TypeError) as e:
                 self._json({"error": f"{type(e).__name__}: {e}"}, HTTPStatus.INTERNAL_SERVER_ERROR)
 
         def _query(self) -> dict[str, str]:
@@ -292,6 +294,8 @@ def make_handler(app: ReviewApp) -> type[BaseHTTPRequestHandler]:
                 raise HttpError(HTTPStatus.NOT_FOUND, "not found")
 
         def _body(self) -> dict:
+            if self.headers.get_content_type() != "application/json":
+                raise HttpError(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "Content-Type must be application/json")
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
             if not isinstance(body, dict):
                 raise HttpError(HTTPStatus.BAD_REQUEST, "body must be an object")
@@ -300,6 +304,12 @@ def make_handler(app: ReviewApp) -> type[BaseHTTPRequestHandler]:
         def _post(self) -> None:
             route = urlparse(self.path).path
             body = self._body()
+            try:
+                self._post_route(route, body)
+            except (KeyError, ValueError, TypeError) as e:
+                raise HttpError(HTTPStatus.BAD_REQUEST, f"invalid body: {type(e).__name__}: {e}")
+
+        def _post_route(self, route: str, body: dict) -> None:
             if route == "/api/decision":
                 self._json(app.set_decision(body["rel"], int(body["cut_ms"]), body["label"]))
             elif route == "/api/add-break":
