@@ -9,6 +9,7 @@ from breakdetect.candidates import Candidate
 from breakdetect.evaluate import model_sha
 from breakdetect.export import ExportError, StaleSignalsError, export_show, markers_dir, remove_stale_markers
 from breakdetect.labels import Decision, EpisodeLabels, ShowLabels, save_labels
+from breakdetect.media import file_identity
 from breakdetect.model import LogisticModel
 from breakdetect.signals import SIGNAL_NAMES
 
@@ -73,8 +74,13 @@ def _signals_for(monkeypatch, per_rel, key=SIGNALS_KEY):
     monkeypatch.setattr(export_module, "signals_key", lambda show_dir, cache: key)
 
 
-def _label(decisions):
-    save_labels(ShowLabels("Show", {REL: EpisodeLabels(decisions=decisions)}))
+def _episode_path(env):
+    return env.show_dir / "Season 1" / "a.mkv"
+
+
+def _label(decisions, env=None):
+    identity = file_identity(_episode_path(env)) if env is not None else ""
+    save_labels(ShowLabels("Show", {REL: EpisodeLabels(identity=identity, decisions=decisions)}))
 
 
 def _export(env, monkeypatch, per_rel, durations=None):
@@ -111,21 +117,21 @@ def test_remove_stale_markers_keeps_enabled(env):
 
 def test_user_rejection_overrides_score(env, monkeypatch):
     _enable(env)
-    _label([Decision(300_500, "not_break", "user")])
+    _label([Decision(300_500, "not_break", "user")], env)
     marker = _export(env, monkeypatch, {REL: _signals([(300_000, 5.0), (900_000, 5.0)])})
     assert [b["offsetMs"] for b in marker["episodes"][0]["breaks"]] == [900_000]
 
 
 def test_user_break_included_at_full_score_even_if_model_score_low(env, monkeypatch):
     _enable(env)
-    _label([Decision(600_800, "break", "user")])
+    _label([Decision(600_800, "break", "user")], env)
     marker = _export(env, monkeypatch, {REL: _signals([(600_000, -5.0)])})
     assert marker["episodes"][0]["breaks"] == [{"offsetMs": 600_800, "score": 1.0}]
 
 
 def test_seed_decisions_do_not_affect_export(env, monkeypatch):
     _enable(env)
-    _label([Decision(300_000, "unsure", "seed"), Decision(900_000, "break", "seed")])
+    _label([Decision(300_000, "unsure", "seed"), Decision(900_000, "break", "seed")], env)
     marker = _export(env, monkeypatch, {REL: _signals([(300_000, 5.0)])})
     assert [b["offsetMs"] for b in marker["episodes"][0]["breaks"]] == [300_000]
 
@@ -187,14 +193,14 @@ def test_cli_refuses_with_nonzero_exit_on_mismatch(env, capsys, tmp_path):
 
 def test_user_break_beats_saturated_model_candidate_within_gap(env, monkeypatch):
     _enable(env)
-    _label([Decision(600_000, "break", "user")])
+    _label([Decision(600_000, "break", "user")], env)
     marker = _export(env, monkeypatch, {REL: _signals([(660_000, 50.0)])})
     assert marker["episodes"][0]["breaks"] == [{"offsetMs": 600_000, "score": 1.0}]
 
 
 def test_user_breaks_close_together_are_both_exported(env, monkeypatch):
     _enable(env)
-    _label([Decision(600_000, "break", "user"), Decision(660_000, "break", "user")])
+    _label([Decision(600_000, "break", "user"), Decision(660_000, "break", "user")], env)
     marker = _export(env, monkeypatch, {REL: _signals([])})
     assert [b["offsetMs"] for b in marker["episodes"][0]["breaks"]] == [600_000, 660_000]
 
@@ -214,3 +220,25 @@ def test_old_thresholds_format_is_treated_as_empty(env, monkeypatch):
 
     (env.data / "models" / "thresholds.json").write_text(json.dumps({"model_sha": model_sha(env.model_text), "thresholds": {"show": 0.5}}))
     assert load_thresholds() == ("", {})
+
+
+def test_user_unsure_is_treated_as_rejected(env, monkeypatch):
+    _enable(env)
+    _label([Decision(300_500, "unsure", "user")], env)
+    marker = _export(env, monkeypatch, {REL: _signals([(300_000, 5.0), (900_000, 5.0)])})
+    assert [b["offsetMs"] for b in marker["episodes"][0]["breaks"]] == [900_000]
+
+
+def test_stale_labels_are_ignored_after_re_encode(env, monkeypatch):
+    _enable(env)
+    _label([Decision(600_000, "break", "user"), Decision(300_000, "not_break", "user")], env)
+    _episode_path(env).write_bytes(b"re-encoded")
+    marker = _export(env, monkeypatch, {REL: _signals([(300_000, 5.0)])})
+    assert marker["episodes"][0]["breaks"] == [{"offsetMs": 300_000, "score": pytest.approx(0.9933, abs=1e-4)}]
+
+
+def test_labels_without_identity_are_ignored(env, monkeypatch):
+    _enable(env)
+    _label([Decision(600_000, "break", "user")])
+    marker = _export(env, monkeypatch, {REL: _signals([])})
+    assert marker["episodes"][0]["breaks"] == []

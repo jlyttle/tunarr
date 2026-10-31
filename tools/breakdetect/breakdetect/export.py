@@ -10,7 +10,7 @@ from breakdetect.cache import FeatureCache
 from breakdetect.candidates import Candidate
 from breakdetect.evaluate import MIN_GAP_MS, ShowThreshold, _select_indices, load_thresholds, model_sha
 from breakdetect.features import EXTRACTOR_VERSION
-from breakdetect.labels import DEDUPE_WINDOW_MS, ShowLabels, data_dir, load_labels, slugify
+from breakdetect.labels import DEDUPE_WINDOW_MS, EpisodeLabels, ShowLabels, data_dir, is_stale, load_labels, slugify
 from breakdetect.media import discover_episodes
 from breakdetect.model import LogisticModel
 from breakdetect.showsignals import show_signals, signals_key
@@ -18,6 +18,7 @@ from breakdetect.train import _show_dir, model_path
 
 SCHEMA = 1
 USER_BREAK_SCORE = 1.0
+REJECTED_LABELS = {"not_break", "unsure"}
 
 
 class ExportError(Exception):
@@ -52,9 +53,13 @@ def load_approved_model() -> tuple[str, LogisticModel, dict[str, ShowThreshold]]
     return sha, LogisticModel.from_json(text), thresholds
 
 
-def _user_decisions(labels: ShowLabels | None, rel: str, label: str) -> list[int]:
+def _user_decisions(entry: EpisodeLabels | None, labels: set[str]) -> list[int]:
+    return [d.cut_ms for d in entry.decisions if d.source == "user" and d.label in labels] if entry else []
+
+
+def _current_entry(labels: ShowLabels | None, rel: str, path: Path) -> EpisodeLabels | None:
     entry = labels.episodes.get(rel) if labels else None
-    return [d.cut_ms for d in entry.decisions if d.source == "user" and d.label == label] if entry else []
+    return entry if entry is not None and not is_stale(entry, path) else None
 
 
 def _near_any_within(cut_ms: int, others: list[int], window_ms: int) -> bool:
@@ -83,12 +88,12 @@ def _labels_or_none(slug: str) -> ShowLabels | None:
         return None
 
 
-def _episode_entry(rel: str, duration_ms: int, candidates, X, model, labels, threshold) -> dict:
+def _episode_entry(rel: str, duration_ms: int, candidates, X, model, entry: EpisodeLabels | None, threshold) -> dict:
     breaks = episode_breaks(
         candidates,
         model.predict(X),
-        _user_decisions(labels, rel, "not_break"),
-        _user_decisions(labels, rel, "break"),
+        _user_decisions(entry, REJECTED_LABELS),
+        _user_decisions(entry, {"break"}),
         threshold,
     )
     return {"relativePath": rel, "durationMs": duration_ms, "breaks": breaks}
@@ -115,7 +120,8 @@ def _episodes(show_dir: Path, cache: FeatureCache, model: LogisticModel, labels:
         features = cache.get(path) if rel in signals else None
         if features is not None:
             candidates, X = signals[rel]
-            entries.append(_episode_entry(rel, features.duration_ms, candidates, X, model, labels, threshold))
+            entry = _current_entry(labels, rel, path)
+            entries.append(_episode_entry(rel, features.duration_ms, candidates, X, model, entry, threshold))
     return sorted(entries, key=lambda e: e["relativePath"])
 
 
