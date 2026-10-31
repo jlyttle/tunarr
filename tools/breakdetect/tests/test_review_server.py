@@ -93,22 +93,47 @@ def test_seed_unsure_does_not_count_as_decided(served):
     assert len(load_labels("show").episodes[REL].decisions) == len(rows)
 
 
+ADDED_MS = 65000
+
+
 def test_decision_far_from_candidates_is_its_own_row(served):
-    call(served, "POST", "/api/add-break", {"rel": REL, "ms": 5000})
+    call(served, "POST", "/api/add-break", {"rel": REL, "ms": ADDED_MS})
     loose = [r for r in get_rows(served) if r["start_ms"] is None]
-    assert [r["cut_ms"] for r in loose] == [5000]
+    assert [r["cut_ms"] for r in loose] == [ADDED_MS]
 
 
 def test_add_break_records_user_break(served):
-    response, _ = call(served, "POST", "/api/add-break", {"rel": REL, "ms": 12345})
+    response, _ = call(served, "POST", "/api/add-break", {"rel": REL, "ms": ADDED_MS})
     assert response.status == 200
-    assert load_labels("show").episodes[REL].decisions == [Decision(12345, "break", "user")]
+    assert load_labels("show").episodes[REL].decisions == [Decision(ADDED_MS, "break", "user")]
+
+
+def episode(server):
+    response, data = call(server, "GET", f"/api/episode?rel={REL}")
+    assert response.status == 200
+    return json.loads(data)
+
+
+@pytest.mark.parametrize(
+    "at", [lambda d: 0, lambda d: 59_999, lambda d: d - 59_999, lambda d: d], ids=["zero", "start", "end", "duration"]
+)
+def test_add_break_near_start_or_end_rejected(served, at):
+    ms = at(episode(served)["duration_ms"])
+    response, data = call(served, "POST", "/api/add-break", {"rel": REL, "ms": ms})
+    assert response.status == 400
+    assert "60 s" in json.loads(data)["error"]
+    assert not (Path(os.environ["BREAKDETECT_DATA"]) / "labels").exists()
+
+
+def test_add_break_at_exactly_one_minute_accepted(served):
+    response, _ = call(served, "POST", "/api/add-break", {"rel": REL, "ms": 60_000})
+    assert response.status == 200
 
 
 def test_decision_on_completed_episode_reopens_it(served):
     decide_all(served, "not_break")
     call(served, "POST", "/api/complete", {"rel": REL, "complete": True, "held_out": False})
-    call(served, "POST", "/api/add-break", {"rel": REL, "ms": 5000})
+    call(served, "POST", "/api/add-break", {"rel": REL, "ms": ADDED_MS})
     assert load_labels("show").episodes[REL].complete is False
 
 
@@ -174,7 +199,7 @@ def test_episode_scores_hidden(served):
 
 
 def test_index_lists_episode_progress(served):
-    call(served, "POST", "/api/add-break", {"rel": REL, "ms": 5000})
+    call(served, "POST", "/api/add-break", {"rel": REL, "ms": ADDED_MS})
     _, data = call(served, "GET", "/api/show")
     episode = json.loads(data)["episodes"][0]
     assert (episode["rel"], episode["user_decisions"], episode["complete"]) == (REL, 1, False)
@@ -214,11 +239,11 @@ def test_mark_rest_converts_undecided_and_seed_rows_to_user_not_break(served):
 def test_mark_rest_leaves_existing_user_decisions_untouched(served):
     rows = get_rows(served)
     assert len(rows) >= 1
-    call(served, "POST", "/api/add-break", {"rel": REL, "ms": 5000})
+    call(served, "POST", "/api/add-break", {"rel": REL, "ms": ADDED_MS})
     call(served, "POST", "/api/decision", {"rel": REL, "cut_ms": rows[0]["cut_ms"], "label": "unsure"})
     mark_rest(served)
     by_cut = {r["cut_ms"]: r["decision"] for r in get_rows(served)}
-    assert by_cut[5000] == {"label": "break", "source": "user"}
+    assert by_cut[ADDED_MS] == {"label": "break", "source": "user"}
     assert by_cut[rows[0]["cut_ms"]] == {"label": "unsure", "source": "user"}
     assert all(d["source"] == "user" for d in by_cut.values())
 
@@ -282,3 +307,57 @@ def test_mark_rest_converts_close_seed_rows_without_losing_neighbour(served, clo
     call(served, "POST", "/api/decision", {"rel": REL, "cut_ms": B_MS, "label": "break"})
     mark_rest(served)
     assert decisions_by_cut() == {A_MS: ("not_break", "user"), B_MS: ("break", "user")}
+
+
+def touch_later(media):
+    st = (media / REL).stat()
+    os.utime(media / REL, ns=(st.st_atime_ns, st.st_mtime_ns + 5_000_000_000))
+
+
+def complete(server, **extra):
+    return call(server, "POST", "/api/complete", {"rel": REL, "complete": True, "held_out": False, **extra})
+
+
+def test_episode_reports_fresh_labels_as_not_stale(served):
+    assert episode(served)["stale"] is False
+    decide_all(served, "not_break")
+    assert episode(served)["stale"] is False
+
+
+def test_episode_reports_stale_labels_after_file_changes(served, media):
+    decide_all(served, "not_break")
+    touch_later(media)
+    assert episode(served)["stale"] is True
+
+
+def test_complete_on_stale_episode_needs_acknowledgement(served, media):
+    decide_all(served, "not_break")
+    assert complete(served)[0].status == 200
+    before = load_labels("show").episodes[REL].identity
+    touch_later(media)
+    response, data = complete(served)
+    assert response.status == 409
+    assert "different version" in json.loads(data)["error"]
+    assert load_labels("show").episodes[REL].identity == before
+    assert complete(served, acknowledge_stale=True)[0].status == 200
+    assert episode(served)["stale"] is False
+
+
+def test_decision_does_not_clear_stale_for_labels_without_identity(served):
+    cut_ms = get_rows(served)[0]["cut_ms"]
+    save_labels(ShowLabels("Show", {REL: EpisodeLabels(decisions=[Decision(cut_ms, "unsure", "seed")])}))
+    assert episode(served)["stale"] is True
+    call(served, "POST", "/api/decision", {"rel": REL, "cut_ms": cut_ms, "label": "break"})
+    assert episode(served)["stale"] is True
+
+
+@pytest.mark.parametrize("error", [OSError("share unmounted"), RuntimeError("surprise")])
+def test_unexpected_errors_are_json_500_and_logged(served, monkeypatch, caplog, error):
+    def boom(self, path):
+        raise error
+
+    monkeypatch.setattr(review_server.ReviewApp, "features", boom)
+    response, data = call(served, "GET", f"/api/episode?rel={REL}")
+    assert response.status == 500
+    assert str(error) in json.loads(data)["error"]
+    assert str(error) in caplog.text

@@ -1,6 +1,6 @@
 const LABELS = { break: "Break", not_break: "Not a break", unsure: "Unsure" };
 const KEYS = { b: "break", n: "not_break", u: "unsure" };
-const state = { rel: null, rows: [], focus: 0, complete: false, pending: false };
+const state = { rel: null, rows: [], focus: 0, complete: false, stale: false, pending: false };
 
 const el = (id) => document.getElementById(id);
 const make = (tag, className, text) => {
@@ -96,7 +96,9 @@ function rowNode(row, index) {
   strip.loading = "lazy";
   strip.src = `/strip?rel=${encodeURIComponent(state.rel)}&ms=${row.cut_ms}`;
   node.append(head, strip, buttonsFor(row, index));
-  node.addEventListener("click", () => setFocus(index));
+  node.addEventListener("click", () => {
+    if (!state.pending) setFocus(index);
+  });
   return node;
 }
 
@@ -130,6 +132,8 @@ async function reload() {
   const episode = await request(`/api/episode?rel=${encodeURIComponent(state.rel)}`);
   state.rows = episode.rows;
   state.complete = episode.complete;
+  state.stale = episode.stale;
+  el("stale").hidden = !episode.stale;
   state.focus = Math.min(state.focus, Math.max(0, state.rows.length - 1));
   el("held-out").checked = episode.held_out;
   el("complete-status").textContent = episode.complete ? "Marked complete." : "";
@@ -155,10 +159,14 @@ async function decide(index, label) {
   }
 }
 
+const STALE_CONFIRM =
+  "This file changed since these labels were saved, so every decision may be at the wrong time.\n\nMark complete only if you have re-checked every row against the current file.";
+
 async function complete() {
+  if (state.stale && !confirm(STALE_CONFIRM)) return;
   showError("");
   try {
-    await request("/api/complete", { rel: state.rel, complete: true, held_out: el("held-out").checked });
+    await request("/api/complete", { rel: state.rel, complete: true, held_out: el("held-out").checked, acknowledge_stale: state.stale });
     await reload();
   } catch (e) {
     showError(`Not marked complete: ${e.message}`);
@@ -198,7 +206,7 @@ async function addBreak() {
 }
 
 function onKey(event) {
-  if (event.metaKey || event.ctrlKey || event.altKey || event.target.tagName === "INPUT") return;
+  if (state.pending || event.metaKey || event.ctrlKey || event.altKey || event.target.tagName === "INPUT") return;
   if (KEYS[event.key]) decide(state.focus, KEYS[event.key]);
   else if (event.key === "j" || event.key === "ArrowDown") moveFocus(event, 1);
   else if (event.key === "k" || event.key === "ArrowUp") moveFocus(event, -1);

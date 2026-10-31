@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import mimetypes
 import os
 import subprocess
@@ -17,7 +18,7 @@ import numpy as np
 from breakdetect.cache import FeatureCache
 from breakdetect.candidates import find_candidates
 from breakdetect.features import FPS, Features
-from breakdetect.labels import DEDUPE_WINDOW_MS, Decision, EpisodeLabels, ShowLabels, load_or_empty, save_labels, slugify
+from breakdetect.labels import DEDUPE_WINDOW_MS, Decision, EpisodeLabels, ShowLabels, is_stale, load_or_empty, save_labels, slugify
 from breakdetect.media import default_roots, discover_episodes, file_identity, relative_path
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -27,6 +28,8 @@ CLIP_SECONDS = 8
 STRIP_OFFSETS_S = range(-4, 5)
 STRIP_SCALE = 2
 CHUNK = 1 << 20
+ADD_BREAK_EDGE_MS = 60_000
+log = logging.getLogger(__name__)
 PAGES = {"/": "index.html", "/episode": "episode.html", "/review.js": "review.js", "/review.css": "review.css"}
 
 
@@ -100,8 +103,18 @@ class ReviewApp:
             "duration_ms": features.duration_ms,
             "complete": entry.complete,
             "held_out": entry.held_out,
+            "stale": labels_are_stale(entry, path),
             "rows": build_rows(features, entry.decisions),
         }
+
+    def add_break(self, rel: str, ms: int) -> dict:
+        duration_ms = self.features(self.resolve(rel)).duration_ms
+        if ms < ADD_BREAK_EDGE_MS or duration_ms - ms < ADD_BREAK_EDGE_MS:
+            raise HttpError(
+                HTTPStatus.BAD_REQUEST,
+                "a break must be at least 60 s from the start and end of the episode; is the video playing?",
+            )
+        return self.set_decision(rel, ms, "break")
 
     def set_decision(self, rel: str, cut_ms: int, label: str) -> dict:
         if label not in LABELS:
@@ -133,16 +146,21 @@ class ReviewApp:
 
     def _entry(self, labels: ShowLabels, path: Path) -> EpisodeLabels:
         entry = labels.episodes.setdefault(relative_path(path, self.roots), EpisodeLabels())
-        if not entry.identity:
+        if not entry.identity and not entry.decisions:
             entry.identity = file_identity(path)
         return entry
 
-    def complete(self, rel: str, complete: bool, held_out: bool) -> dict:
+    def complete(self, rel: str, complete: bool, held_out: bool, acknowledge_stale: bool = False) -> dict:
         path = self.resolve(rel)
         features = self.features(path)
         with self.labels_lock:
             labels = load_or_empty(self.slug, self.show)
             entry = self._entry(labels, path)
+            if labels_are_stale(entry, path) and not acknowledge_stale:
+                raise HttpError(
+                    HTTPStatus.CONFLICT,
+                    "these labels were recorded against a different version of the file; re-check every decision first",
+                )
             if complete and not all_decided(build_rows(features, entry.decisions)):
                 raise HttpError(HTTPStatus.CONFLICT, "every break needs a decision from you")
             entry.complete = complete
@@ -163,6 +181,10 @@ class ReviewApp:
 
     def strip(self, rel: str, ms: int) -> bytes:
         return encode_jpeg(strip_image(self.features(self.resolve(rel)), ms))
+
+
+def labels_are_stale(entry: EpisodeLabels, path: Path) -> bool:
+    return bool(entry.decisions or entry.complete) and is_stale(entry, path)
 
 
 def is_user_decided(row: dict) -> bool:
@@ -295,7 +317,8 @@ def make_handler(app: ReviewApp) -> type[BaseHTTPRequestHandler]:
                 pass
             except json.JSONDecodeError as e:
                 self._json({"error": f"invalid JSON: {e}"}, HTTPStatus.BAD_REQUEST)
-            except (subprocess.CalledProcessError, ValueError, KeyError, TypeError) as e:
+            except Exception as e:
+                log.exception("review request failed: %s", self.path)
                 self._json({"error": f"{type(e).__name__}: {e}"}, HTTPStatus.INTERNAL_SERVER_ERROR)
 
         def _query(self) -> dict[str, str]:
@@ -345,11 +368,13 @@ def make_handler(app: ReviewApp) -> type[BaseHTTPRequestHandler]:
             if route == "/api/decision":
                 self._json(app.set_decision(body["rel"], int(body["cut_ms"]), body["label"]))
             elif route == "/api/add-break":
-                self._json(app.set_decision(body["rel"], int(body["ms"]), "break"))
+                self._json(app.add_break(body["rel"], int(body["ms"])))
             elif route == "/api/mark-rest-not-break":
                 self._json(app.mark_rest_not_break(body["rel"]))
             elif route == "/api/complete":
-                self._json(app.complete(body["rel"], bool(body["complete"]), bool(body.get("held_out", False))))
+                self._json(app.complete(
+                    body["rel"], bool(body["complete"]), bool(body.get("held_out", False)), bool(body.get("acknowledge_stale", False))
+                ))
             else:
                 raise HttpError(HTTPStatus.NOT_FOUND, "not found")
 

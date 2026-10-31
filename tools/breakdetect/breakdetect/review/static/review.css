@@ -3,6 +3,7 @@ body { font: 15px/1.4 system-ui, sans-serif; max-width: 960px; margin: 1rem auto
 table { border-collapse: collapse; width: 100%; }
 th, td { text-align: left; padding: 0.3rem 0.6rem; border-bottom: 1px solid #8884; }
 .error { color: #c0392b; font-weight: 600; }
+.stale { background: #c0392b; color: #fff; font-weight: 600; padding: 0.6rem 0.8rem; border-radius: 6px; }
 kbd { border: 1px solid #8886; border-radius: 3px; padding: 0 0.3rem; }
 .row { border: 2px solid #8884; border-radius: 6px; padding: 0.6rem; margin: 0.6rem 0; }
 .row.focused { border-color: #2b7de9; }
