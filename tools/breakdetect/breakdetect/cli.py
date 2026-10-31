@@ -3,11 +3,11 @@ import sys
 from pathlib import Path
 
 from breakdetect.cache import BatchResult, FeatureCache, default_cache_root, run_batch
-from breakdetect.evaluate import evaluate, format_table, show_dirs_to_slugs, update_thresholds, write_report
+from breakdetect.evaluate import evaluate, format_table, save_evaluation, show_dirs_to_slugs, thresholds_out_of_date, write_report
 from breakdetect.labels import import_seeds, load_or_empty, merge_labels, save_labels
 from breakdetect.media import default_roots, discover_episodes
 from breakdetect.review.server import make_server
-from breakdetect.train import train
+from breakdetect.train import model_path, train
 
 HWACCELS = ["auto", "videotoolbox", "vaapi", "qsv"]
 
@@ -69,16 +69,24 @@ def _train(args: argparse.Namespace) -> int:
         print(f"train: {e}", file=sys.stderr)
         return 1
     print(f"trained on {episodes} episodes: {positives} positives, {negatives} negatives")
+    if thresholds_out_of_date(model_path().read_text()):
+        print("warning: thresholds.json was computed for a different model; run `breakdetect evaluate` to refresh", file=sys.stderr)
     return 0
 
 
 def _evaluate(args: argparse.Namespace) -> int:
     cache = FeatureCache(args.cache)
-    reports = evaluate(cache, default_roots(), show_dirs_to_slugs(args.show_dirs))
-    update_thresholds(reports)
-    print(format_table(reports))
-    print(f"report: {write_report(reports, cache)}")
-    return 0
+    evaluation = evaluate(cache, default_roots())
+    save_evaluation(evaluation)
+    requested = show_dirs_to_slugs(args.show_dirs)
+    known = {r.show for r in evaluation.reports}
+    missing = [s for s in requested or [] if s not in known]
+    for slug in missing:
+        print(f"evaluate: no label file for {slug}", file=sys.stderr)
+    shown = [r for r in evaluation.reports if requested is None or r.show in requested]
+    print(format_table(shown))
+    print(f"report: {write_report(evaluation.reports, cache)}")
+    return 1 if missing else 0
 
 
 def _parser() -> argparse.ArgumentParser:

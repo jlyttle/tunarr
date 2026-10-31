@@ -2,6 +2,7 @@ import json
 
 import numpy as np
 
+from breakdetect.cache import FeatureCache
 from breakdetect.candidates import Candidate
 from breakdetect.evaluate import (
     GtEpisode,
@@ -11,7 +12,12 @@ from breakdetect.evaluate import (
     format_table,
     match,
     select_breaks,
-    update_thresholds,
+    Totals,
+    _gate_passes,
+    evaluate,
+    load_thresholds,
+    model_sha,
+    save_evaluation,
 )
 from breakdetect.model import LogisticModel
 from breakdetect.signals import SIGNAL_NAMES
@@ -132,19 +138,64 @@ def test_false_positives_are_reported_and_block_enabling():
     assert report.false_positives and report.false_positives[0][0] == "show/d.mkv"
 
 
-def test_update_thresholds_rewrites_evaluated_shows_only(tmp_path, monkeypatch):
+def _patch_pool(monkeypatch, slugs, pool):
+    monkeypatch.setattr("breakdetect.evaluate._label_files", lambda: slugs)
+    monkeypatch.setattr("breakdetect.evaluate.load_gt_pool", lambda cache, roots: pool)
+
+
+def test_thresholds_carry_model_sha_of_written_model(tmp_path, monkeypatch):
+    monkeypatch.setenv("BREAKDETECT_DATA", str(tmp_path))
+    pool = [_episode("show", "show/a.mkv"), _episode("show", "show/b.mkv"), _episode("show", "show/c.mkv", held_out=True)]
+    _patch_pool(monkeypatch, ["show"], pool)
+    evaluation = evaluate(FeatureCache(tmp_path / "features", []), [])
+    save_evaluation(evaluation)
+    sha, thresholds = load_thresholds()
+    assert list(thresholds) == ["show"]
+    assert sha == model_sha((tmp_path / "models" / "global.json").read_text())
+
+
+def test_show_whose_labels_went_stale_loses_its_threshold(tmp_path, monkeypatch):
     monkeypatch.setenv("BREAKDETECT_DATA", str(tmp_path))
     (tmp_path / "models").mkdir()
-    (tmp_path / "models" / "thresholds.json").write_text(json.dumps({"keep": 0.5, "was-on": 0.7, "stays-on": 0.6}))
+    (tmp_path / "models" / "thresholds.json").write_text(json.dumps({"model_sha": "old", "thresholds": {"gone": 0.7}}))
+    _patch_pool(monkeypatch, ["gone"], [])
+    evaluation = evaluate(FeatureCache(tmp_path / "features", []), [])
+    assert evaluation.reports[0].episodes == 0 and not evaluation.reports[0].enabled
+    save_evaluation(evaluation)
+    assert load_thresholds()[1] == {}
 
-    def report(show, enabled, threshold):
-        return ShowReport(show, 3, 1, [], threshold, None, None, None, None, enabled)
 
-    update_thresholds([report("was-on", False, 0.7), report("stays-on", True, 0.65), report("new", True, 0.8)])
-    assert json.loads((tmp_path / "models" / "thresholds.json").read_text()) == {"keep": 0.5, "new": 0.8, "stays-on": 0.65}
+def test_load_thresholds_when_file_absent(tmp_path, monkeypatch):
+    monkeypatch.setenv("BREAKDETECT_DATA", str(tmp_path))
+    assert load_thresholds() == ("", {})
+    _patch_pool(monkeypatch, [], [])
+    save_evaluation(evaluate(FeatureCache(tmp_path / "features", []), []))
+    assert load_thresholds() == ("", {})
+
+
+def test_gate_requires_loo_precision_even_when_held_out_passes():
+    assert not _gate_passes(0.5, 3, Totals(tp=9, fp=1), Totals(tp=5))
+
+
+def test_gate_passes_at_exactly_the_precision_floor():
+    assert _gate_passes(0.5, 3, Totals(tp=19, fp=1), Totals(tp=19, fp=1))
+
+
+def test_gate_counts_only_scored_episodes():
+    assert not _gate_passes(0.5, 2, Totals(tp=10), Totals(tp=5))
 
 
 def test_format_table_lists_shows_and_false_positives():
     r = ShowReport("show", 3, 1, [], 0.9, 1.0, 0.5, 1.0, 1.0, True, [("show/a.mkv", 125_000, 0.93)])
     text = format_table([r])
     assert "yes" in text and "show/a.mkv  2:05  0.930" in text
+
+
+def test_cli_warns_and_fails_for_show_dir_without_labels(tmp_path, monkeypatch, capsys):
+    from breakdetect.cli import main
+
+    monkeypatch.setenv("BREAKDETECT_DATA", str(tmp_path))
+    _patch_pool(monkeypatch, ["known"], [])
+    code = main(["evaluate", str(tmp_path / "Unknown Show"), "--cache", str(tmp_path / "features")])
+    assert code == 1
+    assert "no label file for unknown-show" in capsys.readouterr().err

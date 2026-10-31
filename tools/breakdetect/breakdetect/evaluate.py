@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
@@ -11,7 +12,7 @@ from breakdetect.candidates import Candidate
 from breakdetect.labels import data_dir, load_labels, slugify
 from breakdetect.model import LogisticModel
 from breakdetect.showsignals import ShowSignals
-from breakdetect.train import MATCH_WINDOW_MS, _episode_signals, _label_files, build_training_set
+from breakdetect.train import MATCH_WINDOW_MS, _episode_signals, _label_files, build_training_set, model_path
 
 MIN_GAP_MS = 120_000
 MIN_PRECISION = 0.95
@@ -171,8 +172,8 @@ def _score_held_out(show_eps: list[GtEpisode], trainable: list[GtEpisode], fitte
     return [_score(e, model) for e in show_eps], []
 
 
-def _gate_passes(threshold: float | None, gt_count: int, loo: Totals | None, held: Totals | None) -> bool:
-    if threshold is None or loo is None or held is None or gt_count < MIN_GT_EPISODES:
+def _gate_passes(threshold: float | None, scored_count: int, loo: Totals | None, held: Totals | None) -> bool:
+    if threshold is None or loo is None or held is None or scored_count < MIN_GT_EPISODES:
         return False
     return (
         held.tp >= 1
@@ -201,7 +202,7 @@ def evaluate_show(show_slug: str, pool: list[GtEpisode], model_fitter: ModelFitt
         recall=loo_totals.recall if loo_totals else None,
         held_out_precision=held_totals.precision if held_totals else None,
         held_out_recall=held_totals.recall if held_totals else None,
-        enabled=_gate_passes(threshold, len(show_eps), loo_totals, held_totals),
+        enabled=_gate_passes(threshold, len(loo) + len(held), loo_totals, held_totals),
         false_positives=sorted(
             (loo_totals.false_positives if loo_totals else []) + (held_totals.false_positives if held_totals else []),
             key=lambda fp: -fp[2],
@@ -227,28 +228,49 @@ def load_gt_pool(cache: FeatureCache, roots: list[Path]) -> list[GtEpisode]:
     return pool
 
 
-def evaluate(
-    cache: FeatureCache, roots: list[Path], slugs: list[str] | None = None, model_fitter: ModelFitter = LogisticModel.fit
-) -> list[ShowReport]:
+@dataclass
+class Evaluation:
+    reports: list[ShowReport]
+    model_json: str | None
+
+
+def evaluate(cache: FeatureCache, roots: list[Path], model_fitter: ModelFitter = LogisticModel.fit) -> Evaluation:
     pool = load_gt_pool(cache, roots)
-    wanted = slugs if slugs is not None else sorted({e.slug for e in pool})
-    return [evaluate_show(slug, pool, model_fitter) for slug in wanted if any(e.slug == slug for e in pool)]
+    reports = [evaluate_show(slug, pool, model_fitter) for slug in _label_files()]
+    global_model = _fit_on([e for e in pool if not e.held_out], model_fitter)
+    return Evaluation(reports, global_model.to_json() if global_model else None)
 
 
 def thresholds_path() -> Path:
     return data_dir() / "models" / "thresholds.json"
 
 
-def update_thresholds(reports: list[ShowReport]) -> dict[str, float]:
+def model_sha(text: str) -> str:
+    return hashlib.sha1(text.encode()).hexdigest()
+
+
+def load_thresholds() -> tuple[str, dict[str, float]]:
     dest = thresholds_path()
-    thresholds = json.loads(dest.read_text()) if dest.exists() else {}
-    for report in reports:
-        thresholds.pop(report.show, None)
-        if report.enabled and report.threshold is not None:
-            thresholds[report.show] = report.threshold
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(json.dumps(dict(sorted(thresholds.items())), indent=2) + "\n")
-    return thresholds
+    if not dest.exists():
+        return "", {}
+    raw = json.loads(dest.read_text())
+    return raw["model_sha"], raw["thresholds"]
+
+
+def thresholds_out_of_date(model_text: str) -> bool:
+    sha, thresholds = load_thresholds()
+    return bool(thresholds) and sha != model_sha(model_text)
+
+
+def save_evaluation(evaluation: Evaluation) -> None:
+    enabled = {r.show: r.threshold for r in evaluation.reports if r.enabled and r.threshold is not None}
+    sha = ""
+    if evaluation.model_json is not None:
+        model_path().parent.mkdir(parents=True, exist_ok=True)
+        model_path().write_text(evaluation.model_json)
+        sha = model_sha(evaluation.model_json)
+    thresholds_path().parent.mkdir(parents=True, exist_ok=True)
+    thresholds_path().write_text(json.dumps({"model_sha": sha, "thresholds": dict(sorted(enabled.items()))}, indent=2) + "\n")
 
 
 def write_report(reports: list[ShowReport], cache: FeatureCache) -> Path:
