@@ -14,6 +14,7 @@ THUMB_W, THUMB_H = 64, 36
 AUDIO_RATE = 8000
 AUDIO_WINDOW = AUDIO_RATE // 10
 SILENCE_FLOOR_DB = -120.0
+RMS_BLOCK_WINDOWS = 1000
 STDERR_TAIL_CHARS = 2000
 
 
@@ -37,10 +38,10 @@ def _ffmpeg_args(path: Path, has_audio: bool, hwaccel: str | None, threads: int)
     if hwaccel:
         args += ["-hwaccel", hwaccel]
     args += ["-threads", str(threads), "-i", str(path)]
-    args += ["-map", "0:v:0", "-vf", f"fps={FPS:g},scale={THUMB_W}:{THUMB_H}:flags=area,format=gray"]
+    args += ["-map", "0:v:0", "-vf", f"fps={FPS:g}:start_time=0,scale={THUMB_W}:{THUMB_H}:flags=area,format=gray"]
     args += ["-f", "rawvideo", "pipe:1"]
     if has_audio:
-        args += ["-map", "0:a:0", "-af", f"aresample={AUDIO_RATE},aformat=sample_fmts=s16", "-f", "s16le", "pipe:3"]
+        args += ["-map", "0:a:0", "-af", f"aresample={AUDIO_RATE}:first_pts=0,aformat=sample_fmts=s16", "-f", "s16le", "pipe:3"]
     return args
 
 
@@ -78,13 +79,19 @@ def _thumbs_from_bytes(raw: bytes) -> np.ndarray:
     return np.frombuffer(raw, dtype=np.uint8)[: len(raw) // frame * frame].reshape(-1, THUMB_H, THUMB_W)
 
 
+def _block_rms(block: np.ndarray) -> np.ndarray:
+    framed = block.astype(np.float32) / 32768.0
+    return np.sqrt((framed**2).mean(axis=1)).max(axis=1)
+
+
 def _rms_db_from_bytes(raw: bytes, channels: int) -> np.ndarray:
     samples = np.frombuffer(raw, dtype=np.int16)
     samples = samples[: len(samples) // channels * channels].reshape(-1, channels)
     windows = len(samples) // AUDIO_WINDOW
-    framed = samples[: windows * AUDIO_WINDOW].astype(np.float64) / 32768.0
-    framed = framed.reshape(windows, AUDIO_WINDOW, channels)
-    rms = np.sqrt((framed**2).mean(axis=1)).max(axis=1)
+    framed = samples[: windows * AUDIO_WINDOW].reshape(windows, AUDIO_WINDOW, channels)
+    rms = np.empty(windows, dtype=np.float32)
+    for start in range(0, windows, RMS_BLOCK_WINDOWS):
+        rms[start : start + RMS_BLOCK_WINDOWS] = _block_rms(framed[start : start + RMS_BLOCK_WINDOWS])
     with np.errstate(divide="ignore"):
         db = 20 * np.log10(rms)
     return np.maximum(db, SILENCE_FLOOR_DB).astype(np.float32)
