@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from breakdetect.cache import BatchResult, FeatureCache, default_cache_root, run_batch
-from breakdetect.labels import import_seeds, save_labels
+from breakdetect.labels import import_seeds, load_or_empty, merge_labels, save_labels
 from breakdetect.media import discover_episodes
 
 HWACCELS = ["auto", "videotoolbox", "vaapi", "qsv"]
@@ -42,7 +42,8 @@ def _extract(args: argparse.Namespace) -> int:
 
 def _import_seeds(args: argparse.Namespace) -> int:
     imported = import_seeds(args.dataset, args.pilot_review)
-    for labels in imported.values():
+    for slug, incoming in imported.items():
+        labels = merge_labels(load_or_empty(slug, incoming.show), incoming)
         save_labels(labels)
         print(f"{labels.show}: {len(labels.episodes)} episodes")
     return 0

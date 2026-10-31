@@ -89,10 +89,14 @@ def save_labels(labels: ShowLabels) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     payload = {"schema": SCHEMA, "show": labels.show, "episodes": {rel: asdict(e) for rel, e in sorted(labels.episodes.items())}}
     fd, tmp = tempfile.mkstemp(dir=directory, suffix=".tmp")
-    with os.fdopen(fd, "w") as f:
-        json.dump(payload, f, indent=2, ensure_ascii=False)
-        f.write("\n")
-    os.replace(tmp, directory / f"{slugify(labels.show)}.json")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        os.replace(tmp, directory / f"{slugify(labels.show)}.json")
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def _dedupe(decisions: list[Decision]) -> list[Decision]:
@@ -104,6 +108,31 @@ def _dedupe(decisions: list[Decision]) -> list[Decision]:
             continue
         kept.append(d)
     return kept
+
+
+def _merge_episode(existing: EpisodeLabels, imported: EpisodeLabels) -> None:
+    if existing.complete:
+        return
+    for d in imported.decisions:
+        if all(abs(d.cut_ms - e.cut_ms) > DEDUPE_WINDOW_MS for e in existing.decisions):
+            existing.decisions.append(d)
+    existing.decisions.sort(key=lambda d: d.cut_ms)
+
+
+def merge_labels(existing: ShowLabels, imported: ShowLabels) -> ShowLabels:
+    for rel, entry in imported.episodes.items():
+        if rel in existing.episodes:
+            _merge_episode(existing.episodes[rel], entry)
+        else:
+            existing.episodes[rel] = entry
+    return existing
+
+
+def load_or_empty(show_slug: str, show: str) -> ShowLabels:
+    try:
+        return load_labels(show_slug)
+    except FileNotFoundError:
+        return ShowLabels(show=show)
 
 
 def _disk_identity(path: Path, recorded: str) -> str:

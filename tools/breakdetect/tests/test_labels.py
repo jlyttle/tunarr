@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from breakdetect.labels import Decision, EpisodeLabels, ShowLabels, import_seeds, is_stale, load_labels, save_labels, slugify
+from breakdetect.labels import Decision, EpisodeLabels, ShowLabels, import_seeds, merge_labels, is_stale, load_labels, save_labels, slugify
 from breakdetect.media import file_identity, relative_path
 
 REL = "Show/S01E01.mkv"
@@ -115,3 +115,30 @@ def test_import_research_breaks_are_seed_unsure(tmp_path, media):
     imported = import_seeds(dataset, review, [media, tmp_path / "none"])
     assert imported["rugrats"].episodes[REL].decisions == [Decision(700, "unsure", "seed")]
     assert imported["rugrats"].episodes[REL].duration_ms == 1500
+
+
+def test_merge_preserves_complete_episode_and_user_labels(media):
+    existing = _labels(media, True, [Decision(700, "break", "user")])
+    existing.episodes[REL].held_out = True
+    incoming = _labels(media, False, [Decision(1000, "unsure", "seed")])
+    merged = merge_labels(existing, incoming)
+    entry = merged.episodes[REL]
+    assert entry.decisions == [Decision(700, "break", "user")]
+    assert entry.complete and entry.held_out
+
+
+def test_merge_adds_only_non_duplicate_seeds_to_incomplete_episode(media):
+    existing = _labels(media, False, [Decision(700, "break", "user")])
+    incoming = _labels(media, False, [Decision(1500, "unsure", "seed"), Decision(5000, "unsure", "seed")])
+    merged = merge_labels(existing, incoming)
+    assert merged.episodes[REL].decisions == [Decision(700, "break", "user"), Decision(5000, "unsure", "seed")]
+    assert merge_labels(merged, incoming).episodes[REL].decisions == merged.episodes[REL].decisions
+
+
+def test_save_labels_removes_temp_file_on_failure(media, monkeypatch):
+    def boom(*a, **k):
+        raise OSError("disk")
+    monkeypatch.setattr("breakdetect.labels.os.replace", boom)
+    with pytest.raises(OSError):
+        save_labels(_labels(media, True, []))
+    assert list((Path(os.environ["BREAKDETECT_DATA"]) / "labels").iterdir()) == []
