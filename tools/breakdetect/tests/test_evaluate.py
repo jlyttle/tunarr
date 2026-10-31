@@ -199,3 +199,26 @@ def test_cli_warns_and_fails_for_show_dir_without_labels(tmp_path, monkeypatch, 
     code = main(["evaluate", str(tmp_path / "Unknown Show"), "--cache", str(tmp_path / "features")])
     assert code == 1
     assert "no label file for unknown-show" in capsys.readouterr().err
+
+
+def test_gate_needs_five_held_out_predictions():
+    assert not _gate_passes(0.5, 3, Totals(tp=20), Totals(tp=4))
+    assert _gate_passes(0.5, 3, Totals(tp=20), Totals(tp=5))
+
+
+def test_gate_blocks_on_loo_precision_below_floor_while_held_out_passes():
+    assert not _gate_passes(0.5, 3, Totals(tp=18, fp=1), Totals(tp=10))
+
+
+def _pool_with_held_out_breaks(breaks: int) -> list[GtEpisode]:
+    return [_episode("show", f"show/{n}.mkv") for n in "ab"] + [_episode("show", "show/c.mkv", held_out=True, breaks=breaks)]
+
+
+def test_show_with_four_clean_held_out_predictions_is_not_enabled():
+    report = evaluate_show("show", _pool_with_held_out_breaks(4))
+    assert report.held_out_precision == 1.0
+    assert not report.enabled
+
+
+def test_show_with_five_clean_held_out_predictions_is_enabled():
+    assert evaluate_show("show", _pool_with_held_out_breaks(5)).enabled

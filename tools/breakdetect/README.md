@@ -23,6 +23,20 @@ Serves a local review page on 127.0.0.1. Keys: `b` break, `n` not a break, `u` u
 Use Chrome or Firefox. Safari cannot play `.mkv`, so the full-episode player stays at 0:00 there.
 Decisions are saved to `data/labels/<show>.json` as you go; clips are cached in `.local/breakdetect/clips/`.
 
+## Precision gate
+
+`breakdetect evaluate` enables a show only when every condition holds. The constants are at the top of `breakdetect/evaluate.py`.
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `MIN_PRECISION` | 0.95 | Floor for both leave-one-episode-out and held-out precision |
+| `MIN_POSITIVES` | 5 | Correct candidates needed above the chosen threshold |
+| `MIN_GT_EPISODES` | 3 | Complete, scored ground-truth episodes for the show |
+| `MIN_HELD_OUT_PREDICTIONS` | 5 | Held-out predictions (true plus false positives) at the threshold |
+| `MIN_GAP_MS` | 120000 | Minimum spacing between exported breaks |
+
+At least one held-out prediction must also be a true positive.
+
 ## Extraction benchmark (Mac, 1 worker, SMB share, cold cache)
 
 | File | Size | Codec / resolution | No hwaccel (s, s/media-min) | videotoolbox (s, s/media-min) |

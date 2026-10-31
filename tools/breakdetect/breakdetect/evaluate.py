@@ -18,6 +18,7 @@ MIN_GAP_MS = 120_000
 MIN_PRECISION = 0.95
 MIN_POSITIVES = 5
 MIN_GT_EPISODES = 3
+MIN_HELD_OUT_PREDICTIONS = 5
 
 ModelFitter = Callable[[np.ndarray, np.ndarray], LogisticModel]
 
@@ -177,6 +178,7 @@ def _gate_passes(threshold: float | None, scored_count: int, loo: Totals | None,
         return False
     return (
         held.tp >= 1
+        and held.tp + held.fp >= MIN_HELD_OUT_PREDICTIONS
         and held.precision is not None
         and held.precision >= MIN_PRECISION
         and loo.precision is not None
