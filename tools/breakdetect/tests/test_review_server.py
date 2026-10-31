@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from breakdetect.cache import FeatureCache
+from breakdetect.candidates import Candidate
 from breakdetect.labels import Decision, EpisodeLabels, ShowLabels, load_labels, save_labels
 from breakdetect.review import server as review_server
 from breakdetect.review.server import make_server
@@ -242,3 +243,42 @@ def test_mark_rest_text_plain_rejected(served):
     response.read()
     conn.close()
     assert response.status == 415
+
+
+A_MS, B_MS = 20000, 21200
+
+
+@pytest.fixture
+def close_pair(monkeypatch):
+    pair = [Candidate(c - 200, c + 200, c, "black", 0.0, None) for c in (A_MS, B_MS)]
+    monkeypatch.setattr(review_server, "find_candidates", lambda features: pair)
+
+
+def decisions_by_cut():
+    return {d.cut_ms: (d.label, d.source) for d in load_labels("show").episodes[REL].decisions}
+
+
+@pytest.mark.parametrize("label", ["break", "unsure", "not_break"])
+def test_mark_rest_keeps_close_neighbour_user_decision(served, close_pair, label):
+    call(served, "POST", "/api/decision", {"rel": REL, "cut_ms": B_MS, "label": label})
+    mark_rest(served)
+    assert decisions_by_cut() == {A_MS: ("not_break", "user"), B_MS: (label, "user")}
+
+
+@pytest.mark.parametrize("label", ["break", "unsure"])
+def test_single_decision_keeps_close_neighbour_user_decision(served, close_pair, label):
+    call(served, "POST", "/api/decision", {"rel": REL, "cut_ms": B_MS, "label": label})
+    call(served, "POST", "/api/decision", {"rel": REL, "cut_ms": A_MS, "label": "not_break"})
+    assert decisions_by_cut() == {A_MS: ("not_break", "user"), B_MS: (label, "user")}
+
+
+def test_mark_rest_close_undecided_rows_both_get_not_break(served, close_pair):
+    mark_rest(served)
+    assert decisions_by_cut() == {A_MS: ("not_break", "user"), B_MS: ("not_break", "user")}
+
+
+def test_mark_rest_converts_close_seed_rows_without_losing_neighbour(served, close_pair):
+    save_labels(ShowLabels("Show", {REL: EpisodeLabels(decisions=[Decision(A_MS + 100, "unsure", "seed")])}))
+    call(served, "POST", "/api/decision", {"rel": REL, "cut_ms": B_MS, "label": "break"})
+    mark_rest(served)
+    assert decisions_by_cut() == {A_MS: ("not_break", "user"), B_MS: ("break", "user")}

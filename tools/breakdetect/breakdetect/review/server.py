@@ -107,12 +107,11 @@ class ReviewApp:
         if label not in LABELS:
             raise HttpError(HTTPStatus.BAD_REQUEST, "invalid label")
         path = self.resolve(rel)
+        candidates = find_candidates(self.features(path))
         with self.labels_lock:
             labels = load_or_empty(self.slug, self.show)
             entry = self._entry(labels, path)
-            entry.decisions = [d for d in entry.decisions if abs(d.cut_ms - cut_ms) > DEDUPE_WINDOW_MS]
-            entry.decisions.append(Decision(cut_ms, label, "user"))
-            entry.decisions.sort(key=lambda d: d.cut_ms)
+            entry.decisions = replace_row_decision(candidates, entry.decisions, Decision(cut_ms, label, "user"))
             entry.complete = False
             save_labels(labels)
         return {"ok": True}
@@ -120,14 +119,15 @@ class ReviewApp:
     def mark_rest_not_break(self, rel: str) -> dict:
         path = self.resolve(rel)
         features = self.features(path)
+        candidates = find_candidates(features)
         with self.labels_lock:
             labels = load_or_empty(self.slug, self.show)
             entry = self._entry(labels, path)
             for row in build_rows(features, entry.decisions):
                 if not is_user_decided(row):
-                    entry.decisions = [d for d in entry.decisions if abs(d.cut_ms - row["cut_ms"]) > DEDUPE_WINDOW_MS]
-                    entry.decisions.append(Decision(row["cut_ms"], "not_break", "user"))
-            entry.decisions.sort(key=lambda d: d.cut_ms)
+                    entry.decisions = replace_row_decision(
+                        candidates, entry.decisions, Decision(row["cut_ms"], "not_break", "user"), keep_user=True
+                    )
             save_labels(labels)
         return self.episode(rel)
 
@@ -176,6 +176,20 @@ def all_decided(rows: list[dict]) -> bool:
 def _nearest_candidate(decision: Decision, candidates: list) -> int | None:
     near = [i for i, c in enumerate(candidates) if abs(c.cut_ms - decision.cut_ms) <= DEDUPE_WINDOW_MS]
     return min(near, key=lambda i: abs(candidates[i].cut_ms - decision.cut_ms)) if near else None
+
+
+def _same_row(existing: Decision, new: Decision, candidates: list, owner: int | None, keep_user: bool) -> bool:
+    if keep_user and existing.source == "user":
+        return False
+    if owner is not None:
+        return _nearest_candidate(existing, candidates) == owner
+    return _nearest_candidate(existing, candidates) is None and abs(existing.cut_ms - new.cut_ms) <= DEDUPE_WINDOW_MS
+
+
+def replace_row_decision(candidates: list, decisions: list[Decision], new: Decision, keep_user: bool = False) -> list[Decision]:
+    owner = _nearest_candidate(new, candidates)
+    kept = [d for d in decisions if not _same_row(d, new, candidates, owner, keep_user)]
+    return sorted([*kept, new], key=lambda d: d.cut_ms)
 
 
 def _prefer(current: Decision | None, challenger: Decision) -> Decision:

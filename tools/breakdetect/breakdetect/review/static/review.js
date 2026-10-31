@@ -104,6 +104,7 @@ function renderRows() {
   el("rows").replaceChildren(...state.rows.map(rowNode));
   attachClip();
   el("complete").disabled = !state.rows.every(isDecided);
+  el("mark-rest").disabled = state.rows.every(isDecided);
 }
 
 function attachClip() {
