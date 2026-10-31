@@ -109,3 +109,11 @@ def test_discover_episodes_skips_specials_and_non_video(tmp_path):
     (tmp_path / "Season 1" / "a.nfo").write_bytes(b"")
     (tmp_path / "Specials" / "s.mkv").write_bytes(b"")
     assert discover_episodes(tmp_path) == [tmp_path / "Season 1" / "a.MKV"]
+
+
+def test_relative_path_same_across_roots(tmp_path):
+    mac_root = tmp_path / "Volumes" / "plex"
+    container_root = tmp_path / "media" / "plex"
+    mac_file = mac_root / "Kids TV" / "Show" / "Season 1" / "ep1.mkv"
+    container_file = container_root / "Kids TV" / "Show" / "Season 1" / "ep1.mkv"
+    assert relative_path(mac_file, [mac_root]) == relative_path(container_file, [container_root]) == "Kids TV/Show/Season 1/ep1.mkv"
