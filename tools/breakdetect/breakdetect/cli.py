@@ -5,6 +5,7 @@ from pathlib import Path
 from breakdetect.cache import BatchResult, FeatureCache, default_cache_root, run_batch
 from breakdetect.labels import import_seeds, load_or_empty, merge_labels, save_labels
 from breakdetect.media import discover_episodes
+from breakdetect.review.server import make_server
 
 HWACCELS = ["auto", "videotoolbox", "vaapi", "qsv"]
 
@@ -49,6 +50,16 @@ def _import_seeds(args: argparse.Namespace) -> int:
     return 0
 
 
+def _review(args: argparse.Namespace) -> int:
+    server = make_server(args.show_dir, FeatureCache(args.cache), args.port)
+    print(f"Reviewing {args.show_dir.name} at http://127.0.0.1:{server.server_port}/", flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        server.server_close()
+    return 0
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="breakdetect")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -62,6 +73,11 @@ def _parser() -> argparse.ArgumentParser:
     seeds.add_argument("dataset", type=Path)
     seeds.add_argument("pilot_review", type=Path)
     seeds.set_defaults(handler=_import_seeds)
+    review = sub.add_parser("review", help="serve the local break review page")
+    review.add_argument("show_dir", type=Path)
+    review.add_argument("--port", type=int, default=8765)
+    review.add_argument("--cache", type=Path, default=default_cache_root())
+    review.set_defaults(handler=_review)
     return parser
 
 

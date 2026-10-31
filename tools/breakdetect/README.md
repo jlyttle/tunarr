@@ -15,6 +15,13 @@ Offline, ffmpeg-based detector for intended commercial-break points in TV episod
 Features are cached under `<repo>/.local/breakdetect/features/` (override with `BREAKDETECT_CACHE` or `--cache`).
 Cache keys use the path relative to the first matching root in `BREAKDETECT_ROOTS` (os.pathsep-separated, default `/Volumes/plex`).
 
+## Review
+
+    uv run breakdetect review <show-dir> [--port 8765] [--cache DIR]
+
+Serves a local review page on 127.0.0.1. Keys: `b` break, `n` not a break, `u` unsure, `j`/`k` or arrows to move.
+Decisions are saved to `data/labels/<show>.json` as you go; clips are cached in `.local/breakdetect/clips/`.
+
 ## Extraction benchmark (Mac, 1 worker, SMB share, cold cache)
 
 | File | Size | Codec / resolution | No hwaccel (s, s/media-min) | videotoolbox (s, s/media-min) |

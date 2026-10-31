@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>breakdetect episode</title>
+<link rel="stylesheet" href="/review.css">
+</head>
+<body>
+<p><a href="/">All episodes</a></p>
+<h1 id="title">Loading...</h1>
+<p id="loading">Extracting features. The first open of an episode can take a minute.</p>
+<p id="error" class="error" hidden></p>
+<p class="keys">Keys: <kbd>b</kbd> break, <kbd>n</kbd> not a break, <kbd>u</kbd> unsure, <kbd>j</kbd>/<kbd>k</kbd> or arrows move, <kbd>Enter</kbd> replays the clip.</p>
+<div id="rows"></div>
+<section id="finish" hidden>
+  <label><input type="checkbox" id="held-out"> Hold out from training</label>
+  <button id="complete" disabled>Mark episode complete</button>
+  <span id="complete-status"></span>
+</section>
+<section id="scrub" hidden>
+  <h2>Missed a break?</h2>
+  <video id="full" controls preload="metadata"></video>
+  <p><button id="add-break">Add break at current time</button> <span id="add-status"></span></p>
+</section>
+<script src="/review.js"></script>
+<script>reviewEpisode();</script>
+</body>
+</html>
