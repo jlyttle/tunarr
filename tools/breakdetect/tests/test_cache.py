@@ -117,3 +117,37 @@ def test_relative_path_same_across_roots(tmp_path):
     mac_file = mac_root / "Kids TV" / "Show" / "Season 1" / "ep1.mkv"
     container_file = container_root / "Kids TV" / "Show" / "Season 1" / "ep1.mkv"
     assert relative_path(mac_file, [mac_root]) == relative_path(container_file, [container_root]) == "Kids TV/Show/Season 1/ep1.mkv"
+
+
+def test_sub_second_mtime_change_keeps_cache_key(media, cache):
+    os.utime(media, ns=(0, 1_700_000_000_123_456_789))
+    before = cache.key(media)
+    os.utime(media, ns=(0, 1_700_000_000_123_456_700))
+    assert cache.key(media) == before
+
+
+def test_cache_files_are_world_readable(monkeypatch, media, cache):
+    monkeypatch.setattr(cache_module, "extract_features", lambda path, **kw: _features())
+    cache.ensure(media)
+    [entry] = [p for p in cache.root.rglob("*.npz")]
+    assert entry.stat().st_mode & 0o777 == 0o644
+
+
+def test_corrupt_cache_entry_is_a_miss_and_re_extracts(monkeypatch, media, cache):
+    calls = []
+    monkeypatch.setattr(cache_module, "extract_features", lambda path, **kw: calls.append(path) or _features())
+    cache.ensure(media)
+    [entry] = [p for p in cache.root.rglob("*.npz")]
+    entry.write_bytes(b"not a zip")
+    assert cache.get(media) is None
+    assert cache.ensure(media).duration_ms == 1000
+    assert len(calls) == 2
+    assert cache.get(media) is not None
+
+
+def test_unreadable_cache_entry_is_a_miss(monkeypatch, media, cache):
+    monkeypatch.setattr(cache_module, "extract_features", lambda path, **kw: _features())
+    cache.ensure(media)
+    [entry] = [p for p in cache.root.rglob("*.npz")]
+    entry.chmod(0)
+    assert cache.get(media) is None

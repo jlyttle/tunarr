@@ -70,6 +70,11 @@ def file_identity(path: Path) -> str:
     return f"{st.st_size}:{st.st_mtime_ns}"
 
 
+def identity_key(identity: str) -> str:
+    size, _, mtime_ns = identity.partition(":")
+    return f"{size}:{int(mtime_ns) // 1_000_000_000}"
+
+
 def discover_episodes(show_dir: Path) -> list[Path]:
     found = []
     for dirpath, dirnames, filenames in os.walk(show_dir):

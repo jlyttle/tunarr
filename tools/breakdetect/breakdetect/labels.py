@@ -5,7 +5,7 @@ import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from breakdetect.media import default_roots, file_identity, relative_path
+from breakdetect.media import default_roots, file_identity, identity_key, relative_path
 
 SCHEMA = 1
 DEDUPE_WINDOW_MS = 1500
@@ -57,7 +57,7 @@ def labels_dir() -> Path:
 def is_stale(entry: EpisodeLabels, path: Path) -> bool:
     if not entry.identity or not path.exists():
         return True
-    return entry.identity != file_identity(path)
+    return identity_key(entry.identity) != identity_key(file_identity(path))
 
 
 def _is_stale_under(entry: EpisodeLabels, rel_path: str, roots: list[Path]) -> bool:

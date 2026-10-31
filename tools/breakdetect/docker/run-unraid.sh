@@ -8,10 +8,18 @@ IMAGE=breakdetect:local
 
 if [ $# -eq 0 ]; then
     echo "usage: $0 <cmd> [args]   e.g. $0 breakdetect extract '/media/plex/Kids TV/Rugrats'" >&2
+    echo "       $0 pull-cache     copy extracted features to this Mac's cache" >&2
     exit 2
 fi
 
 here="$(cd "$(dirname "$0")/.." && pwd)"
+
+if [ "$1" = "pull-cache" ]; then
+    dest="${BREAKDETECT_CACHE:-$here/../../.local/breakdetect/features}"
+    mkdir -p "$dest"
+    rsync -a --chmod=D755,F644 "$HOST:$APPDATA/cache/features/" "$dest/"
+    exit 0
+fi
 
 ssh "$HOST" "mkdir -p $APPDATA/src $APPDATA/cache $APPDATA/data"
 

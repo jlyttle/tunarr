@@ -1,4 +1,5 @@
 import hashlib
+import zipfile
 import os
 import tempfile
 import time
@@ -7,9 +8,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from breakdetect.features import EXTRACTOR_VERSION, Features, extract_features, load_features, save_features
-from breakdetect.media import default_roots, file_identity, relative_path
+from breakdetect.media import default_roots, file_identity, identity_key, relative_path
 
 CACHE_ENV = "BREAKDETECT_CACHE"
+FILE_MODE = 0o644
 
 
 def default_cache_root() -> Path:
@@ -28,7 +30,7 @@ class FeatureCache:
         return relative_path(path, self.roots)
 
     def key(self, path: Path) -> str:
-        raw = f"{self.rel_path(path)}|{file_identity(path)}|{EXTRACTOR_VERSION}"
+        raw = f"{self.rel_path(path)}|{identity_key(file_identity(path))}|{EXTRACTOR_VERSION}"
         return hashlib.sha1(raw.encode()).hexdigest()
 
     def _entry(self, path: Path) -> Path:
@@ -40,7 +42,12 @@ class FeatureCache:
 
     def get(self, path: Path) -> Features | None:
         entry = self._entry(path)
-        return load_features(entry) if entry.exists() else None
+        if not entry.exists():
+            return None
+        try:
+            return load_features(entry)
+        except (OSError, ValueError, KeyError, EOFError, zipfile.BadZipFile):
+            return None
 
     def ensure(self, path: Path, **extract_kwargs) -> Features:
         cached = self.get(path)
@@ -57,6 +64,7 @@ class FeatureCache:
         os.close(fd)
         try:
             save_features(features, Path(tmp))
+            os.chmod(tmp, FILE_MODE)
             os.replace(tmp, entry)
         except BaseException:
             Path(tmp).unlink(missing_ok=True)

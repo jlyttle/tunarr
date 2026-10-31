@@ -20,6 +20,7 @@ Cache keys use the path relative to the first matching root in `BREAKDETECT_ROOT
     uv run breakdetect review <show-dir> [--port 8765] [--cache DIR]
 
 Serves a local review page on 127.0.0.1. Keys: `b` break, `n` not a break, `u` unsure, `j`/`k` or arrows to move.
+Use Chrome or Firefox. Safari cannot play `.mkv`, so the full-episode player stays at 0:00 there.
 Decisions are saved to `data/labels/<show>.json` as you go; clips are cached in `.local/breakdetect/clips/`.
 
 ## Extraction benchmark (Mac, 1 worker, SMB share, cold cache)
@@ -37,12 +38,21 @@ The decode is bound by file read speed on the share for the large file; the Unra
 
     docker/run-unraid.sh <cmd> [args]
 
-Rsyncs this package to `root@192.168.1.227:/mnt/user/appdata/breakdetect/src`, builds `breakdetect:local` there (python:3.12-slim, ffmpeg, `intel-media-va-driver-non-free`, `vainfo`) and runs `<cmd>` with `--rm --device /dev/dri`, `/mnt/user/plex` mounted read-only at `/media/plex` (`BREAKDETECT_ROOTS=/media/plex`), and `/mnt/user/appdata/breakdetect/{cache,data}` mounted read-write at `/cache` and `/data` (`BREAKDETECT_CACHE=/cache/features`, `BREAKDETECT_DATA=/data`). Relative paths are identical to the Mac's (`Kids TV/...`), so cache keys and labels carry across.
+Rsyncs this package to `root@192.168.1.227:/mnt/user/appdata/breakdetect/src`, builds `breakdetect:local` there (python:3.12-slim, ffmpeg, `intel-media-va-driver-non-free`, `vainfo`) and runs `<cmd>` with `--rm --device /dev/dri`, `/mnt/user/plex` mounted read-only at `/media/plex` (`BREAKDETECT_ROOTS=/media/plex`), and `/mnt/user/appdata/breakdetect/{cache,data}` mounted read-write at `/cache` and `/data` (`BREAKDETECT_CACHE=/cache/features`, `BREAKDETECT_DATA=/data`).
 
     docker/run-unraid.sh vainfo
     docker/run-unraid.sh breakdetect extract "/media/plex/Kids TV/Rugrats" --workers 4
+    docker/run-unraid.sh pull-cache
 
-`data/` is not synced by the script; copy labels and the model to `/mnt/user/appdata/breakdetect/data` yourself.
+## Workflow: extract on Unraid, everything else on the Mac
+
+Unraid only extracts features. Labels, `train`, `evaluate` and `export` run on the Mac, against the committed `data/` directory.
+
+1. `docker/run-unraid.sh breakdetect extract "/media/plex/<Library>/<Show>" --workers 4`
+2. `docker/run-unraid.sh pull-cache` rsyncs `/mnt/user/appdata/breakdetect/cache/features/` into the Mac's cache (`<repo>/.local/breakdetect/features/`, or `BREAKDETECT_CACHE`). It never deletes Mac entries, and pulled files are mode 0644.
+3. On the Mac: `review`, then `train`, `evaluate`, `export`.
+
+Feature cache keys and label staleness compare a file's size and its mtime floored to whole seconds. The macOS SMB client truncates mtimes to 100 ns while Unraid reports full nanoseconds, so an exact comparison would never match across the two machines. Only the feature cache moves between them. The derived signal cache (`.local/breakdetect/signals/`), `data/` and the clip cache stay on the Mac. A cache file that cannot be read or is corrupt counts as a miss and is extracted again.
 
 ## Extraction benchmark (Unraid, i7-8700K, 12 threads, cold cache, 1 worker)
 

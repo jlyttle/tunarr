@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from breakdetect.labels import Decision, EpisodeLabels, ShowLabels, import_seeds, merge_labels, is_stale, load_labels, save_labels, slugify
-from breakdetect.media import file_identity, relative_path
+from breakdetect.media import file_identity, identity_key, relative_path
 
 REL = "Show/S01E01.mkv"
 
@@ -142,3 +142,30 @@ def test_save_labels_removes_temp_file_on_failure(media, monkeypatch):
     with pytest.raises(OSError):
         save_labels(_labels(media, True, []))
     assert list((Path(os.environ["BREAKDETECT_DATA"]) / "labels").iterdir()) == []
+
+
+def _set_mtime_ns(path: Path, mtime_ns: int) -> None:
+    os.utime(path, ns=(mtime_ns, mtime_ns))
+
+
+def test_identity_key_floors_mtime_to_seconds():
+    assert identity_key("767:1700000000123456789") == "767:1700000000"
+    assert identity_key("767:1700000000123456700") == identity_key("767:1700000000999999999")
+
+
+def test_sub_second_mtime_difference_is_not_stale(media):
+    _set_mtime_ns(media / REL, 1_700_000_000_123_456_789)
+    entry = EpisodeLabels(identity=file_identity(media / REL))
+    _set_mtime_ns(media / REL, 1_700_000_000_123_456_700)
+    assert not is_stale(entry, media / REL)
+
+
+def test_different_second_or_size_is_stale(media):
+    _set_mtime_ns(media / REL, 1_700_000_000_500_000_000)
+    entry = EpisodeLabels(identity=file_identity(media / REL))
+    _set_mtime_ns(media / REL, 1_700_000_001_000_000_000)
+    assert is_stale(entry, media / REL)
+    _set_mtime_ns(media / REL, 1_700_000_000_500_000_000)
+    (media / REL).write_bytes(b"videx!")
+    _set_mtime_ns(media / REL, 1_700_000_000_500_000_000)
+    assert is_stale(entry, media / REL)
