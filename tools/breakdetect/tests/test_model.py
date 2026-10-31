@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from breakdetect.cli import main
-from breakdetect.candidates import find_candidates
+from breakdetect.candidates import Candidate, find_candidates
 from breakdetect.features import extract_features
 from breakdetect.model import LogisticModel
 from breakdetect.signals import SIGNAL_NAMES, candidate_signals
@@ -140,3 +140,10 @@ def test_show_dir_is_library_plus_show(tmp_path):
     rel = "Kids TV/Rugrats/Season 2/x.mkv"
     assert _show_dir(rel, tmp_path / rel) == tmp_path / "Kids TV" / "Rugrats"
     assert _show_dir("Kids TV/x.mkv", tmp_path / "Kids TV" / "x.mkv") is None
+
+
+def test_only_the_nearest_candidate_to_a_truth_cut_is_positive():
+    candidates = [Candidate(c - 200, c + 200, c, "dark", 0.0, None) for c in (100_000, 101_000)]
+    X = np.zeros((2, len(SIGNAL_NAMES)))
+    _, y = build_training_set([(candidates, X, [100_200])])
+    assert y.tolist() == [1, 0]

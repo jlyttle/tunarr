@@ -12,7 +12,15 @@ from breakdetect.candidates import Candidate
 from breakdetect.labels import data_dir, load_labels, slugify
 from breakdetect.model import LogisticModel
 from breakdetect.showsignals import ShowSignals, signals_key
-from breakdetect.train import MATCH_WINDOW_MS, _episode_signals, _label_files, _show_dir, build_training_set, model_path
+from breakdetect.train import (
+    MATCH_WINDOW_MS,
+    _episode_signals,
+    _label_files,
+    _matched_predictions,
+    _show_dir,
+    build_training_set,
+    model_path,
+)
 
 MIN_GAP_MS = 120_000
 MIN_PRECISION = 0.95
@@ -55,22 +63,6 @@ class ShowReport:
     held_out_recall: float | None
     enabled: bool
     false_positives: list[tuple[str, int, float]] = field(default_factory=list)
-
-
-def _matched_predictions(pred_ms: list[int], truth_ms: list[int], tol_ms: int) -> set[int]:
-    pairs = sorted(
-        (abs(p - t), i, j)
-        for i, p in enumerate(pred_ms)
-        for j, t in enumerate(truth_ms)
-        if abs(p - t) <= tol_ms
-    )
-    used_pred: set[int] = set()
-    used_truth: set[int] = set()
-    for _, i, j in pairs:
-        if i not in used_pred and j not in used_truth:
-            used_pred.add(i)
-            used_truth.add(j)
-    return used_pred
 
 
 def match(pred_ms: list[int], truth_ms: list[int], tol_ms: int = MATCH_WINDOW_MS) -> tuple[int, int, int]:

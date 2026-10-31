@@ -15,15 +15,28 @@ MATCH_WINDOW_MS = 1500
 Episode = tuple[list[Candidate], np.ndarray, list[int]]
 
 
-def _is_positive(c: Candidate, truth_ms: list[int]) -> bool:
-    return any(abs(c.cut_ms - t) <= MATCH_WINDOW_MS for t in truth_ms)
+def _matched_predictions(pred_ms: list[int], truth_ms: list[int], tol_ms: int) -> set[int]:
+    pairs = sorted(
+        (abs(p - t), i, j)
+        for i, p in enumerate(pred_ms)
+        for j, t in enumerate(truth_ms)
+        if abs(p - t) <= tol_ms
+    )
+    used_pred: set[int] = set()
+    used_truth: set[int] = set()
+    for _, i, j in pairs:
+        if i not in used_pred and j not in used_truth:
+            used_pred.add(i)
+            used_truth.add(j)
+    return used_pred
 
 
 def build_training_set(episodes: Iterable[Episode]) -> tuple[np.ndarray, np.ndarray]:
     blocks, labels = [], []
     for candidates, X, truth_ms in episodes:
         blocks.append(X)
-        labels += [1 if _is_positive(c, truth_ms) else 0 for c in candidates]
+        hits = _matched_predictions([c.cut_ms for c in candidates], truth_ms, MATCH_WINDOW_MS)
+        labels += [1 if i in hits else 0 for i in range(len(candidates))]
     X = np.vstack(blocks) if blocks else np.empty((0, len(SIGNAL_NAMES)))
     return X, np.array(labels, dtype=np.int64)
 
