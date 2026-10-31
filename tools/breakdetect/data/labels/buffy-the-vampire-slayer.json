@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "show": "Buffy The Vampire Slayer",
+  "episodes": {
+    "TV/Buffy The Vampire Slayer/Season 1/Buffy.the.Vampire.Slayer.S01E01.Welcome.to.the.Hellmouth.DD.2.0.MPEG-2.REMUX.mkv": {
+      "identity": "1791605142:1777252982949025100",
+      "duration_ms": 2608363,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    },
+    "TV/Buffy The Vampire Slayer/Season 1/Buffy.the.Vampire.Slayer.S01E07.Angel.DD.2.0.MPEG-2.REMUX.mkv": {
+      "identity": "2050988701:1777252714480988600",
+      "duration_ms": 2679677,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    },
+    "TV/Buffy The Vampire Slayer/Season 2/BUFFY THE VAMPIRE SLAYER - S02 E01 - WHEN SHE WAS BAD  NTSC DVD DD2.0 x264 MMI.mkv": {
+      "identity": "576325196:1632706082000000000",
+      "duration_ms": 2724847,
+      "complete": false,
+      "held_out": false,
+      "decisions": [
+        {
+          "cut_ms": 2006000,
+          "label": "break",
+          "source": "user"
+        }
+      ]
+    },
+    "TV/Buffy The Vampire Slayer/Season 5/BUFFY THE VAMPIRE SLAYER - S05 E07 - FOOL FOR LOVE NTSC DVD DD2.0 x264 MMI.mkv": {
+      "identity": "575946035:1632704687000000000",
+      "duration_ms": 2621035,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    }
+  }
+}

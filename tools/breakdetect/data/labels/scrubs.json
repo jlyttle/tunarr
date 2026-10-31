@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "show": "Scrubs",
+  "episodes": {
+    "TV/Scrubs/Season 1/Scrubs - S01E07 - My Super Ego - JySzE.mkv": {
+      "identity": "1378916459:1669001680000000000",
+      "duration_ms": 1302976,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    },
+    "TV/Scrubs/Season 5/Scrubs - S05E07 - My Way Home - JySzE.mkv": {
+      "identity": "2081459902:1670015604000000000",
+      "duration_ms": 1758144,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    }
+  }
+}

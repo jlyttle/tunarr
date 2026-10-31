@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "show": "The Fresh Prince of Bel-Air",
+  "episodes": {
+    "TV/The Fresh Prince of Bel-Air/Season 1/The.Fresh.Prince.of.Bel-Air.S01E07.Def.Poets.Society.1990.NTSC.DVD.REMUX.MPEG-2.DD.1.0-MKVULTRA.mkv": {
+      "identity": "991219616:1680381125000000000",
+      "duration_ms": 1430432,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    },
+    "TV/The Fresh Prince of Bel-Air/Season 5/The.Fresh.Prince.of.Bel-Air.S05E07.Father.Knows.Best.1990.NTSC.DVD.REMUX.MPEG-2.DD.2.0-MKVULTRA.mkv": {
+      "identity": "761624807:1783298916706368800",
+      "duration_ms": 1356521,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "show": "The Legend of Korra",
+  "episodes": {
+    "Kids TV/The Legend of Korra/Season 1/The.Legend.Of.Korra.S01E07.1080p.BluRay.x264-DeBTViD.mkv": {
+      "identity": "1561138730:1610320822000000000",
+      "duration_ms": 1450624,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    },
+    "Kids TV/The Legend of Korra/Season 2/The.Legend.Of.Korra.S02E07.1080p.BluRay.x264-TENEIGHTY.mkv": {
+      "identity": "2346001750:1610322787000000000",
+      "duration_ms": 1435136,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    }
+  }
+}

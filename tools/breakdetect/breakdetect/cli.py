@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 from breakdetect.cache import BatchResult, FeatureCache, default_cache_root, run_batch
+from breakdetect.labels import import_seeds, save_labels
 from breakdetect.media import discover_episodes
 
 HWACCELS = ["auto", "videotoolbox", "vaapi", "qsv"]
@@ -39,6 +40,14 @@ def _extract(args: argparse.Namespace) -> int:
     return 1 if any(r.status == "failed" for r in results) else 0
 
 
+def _import_seeds(args: argparse.Namespace) -> int:
+    imported = import_seeds(args.dataset, args.pilot_review)
+    for labels in imported.values():
+        save_labels(labels)
+        print(f"{labels.show}: {len(labels.episodes)} episodes")
+    return 0
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="breakdetect")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -48,6 +57,10 @@ def _parser() -> argparse.ArgumentParser:
     extract.add_argument("--hwaccel", choices=HWACCELS)
     extract.add_argument("--cache", type=Path, default=default_cache_root())
     extract.set_defaults(handler=_extract)
+    seeds = sub.add_parser("import-seeds", help="import seed labels from the research dataset and pilot review")
+    seeds.add_argument("dataset", type=Path)
+    seeds.add_argument("pilot_review", type=Path)
+    seeds.set_defaults(handler=_import_seeds)
     return parser
 
 

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "show": "Are You Afraid of the Dark",
+  "episodes": {
+    "Kids TV/Are You Afraid of the Dark/Season 1/Are You Afraid of the Dark (1990) - S01E07.mkv": {
+      "identity": "920550351:1777146287998687700",
+      "duration_ms": 1446445,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    },
+    "Kids TV/Are You Afraid of the Dark/Season 5/Are.You.Afraid.of.the.Dark.S05E07.The.Tale.of.the.Manaha.PROPER.NTSC.DVD.DD.2.0.MPEG-2.REMUX-HeXXy.mkv": {
+      "identity": "851706712:1777145991472504800",
+      "duration_ms": 1471552,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "show": "Batman The Animated Series",
+  "episodes": {
+    "Kids TV/Batman The Animated Series/Season 1/Batman.The.Animated.Series.S01E01.The.Cat.And.The.Claw.Part.1.1080p.HMAX.WEB-DL.DD.2.0.H.264-SLiGNOME.mkv": {
+      "identity": "1442791747:1781662735565298600",
+      "duration_ms": 1339589,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    },
+    "Kids TV/Batman The Animated Series/Season 1/Batman.The.Animated.Series.S01E03.Heart.of.Ice.1080p.HMAX.WEB-DL.DD.2.0.H.264-SLiGNOME.mkv": {
+      "identity": "1440660351:1781662843909737900",
+      "duration_ms": 1339797,
+      "complete": false,
+      "held_out": false,
+      "decisions": [
+        {
+          "cut_ms": 420500,
+          "label": "unsure",
+          "source": "seed"
+        },
+        {
+          "cut_ms": 848300,
+          "label": "unsure",
+          "source": "seed"
+        }
+      ]
+    },
+    "Kids TV/Batman The Animated Series/Season 2/Batman.The.Animated.Series.S02E01.Shadow.of.The.Bat.Part.1.1080p.HMAX.WEB-DL.DD.2.0.H.264-SLiGNOME.mkv": {
+      "identity": "1444170537:1781662739590757800",
+      "duration_ms": 1339964,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    },
+    "Kids TV/Batman The Animated Series/Season 2/Batman.The.Animated.Series.S02E03.Mudslide.1080p.HMAX.WEB-DL.DD.2.0.H.264-SLiGNOME.mkv": {
+      "identity": "1437608291:1781663028249322100",
+      "duration_ms": 1335084,
+      "complete": false,
+      "held_out": false,
+      "decisions": [
+        {
+          "cut_ms": 476200,
+          "label": "unsure",
+          "source": "seed"
+        },
+        {
+          "cut_ms": 936100,
+          "label": "unsure",
+          "source": "seed"
+        }
+      ]
+    }
+  }
+}

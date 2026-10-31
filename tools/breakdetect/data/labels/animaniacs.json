@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "show": "Animaniacs",
+  "episodes": {
+    "Kids TV/Animaniacs/Season 1/Animaniacs - S01E01.mkv": {
+      "identity": "325781692:1619915638000000000",
+      "duration_ms": 1276053,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    },
+    "Kids TV/Animaniacs/Season 1/Animaniacs - S01E02.mkv": {
+      "identity": "334802782:1619916154000000000",
+      "duration_ms": 1277397,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    },
+    "Kids TV/Animaniacs/Season 1/Animaniacs - S01E07.mkv": {
+      "identity": "305083899:1620015363000000000",
+      "duration_ms": 1275605,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    },
+    "Kids TV/Animaniacs/Season 1/Animaniacs - S01E67.mkv": {
+      "identity": "980861278:1641745077000000000",
+      "duration_ms": 1279378,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    }
+  }
+}

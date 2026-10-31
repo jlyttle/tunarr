@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "show": "DuckTales",
+  "episodes": {
+    "Kids TV/DuckTales/Season 1/DuckTales - S01E07.mkv": {
+      "identity": "207756926:1610263256000000000",
+      "duration_ms": 1370776,
+      "complete": false,
+      "held_out": false,
+      "decisions": [
+        {
+          "cut_ms": 552800,
+          "label": "unsure",
+          "source": "seed"
+        },
+        {
+          "cut_ms": 824200,
+          "label": "unsure",
+          "source": "seed"
+        }
+      ]
+    },
+    "Kids TV/DuckTales/Season 3/DuckTales - 78 - Bubbeo & Juliet.mkv": {
+      "identity": "282883184:1610399540000000000",
+      "duration_ms": 1371510,
+      "complete": false,
+      "held_out": false,
+      "decisions": [
+        {
+          "cut_ms": 724500,
+          "label": "unsure",
+          "source": "seed"
+        },
+        {
+          "cut_ms": 928200,
+          "label": "unsure",
+          "source": "seed"
+        }
+      ]
+    }
+  }
+}

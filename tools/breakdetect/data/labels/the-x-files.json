@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "show": "The X-Files",
+  "episodes": {
+    "TV/The X-Files/Season 1/The X-Files - S01E07 - Ghost in the Machine.mkv": {
+      "identity": "9876269297:1638299223000000000",
+      "duration_ms": 2719680,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    },
+    "TV/The X-Files/Season 2/The.X-Files.S02E07.3.1080p.DSNP.WEB-DL.DDP5.1.H.264-FLUX.mkv": {
+      "identity": "2883040259:1781397914762060000",
+      "duration_ms": 2713184,
+      "complete": false,
+      "held_out": false,
+      "decisions": []
+    }
+  }
+}

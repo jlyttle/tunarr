@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -58,7 +59,7 @@ def relative_path(path: Path, roots: list[Path]) -> str:
     absolute = Path(os.path.abspath(path))
     for root in roots:
         try:
-            return absolute.relative_to(Path(os.path.abspath(root))).as_posix()
+            return unicodedata.normalize("NFC", absolute.relative_to(Path(os.path.abspath(root))).as_posix())
         except ValueError:
             continue
     raise ValueError(f"{path} is not under any root: {[str(r) for r in roots]}")
