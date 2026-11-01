@@ -24,6 +24,7 @@ from breakdetect.train import (
 
 MIN_GAP_MS = 120_000
 CLUSTER_MS = 8_000
+CLUSTER_FLOOR = 0.5
 MIN_PRECISION = 0.95
 MIN_POSITIVES = 5
 MIN_GT_EPISODES = 3
@@ -71,8 +72,11 @@ def match(pred_ms: list[int], truth_ms: list[int], tol_ms: int = MATCH_WINDOW_MS
     return tp, len(pred_ms) - tp, len(truth_ms) - tp
 
 
-def _earliest_in_cluster(candidates: list[Candidate], eligible: list[int], i: int) -> int:
-    cluster = [k for k in eligible if 0 <= candidates[i].cut_ms - candidates[k].cut_ms <= CLUSTER_MS]
+def _earliest_in_cluster(candidates: list[Candidate], scores: np.ndarray, i: int) -> int:
+    cluster = [
+        k for k in range(len(candidates))
+        if scores[k] >= CLUSTER_FLOOR and 0 <= candidates[i].cut_ms - candidates[k].cut_ms <= CLUSTER_MS
+    ] or [i]
     return min(cluster, key=lambda k: candidates[k].cut_ms)
 
 
@@ -80,7 +84,7 @@ def _select_indices(candidates: list[Candidate], scores: np.ndarray, threshold: 
     eligible = sorted((i for i in range(len(candidates)) if scores[i] >= threshold), key=lambda i: -scores[i])
     kept: list[int] = []
     for i in eligible:
-        j = _earliest_in_cluster(candidates, eligible, i)
+        j = _earliest_in_cluster(candidates, scores, i)
         if all(abs(candidates[j].cut_ms - candidates[k].cut_ms) > min_gap_ms for k in kept):
             kept.append(j)
     return kept

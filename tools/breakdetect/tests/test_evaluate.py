@@ -58,7 +58,8 @@ def test_select_breaks_keeps_highest_score_within_gap():
 def test_select_breaks_moves_to_earliest_cut_in_cluster():
     cands = [_cand(714_000), _cand(720_000)]
     assert select_breaks(cands, np.array([0.95, 1.0]), 0.9) == [714_000]
-    assert select_breaks(cands, np.array([0.5, 1.0]), 0.9) == [720_000]
+    assert select_breaks(cands, np.array([0.6, 1.0]), 0.9) == [714_000]
+    assert select_breaks(cands, np.array([0.4, 1.0]), 0.9) == [720_000]
 
 
 def test_select_breaks_ignores_earlier_cut_outside_cluster():
