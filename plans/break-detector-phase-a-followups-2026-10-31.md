@@ -64,3 +64,11 @@ Recorded from the subagent-driven build of plans/break-detector-phase-a.md.
 - Task 11: minor (deferred): rsync --exclude data unanchored; base image tag floats (pin bookworm); no .dockerignore
 - Final: deferred to before full-library scan: _drain whole-pipe audio read; offset_support array rebuild; stale signals npz accumulation
 - Final: fix wave re-review: all addressed (commits f53ef246..5dc2c2a6); minors: null signals_key misleading message; has() existence-only for siblings; broad except in video stream; stale check on un-complete
+
+## Rugrats parked (2026-11-01)
+
+Rugrats stays disabled (plays straight through) by the user's choice; revisit later. What is known:
+- Its stylized hard cuts and fades to black mid-story score like act-outs (S01E18E19 8:04, S03E23E24 16:16).
+- The break sits before the next story's title card; when the fade runs straight into the card (S01E02E03 10:55) the real cut scores ~0.08 and the black after the card (11:01) wins.
+- Tried offline, not built: a per-show "near this show's labelled break offsets" signal (exp(-d/15 s), computed only from other episodes' labels). It removed the stylized-cut false positives and kept SpongeBob and Fresh Prince passing.
+- Still needed: a title-card rule (move a cut to before a recurring title-card sequence) and 3–4 more held-out double episodes, since each has only one break and the gate needs 5 found in training and held-out.
