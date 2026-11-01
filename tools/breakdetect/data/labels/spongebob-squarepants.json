@@ -2,6 +2,114 @@
   "schema": 1,
   "show": "SpongeBob SquarePants",
   "episodes": {
+    "Kids TV/SpongeBob SquarePants/Season 1/SpongeBob SquarePants - S01E01 - Help Wanted.mkv": {
+      "identity": "282490335:1493968173000000000",
+      "duration_ms": 548633,
+      "complete": true,
+      "held_out": false,
+      "decisions": [
+        {
+          "cut_ms": 81050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 82600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 111700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 132150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 148500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 173000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 176050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 182450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 250550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 324500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 353500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 356650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 358700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 364900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 379250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 381150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 383550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 387150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 402900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 405800,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
     "Kids TV/SpongeBob SquarePants/Season 1/SpongeBob SquarePants - S01E07 - Plankton!.mkv": {
       "identity": "328454550:1493968008751040100",
       "duration_ms": 709168,
@@ -9,12 +117,6154 @@
       "held_out": false,
       "decisions": []
     },
+    "Kids TV/SpongeBob SquarePants/Season 10/SpongeBob.SquarePants.S10E22.SpongeBob,.You're.Fired!.WEBDL-720p.mkv": {
+      "identity": "611727708:1469493342755082400",
+      "duration_ms": 1398870,
+      "complete": true,
+      "held_out": false,
+      "decisions": [
+        {
+          "cut_ms": 61550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 181700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 184050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 209400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 212200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 217900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 221250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 223600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 230700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 239050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 245100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 255150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 317600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 339600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 343550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 346750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 354100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 376050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 398150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 443500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 451400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 460250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 469100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 470600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 472600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 485750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 489450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 496250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 511200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 516700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 584150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 590050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 595750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 609200,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 615900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 620200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 633450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 638000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 642900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 644900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 663100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 673900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 683250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 697300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 701500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 703000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 712050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 725650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 728100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 746200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 747900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 780950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 805950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 824200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 852150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 857650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 910600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 917400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 919500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 926250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 931600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 934000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 935800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 967950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 998150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1010800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1021400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1145400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1147900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1220700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1224300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1245050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1264150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1269900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1274000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1295950,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
+    "Kids TV/SpongeBob SquarePants/Season 2/SpongeBob SquarePants - S02E01E02.mkv": {
+      "identity": "1385672843:1645662628000000000",
+      "duration_ms": 1472928,
+      "complete": true,
+      "held_out": false,
+      "decisions": [
+        {
+          "cut_ms": 97350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 101850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 107250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 151350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 173450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 175750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 177150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 178600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 180150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 246100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 281800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 286200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 288450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 295550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 300500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 305400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 340000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 365200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 375600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 379500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 384450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 387600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 392550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 396150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 431800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 483000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 530950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 551950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 562300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 574750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 577650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 579950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 582000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 653750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 655750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 660450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 705200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 712500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 716200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 718000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 747850,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 752600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 782750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 786950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 798600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 807800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 818500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 847900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 854300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 859400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 861700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 863750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 875900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 880000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 913350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 917850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 930800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 934600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 945350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 948750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 980600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 988000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1000400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1029150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1094500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1119450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1131300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1136650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1140300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1142400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1148700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1162000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1182150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1217100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1226750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1254000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1310700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1312950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1315550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1318700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1326200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1328300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1335600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1339000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1370800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1381950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1383900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1398200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1403850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1408100,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
+    "Kids TV/SpongeBob SquarePants/Season 2/SpongeBob SquarePants - S02E03E04.mkv": {
+      "identity": "1336298192:1645663704000000000",
+      "duration_ms": 1474720,
+      "complete": true,
+      "held_out": false,
+      "decisions": [
+        {
+          "cut_ms": 63400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 66500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 80100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 130550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 133700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 139500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 146300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 153000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 155800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 160450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 164800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 172700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 192450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 195650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 198950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 204450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 207650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 216600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 228200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 234800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 236600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 238100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 261600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 279650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 281900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 285300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 286850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 288250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 290050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 309800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 324500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 325900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 327750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 342800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 345400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 347150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 348750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 350400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 381250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 386900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 390100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 425600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 465100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 474050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 479100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 483550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 502600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 508200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 510650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 514450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 547300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 550200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 565800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 576550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 588500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 592500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 595500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 642100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 651200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 655500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 683300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 685850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 689400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 703650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 757800,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 760800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 777700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 780100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 781950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 785050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 789050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 791950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 795400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 797900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 803750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 815050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 847450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 852800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 892300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 906550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 908300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 917850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 963850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 970750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 979400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 990000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 997000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1017350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1018700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1021700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1041500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1062550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1065250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1067450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1069850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1071550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1087650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1092200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1118650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1128050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1135450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1138350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1147100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1150800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1153750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1157300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1174850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1209750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1211350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1216500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1226550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1235650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1238550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1267400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1269150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1285900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1305000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1308600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1320000,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
+    "Kids TV/SpongeBob SquarePants/Season 2/SpongeBob SquarePants - S02E05E06.mkv": {
+      "identity": "1187262649:1645662680000000000",
+      "duration_ms": 1442976,
+      "complete": true,
+      "held_out": true,
+      "decisions": [
+        {
+          "cut_ms": 76700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 79750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 88100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 102800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 144050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 177250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 182500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 184950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 191350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 195750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 197400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 201250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 202700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 285750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 288250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 291350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 350050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 370100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 378400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 395300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 398650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 400500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 409900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 413900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 453150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 456800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 518250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 526250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 529850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 534050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 535550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 536650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 537500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 538650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 539300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 539850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 541100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 544600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 552150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 553900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 558200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 579700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 582600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 585300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 704350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 732850,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 736000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 804850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 813250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 822700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 824000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 825450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 826900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 828300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 835200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 869800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 895250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 906200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 907900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 916600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 919750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 943000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 954650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 978400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1000800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1026550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1028700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1030550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1032000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1034500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1049550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1054900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1103300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1157300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1168300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1170400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1176600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1184600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1195500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1197200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1202650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1212550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1220200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1265150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1267700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1270350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1282700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1286250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1322150,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
+    "Kids TV/SpongeBob SquarePants/Season 2/SpongeBob SquarePants - S02E07E08.mkv": {
+      "identity": "1266878598:1645662836000000000",
+      "duration_ms": 0,
+      "complete": false,
+      "held_out": true,
+      "decisions": [
+        {
+          "cut_ms": 85850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 95100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 99950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 102900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 116850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 122350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 139100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 142100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 150050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 151450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 165100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 269650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 287000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 307700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 350800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 353450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 375200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 381900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 392600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 420700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 427050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 459100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 463000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 489650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 537900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 568000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 575200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 577750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 579950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 583450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 610450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 616450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 685300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 688850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 692150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 739500,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 742500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 753200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 755850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 763200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 764550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 794700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 798250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 800300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 809300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 818150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 820600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 823200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 828050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 832750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 836300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 840400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 842100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 843850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 845500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 847600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 850350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 875750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 877700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 911900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 937850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 941250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 943500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 945050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 946750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 952200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 956150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 959450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 968000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 969800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 972500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 978200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 981800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 986700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 991000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 993400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 997350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1005600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1015750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1017500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1022300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1024800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1096400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1107800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1109900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1114200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1118350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1120850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1123250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1125700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1128800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1134150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1137550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1160050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1161000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1161800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1163600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1207100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1229300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1235200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1237000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1239200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1248900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1252300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1364500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1378600,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
+    "Kids TV/SpongeBob SquarePants/Season 2/SpongeBob SquarePants - S02E09E10.mkv": {
+      "identity": "1410987161:1645662734000000000",
+      "duration_ms": 1474112,
+      "complete": true,
+      "held_out": true,
+      "decisions": [
+        {
+          "cut_ms": 65300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 96700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 119050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 124300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 127500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 131450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 134650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 142400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 145800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 148200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 150150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 151650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 154300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 159400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 162700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 168450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 170150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 190300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 196100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 228700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 239450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 270700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 282100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 285350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 287000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 290100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 302150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 318750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 320500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 333400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 347900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 423800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 427550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 456550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 462300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 464650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 518800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 521200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 582700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 585600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 591800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 594400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 614500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 725700,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 728700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 749450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 776800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 785200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 788050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 813250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 828950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 843000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 849250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 863550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 873900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 891350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 930400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 934450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 948150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 962700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 967850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 977850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 980800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 992200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1001350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1005550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1012250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1016600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1028650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1030800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1033350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1051700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1056100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1058350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1060950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1124550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1145250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1171100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1174300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1181700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1200650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1203600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1217700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1220250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1223400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1226100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1297350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1311800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1313200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1333050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1346650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1357150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1359750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1371550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1380750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1383900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1385650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1394500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1397600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1399200,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
+    "Kids TV/SpongeBob SquarePants/Season 2/SpongeBob SquarePants - S02E11E12.mkv": {
+      "identity": "1397694202:1645662916000000000",
+      "duration_ms": 1418784,
+      "complete": true,
+      "held_out": true,
+      "decisions": [
+        {
+          "cut_ms": 75600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 79050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 82500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 125050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 126400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 128600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 133900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 156100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 198650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 200600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 230100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 279300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 286800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 297800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 305750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 321850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 326300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 328850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 338650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 344400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 347250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 395250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 415400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 417500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 419850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 422200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 453400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 461700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 472200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 486150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 487400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 487750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 488700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 489100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 489600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 490500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 490900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 491400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 506550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 508750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 526400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 532200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 535400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 554000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 557050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 561100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 563150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 661350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 666800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 683100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 706250,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 709900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 745750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 748150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 750100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 760900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 763350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 765100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 768550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 772450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 785650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 787900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 793100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 801400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 828600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 835000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 862850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 871000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 872500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 879200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 887000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 890000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 892950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 900100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 901900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 935500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 942500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 947100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 949950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 952350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 954450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 976250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 979000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 994250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1000600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1029650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1035100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1036600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1038000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1054550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1057800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1059950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1193400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1203500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1207900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1213100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1216050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1226650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1229500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1233850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1276400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1297100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1303350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1316700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1318500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1344300,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
+    "Kids TV/SpongeBob SquarePants/Season 2/SpongeBob SquarePants - S02E13E14.mkv": {
+      "identity": "1452554387:1645662532000000000",
+      "duration_ms": 1478912,
+      "complete": true,
+      "held_out": true,
+      "decisions": [
+        {
+          "cut_ms": 70500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 74450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 77800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 82700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 85000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 91350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 94600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 96500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 97900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 100300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 102900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 105400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 107600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 111800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 136500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 146600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 148000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 179250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 181850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 188450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 192150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 203850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 258100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 260050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 261750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 263750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 313500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 329450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 333450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 340700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 344800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 347300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 349200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 351700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 357600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 362200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 363950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 365300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 436050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 439050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 449350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 539550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 541950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 590750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 612800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 617900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 624800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 635700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 643800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 647350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 652400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 696700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 725100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 732450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 751000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 761550,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 764350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 819900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 821350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 851800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 855400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 859000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 860700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 916800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 920700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 975800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 979150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1050300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1059300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1069900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1072250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1106700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1110500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1113400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1117600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1202500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1205400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1206850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1217400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1237300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1247550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1256600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1259200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1283750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1288600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1290350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1296100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1308150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1313500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1371500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1389250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1393300,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
+    "Kids TV/SpongeBob SquarePants/Season 2/SpongeBob SquarePants - S02E15E16.mkv": {
+      "identity": "1470496462:1645663310000000000",
+      "duration_ms": 1473888,
+      "complete": true,
+      "held_out": true,
+      "decisions": [
+        {
+          "cut_ms": 86700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 122950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 125150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 158950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 230600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 237750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 240500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 247750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 251000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 253650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 261200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 264650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 266950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 277300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 297950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 301850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 304800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 316000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 319750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 326850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 363250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 369350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 393600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 396650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 400600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 497450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 549550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 551850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 567100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 571600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 580500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 633000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 701100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 705500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 743750,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 747100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 849200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 853300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 908100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 921500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 923300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 925400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 929000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 930300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 933400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 971550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 997900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1012200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1014350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1081050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1131600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1155450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1161100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1246100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1249700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1251450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1297600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1299500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1303500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1306000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1308800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1311600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1321500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1358700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1388300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1390600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1395700,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
     "Kids TV/SpongeBob SquarePants/Season 3/SpongeBob SquarePants - S03E07E08.mkv": {
       "identity": "835164293:1645663063000000000",
       "duration_ms": 1472096,
-      "complete": false,
+      "complete": true,
       "held_out": false,
-      "decisions": []
+      "decisions": [
+        {
+          "cut_ms": 80900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 84150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 86700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 110850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 113550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 134450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 137250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 139600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 162400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 174450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 190250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 208800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 213800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 222600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 250100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 253600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 255700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 268850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 315300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 318000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 321300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 323750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 327600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 333700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 357050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 361000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 392750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 396350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 401150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 405100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 407900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 410150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 413550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 426200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 429400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 433000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 437350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 443300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 448600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 459000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 467950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 473400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 610500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 623500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 624900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 626700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 637000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 686400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 690600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 692200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 695900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 703000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 708100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 718750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 749750,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 752650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 768250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 770350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 831800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 834100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 837300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 839300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 840800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 852500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 856100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 858900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 865950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 869150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 874100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 875600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 878800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 881350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 889900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 994200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 996950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 999000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1002250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1007050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1026450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1028700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1032400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1037000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1044500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1050800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1054850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1057700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1065200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1067650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1070350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1072200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1073950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1075600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1076650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1077650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1078800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1109300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1118800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1126950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1171750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1181250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1187450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1198000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1200600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1205400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1246500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1249650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1251650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1254300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1317050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1319900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1338500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1342650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1345600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1347950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1352200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1354550,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
+    "Kids TV/SpongeBob SquarePants/Season 5/SpongeBob SquarePants - S05E31 - SpongeBob's Atlantis SquarePantis.mkv": {
+      "identity": "477459975:1493670161281628300",
+      "duration_ms": 2432964,
+      "complete": true,
+      "held_out": false,
+      "decisions": [
+        {
+          "cut_ms": 90750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 115600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 137750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 155300,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 158600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 281850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 315750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 317850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 321700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 347800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 424250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 430900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 436200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 439800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 443900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 447000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 494500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 498650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 501900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 508400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 510800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 566500,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 611450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 613300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 621700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 624000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 643050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 653000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 750900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 758450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 765450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 781450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 805600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 825200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 827600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 830150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 832600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 879600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 890800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 909750,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 927950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 942150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 978350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1086900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1090850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1097200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1118550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1239900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1244350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1264500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1286000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1292050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1318300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1326050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1329400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1333650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1336100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1339550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1340900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1354500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1380550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1403000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1404700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1443000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1444600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1447100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1468500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1489450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1519000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1530500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1539000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1550800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1571600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1610900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1620900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1622900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1648150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1655450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1679550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1685800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1688600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1715900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1720800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1758550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1783550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1786700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1795500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1801400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1808000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1884750,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1897750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1900650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1918250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1992600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2001600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2041050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2063450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2068250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2093150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2108800,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2135050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2142100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2175150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2177700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2183550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2185650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2188700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2236000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2311200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2315100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2340550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2347300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2351550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2354150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2356400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 2363850,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
+    "Kids TV/SpongeBob SquarePants/Season 5/SpongeBob SquarePants - S05E40 - Whatever Happened to SpongeBob SquarePants.mkv": {
+      "identity": "259001001:1493670409012755000",
+      "duration_ms": 1312545,
+      "complete": true,
+      "held_out": false,
+      "decisions": [
+        {
+          "cut_ms": 67500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 87450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 95000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 97450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 100450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 108900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 156900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 176400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 205550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 223200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 269100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 319000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 370600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 373300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 389750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 401700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 406500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 419800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 433100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 438900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 461750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 466950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 528850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 555400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 598950,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 608350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 620550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 625050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 630550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 633300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 634700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 640850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 652400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 706700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 735400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 737550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 750000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 754050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 767850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 770900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 786100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 792550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 801100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 815700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 841800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 845750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 881500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 931950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 947300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 948850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 959850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 964300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1029500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1054200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1062700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1112700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1117650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1123750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1126900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1144400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1147200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1149450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1152000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1154400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1156300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1172800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1204400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1228450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1234300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1245550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1249850,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
+    },
+    "Kids TV/SpongeBob SquarePants/Season 8/SpongeBob SquarePants.S08E13.The Great Patty Caper.DVDRip.x264-HANDJOB.mkv": {
+      "identity": "291196711:1493672453841170400",
+      "duration_ms": 1322855,
+      "complete": true,
+      "held_out": true,
+      "decisions": [
+        {
+          "cut_ms": 60400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 74200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 83900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 113650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 132000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 146700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 148850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 161100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 189800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 192350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 195250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 216300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 218300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 219700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 232500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 259100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 263200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 347200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 399800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 412900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 459800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 470000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 479000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 489500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 493050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 543950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 546400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 555400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 558000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 559400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 569700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 572000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 580250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 581800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 604100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 607000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 609600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 621250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 632150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 640100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 646500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 671450,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 679950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 681300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 730350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 731700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 735900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 744600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 746550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 753400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 763150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 764750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 819300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 821750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 846800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1183200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1186150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1212450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1229550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1247150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1255550,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
     }
   }
 }

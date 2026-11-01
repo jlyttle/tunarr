@@ -4,7 +4,7 @@ from breakdetect.candidates import SAMPLE_MS, Candidate, aligned, dark_threshold
 from breakdetect.features import Features
 from breakdetect.series import SeriesContext, bumper_match, offset_support
 
-SIGNALS_VERSION = "2"
+SIGNALS_VERSION = "3"
 
 SIGNAL_NAMES = [
     "dark_depth",
@@ -20,12 +20,14 @@ SIGNAL_NAMES = [
     "near_chapter",
     "series_offset_support",
     "bumper_match",
+    "frame_peak",
 ]
 
 SLOPE_SAMPLES = 15
 SCENE_OFFSET_MS = 2000
 CONTEXT_MS = 10_000
 CHAPTER_TOLERANCE_MS = 2000
+PEAK_PERCENTILE = 99
 
 
 def _span(c: Candidate) -> slice:
@@ -48,6 +50,13 @@ def _scene_change(thumbs: np.ndarray, c: Candidate) -> float:
     before = min(max((c.start_ms - SCENE_OFFSET_MS) // SAMPLE_MS, 0), last)
     after = min(max((c.end_ms + SCENE_OFFSET_MS) // SAMPLE_MS, 0), last)
     return float(np.abs(thumbs[before].astype(np.float32) - thumbs[after].astype(np.float32)).mean() / 255.0)
+
+
+def _frame_peak(thumbs: np.ndarray, c: Candidate) -> float:
+    span = _span(c)
+    frames = thumbs[span.start : max(span.stop, span.start + 1)]
+    darkest = frames[np.argmin(frames.reshape(len(frames), -1).mean(axis=1))]
+    return float(np.percentile(darkest, PEAK_PERCENTILE)) / 255.0
 
 
 def _context_loudness_db(rms_db: np.ndarray, c: Candidate) -> float:
@@ -98,6 +107,7 @@ def candidate_signals(c: Candidate, f: Features, series: SeriesContext | None = 
             _near_chapter(f, c),
             offset_support_value,
             bumper_match_value,
+            _frame_peak(f.thumbs, c),
         ],
         dtype=np.float64,
     )
