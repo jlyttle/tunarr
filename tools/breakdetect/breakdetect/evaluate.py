@@ -23,6 +23,7 @@ from breakdetect.train import (
 )
 
 MIN_GAP_MS = 120_000
+CLUSTER_MS = 8_000
 MIN_PRECISION = 0.95
 MIN_POSITIVES = 5
 MIN_GT_EPISODES = 3
@@ -70,12 +71,18 @@ def match(pred_ms: list[int], truth_ms: list[int], tol_ms: int = MATCH_WINDOW_MS
     return tp, len(pred_ms) - tp, len(truth_ms) - tp
 
 
+def _earliest_in_cluster(candidates: list[Candidate], eligible: list[int], i: int) -> int:
+    cluster = [k for k in eligible if 0 <= candidates[i].cut_ms - candidates[k].cut_ms <= CLUSTER_MS]
+    return min(cluster, key=lambda k: candidates[k].cut_ms)
+
+
 def _select_indices(candidates: list[Candidate], scores: np.ndarray, threshold: float, min_gap_ms: int) -> list[int]:
     eligible = sorted((i for i in range(len(candidates)) if scores[i] >= threshold), key=lambda i: -scores[i])
     kept: list[int] = []
     for i in eligible:
-        if all(abs(candidates[i].cut_ms - candidates[k].cut_ms) > min_gap_ms for k in kept):
-            kept.append(i)
+        j = _earliest_in_cluster(candidates, eligible, i)
+        if all(abs(candidates[j].cut_ms - candidates[k].cut_ms) > min_gap_ms for k in kept):
+            kept.append(j)
     return kept
 
 
@@ -84,24 +91,17 @@ def select_breaks(candidates: list[Candidate], scores: np.ndarray, threshold: fl
 
 
 def choose_threshold(
-    scored: list[tuple[float, bool]], min_precision: float = MIN_PRECISION, min_positives: int = MIN_POSITIVES
+    episodes: list["ScoredEpisode"], min_precision: float = MIN_PRECISION, min_positives: int = MIN_POSITIVES
 ) -> float | None:
-    ranked = sorted(scored, key=lambda s: -s[0])
+    total_truth = sum(len(ep.truth) for ep in episodes)
     best = None
-    taken = positives = 0
-    for i, (score, is_true) in enumerate(ranked):
-        taken += 1
-        positives += is_true
-        last_of_tie = i + 1 == len(ranked) or ranked[i + 1][0] != score
-        if last_of_tie and positives >= min_positives and positives / taken >= min_precision:
-            best = score
+    for threshold in sorted({float(s) for ep in episodes for s in ep.scores}, reverse=True):
+        totals = _totals(episodes, threshold)
+        if totals.fp > total_truth:
+            break
+        if totals.tp >= min_positives and totals.precision is not None and totals.precision >= min_precision:
+            best = threshold
     return best
-
-
-def _candidate_outcomes(ep: ScoredEpisode) -> list[tuple[float, bool]]:
-    cuts = [c.cut_ms for c in ep.candidates]
-    hits = _matched_predictions(cuts, ep.truth, MATCH_WINDOW_MS)
-    return [(float(ep.scores[i]), i in hits) for i in range(len(cuts))]
 
 
 @dataclass
@@ -184,7 +184,7 @@ def evaluate_show(show_slug: str, pool: list[GtEpisode], model_fitter: ModelFitt
     trainable = [e for e in pool if not e.held_out]
     loo, loo_unscorable = _score_leave_one_out([e for e in show_eps if not e.held_out], trainable, model_fitter)
     held, held_unscorable = _score_held_out([e for e in show_eps if e.held_out], trainable, model_fitter)
-    threshold = choose_threshold([o for ep in loo for o in _candidate_outcomes(ep)])
+    threshold = choose_threshold(loo)
     loo_totals = _totals(loo, threshold) if threshold is not None else None
     held_totals = _totals(held, threshold) if threshold is not None else None
     return ShowReport(

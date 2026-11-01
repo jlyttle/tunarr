@@ -6,6 +6,7 @@ from breakdetect.cache import FeatureCache
 from breakdetect.candidates import Candidate
 from breakdetect.evaluate import (
     GtEpisode,
+    ScoredEpisode,
     ShowReport,
     choose_threshold,
     evaluate_show,
@@ -54,8 +55,27 @@ def test_select_breaks_keeps_highest_score_within_gap():
     assert select_breaks(cands, scores, 0.5, min_gap_ms=30_000) == [100_000, 160_000, 400_000]
 
 
+def test_select_breaks_moves_to_earliest_cut_in_cluster():
+    cands = [_cand(714_000), _cand(720_000)]
+    assert select_breaks(cands, np.array([0.95, 1.0]), 0.9) == [714_000]
+    assert select_breaks(cands, np.array([0.5, 1.0]), 0.9) == [720_000]
+
+
+def test_select_breaks_ignores_earlier_cut_outside_cluster():
+    cands = [_cand(710_000), _cand(720_000)]
+    assert select_breaks(cands, np.array([0.95, 1.0]), 0.9, min_gap_ms=60_000) == [720_000]
+
+
+def _scored(scored: list[tuple[float, bool]]) -> list[ScoredEpisode]:
+    episodes = []
+    for n, (score, is_true) in enumerate(scored):
+        cut = 300_000
+        episodes.append(ScoredEpisode(f"ep{n}", [_cand(cut)], np.array([score]), [cut] if is_true else []))
+    return episodes
+
+
 def test_choose_threshold_meets_precision():
-    scored = [(0.9, True)] * 5 + [(0.5, True), (0.4, False)] + [(0.1, False)] * 3
+    scored = _scored([(0.9, True)] * 5 + [(0.5, True), (0.4, False)] + [(0.1, False)] * 3)
     assert choose_threshold(scored) == 0.5
     assert choose_threshold(scored, min_precision=0.8) == 0.4
     assert choose_threshold(scored, min_positives=6) == 0.5
@@ -63,11 +83,16 @@ def test_choose_threshold_meets_precision():
 
 
 def test_choose_threshold_none_when_too_few_positives():
-    assert choose_threshold([(0.9, True)] * 4 + [(0.1, False)]) is None
+    assert choose_threshold(_scored([(0.9, True)] * 4 + [(0.1, False)])) is None
 
 
 def test_choose_threshold_none_when_precision_unreachable():
-    assert choose_threshold([(0.9, True), (0.9, False)] * 5) is None
+    assert choose_threshold(_scored([(0.9, True), (0.9, False)] * 5)) is None
+
+
+def test_choose_threshold_counts_cluster_as_one_break():
+    episodes = [ScoredEpisode(f"ep{n}", [_cand(714_000), _cand(720_000)], np.array([0.95, 1.0]), [714_000]) for n in range(5)]
+    assert choose_threshold(episodes) == 0.95
 
 
 def test_show_not_enabled_with_two_episodes():
