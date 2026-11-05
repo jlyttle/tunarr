@@ -54,6 +54,9 @@ export const MidRollBreakRuleSchema = z.discriminatedUnion('type', [
     initialDelayMs: z.number().positive(),
     intervalMs: z.number().positive(),
   }),
+  z.object({
+    type: z.literal('detected'),
+  }),
 ]);
 
 export type MidRollBreakRule = z.infer<typeof MidRollBreakRuleSchema>;
@@ -80,6 +83,15 @@ export const MidRollConfigSchema = z
     // 'eager' = resolve filler at schedule time (V1 behavior)
     // 'lazy'  = emit offline placeholders, resolve at stream time
     strategy: z.enum(['eager', 'lazy']).default('eager'),
+    splitSlotFlex: z
+      .object({
+        tailShare: z.number().min(0).max(1).default(0.25),
+        minTailMs: z.number().nonnegative().default(60_000),
+        minBreakMs: z.number().nonnegative().default(60_000),
+      })
+      .optional(),
+    minFirstBreakMs: z.number().nonnegative().optional(),
+    minBreakIntervalMs: z.number().nonnegative().optional(),
   })
   .refine(
     (data) => {
@@ -109,6 +121,7 @@ export const MidRollConfigSchema = z
   .refine(
     (data) => {
       return (
+        data.splitSlotFlex !== undefined ||
         data.breakDurationMs !== undefined ||
         (data.breakDurationMinMs !== undefined &&
           data.breakDurationMaxMs !== undefined)

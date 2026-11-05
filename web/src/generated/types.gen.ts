@@ -3974,6 +3974,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -3983,6 +3985,13 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
             } | {
                 startTime: number;
@@ -4023,6 +4032,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4032,6 +4043,13 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 startProgramId?: string;
                 excludeProgramIds?: Array<string>;
@@ -4097,6 +4115,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4106,6 +4126,13 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 type: 'filler';
                 fillerListId: string;
@@ -4139,6 +4166,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4148,6 +4177,13 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 startProgramId?: string;
                 excludeProgramIds?: Array<string>;
@@ -4214,6 +4250,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4223,6 +4261,13 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
             }>;
             timeZoneOffset: number;
@@ -4255,6 +4300,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4264,6 +4311,13 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -4301,6 +4355,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4310,6 +4366,13 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -4381,6 +4444,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4390,6 +4455,13 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -4442,6 +4514,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4451,6 +4525,13 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 type: 'filler';
                 fillerListId: string;
@@ -4480,6 +4561,8 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4489,6 +4572,13 @@ export type GetApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -4659,6 +4749,8 @@ export type PostApiChannelsByIdProgrammingData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4668,6 +4760,13 @@ export type PostApiChannelsByIdProgrammingData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
             } | {
                 startTime: number;
@@ -4708,6 +4807,8 @@ export type PostApiChannelsByIdProgrammingData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4717,6 +4818,13 @@ export type PostApiChannelsByIdProgrammingData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 startProgramId?: string;
                 excludeProgramIds?: Array<string>;
@@ -4782,6 +4890,8 @@ export type PostApiChannelsByIdProgrammingData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4791,6 +4901,13 @@ export type PostApiChannelsByIdProgrammingData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 type: 'filler';
                 fillerListId: string;
@@ -4824,6 +4941,8 @@ export type PostApiChannelsByIdProgrammingData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4833,6 +4952,13 @@ export type PostApiChannelsByIdProgrammingData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 startProgramId?: string;
                 excludeProgramIds?: Array<string>;
@@ -4899,6 +5025,8 @@ export type PostApiChannelsByIdProgrammingData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4908,6 +5036,13 @@ export type PostApiChannelsByIdProgrammingData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
             }>;
             timeZoneOffset: number;
@@ -4946,6 +5081,8 @@ export type PostApiChannelsByIdProgrammingData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -4955,6 +5092,13 @@ export type PostApiChannelsByIdProgrammingData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -4992,6 +5136,8 @@ export type PostApiChannelsByIdProgrammingData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5001,6 +5147,13 @@ export type PostApiChannelsByIdProgrammingData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -5072,6 +5225,8 @@ export type PostApiChannelsByIdProgrammingData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5081,6 +5236,13 @@ export type PostApiChannelsByIdProgrammingData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -5133,6 +5295,8 @@ export type PostApiChannelsByIdProgrammingData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5142,6 +5306,13 @@ export type PostApiChannelsByIdProgrammingData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 type: 'filler';
                 fillerListId: string;
@@ -5171,6 +5342,8 @@ export type PostApiChannelsByIdProgrammingData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5180,6 +5353,13 @@ export type PostApiChannelsByIdProgrammingData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -5375,6 +5555,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5384,6 +5566,13 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
             } | {
                 startTime: number;
@@ -5424,6 +5613,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5433,6 +5624,13 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 startProgramId?: string;
                 excludeProgramIds?: Array<string>;
@@ -5498,6 +5696,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5507,6 +5707,13 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 type: 'filler';
                 fillerListId: string;
@@ -5540,6 +5747,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5549,6 +5758,13 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 startProgramId?: string;
                 excludeProgramIds?: Array<string>;
@@ -5615,6 +5831,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5624,6 +5842,13 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
             }>;
             timeZoneOffset: number;
@@ -5656,6 +5881,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5665,6 +5892,13 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -5702,6 +5936,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5711,6 +5947,13 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -5782,6 +6025,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5791,6 +6036,13 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -5843,6 +6095,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5852,6 +6106,13 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 type: 'filler';
                 fillerListId: string;
@@ -5881,6 +6142,8 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -5890,6 +6153,13 @@ export type PostApiChannelsByIdProgrammingResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -6450,6 +6720,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -6459,6 +6731,13 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
             } | {
                 startTime: number;
@@ -6499,6 +6778,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -6508,6 +6789,13 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 startProgramId?: string;
                 excludeProgramIds?: Array<string>;
@@ -6573,6 +6861,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -6582,6 +6872,13 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 type: 'filler';
                 fillerListId: string;
@@ -6615,6 +6912,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -6624,6 +6923,13 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 startProgramId?: string;
                 excludeProgramIds?: Array<string>;
@@ -6690,6 +6996,8 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -6699,6 +7007,13 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
             }>;
             timeZoneOffset: number;
@@ -6831,6 +7146,8 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -6840,6 +7157,13 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -6877,6 +7201,8 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -6886,6 +7212,13 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -6957,6 +7290,8 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -6966,6 +7301,13 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -7018,6 +7360,8 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -7027,6 +7371,13 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 type: 'filler';
                 fillerListId: string;
@@ -7056,6 +7407,8 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -7065,6 +7418,13 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy?: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare?: number;
+                        minTailMs?: number;
+                        minBreakMs?: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -7261,6 +7621,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -7270,6 +7632,13 @@ export type GetApiChannelsByIdScheduleResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
             } | {
                 startTime: number;
@@ -7310,6 +7679,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -7319,6 +7690,13 @@ export type GetApiChannelsByIdScheduleResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 startProgramId?: string;
                 excludeProgramIds?: Array<string>;
@@ -7497,6 +7875,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -7506,6 +7886,13 @@ export type GetApiChannelsByIdScheduleResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 startProgramId?: string;
                 excludeProgramIds?: Array<string>;
@@ -7565,6 +7952,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -7574,6 +7963,13 @@ export type GetApiChannelsByIdScheduleResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 type: 'filler';
                 fillerListId: string;
@@ -7638,6 +8034,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -7647,6 +8045,13 @@ export type GetApiChannelsByIdScheduleResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 smartCollection: {
                     uuid: string;
@@ -7687,6 +8092,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -7696,6 +8103,13 @@ export type GetApiChannelsByIdScheduleResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -7733,6 +8147,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -7742,6 +8158,13 @@ export type GetApiChannelsByIdScheduleResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -7933,6 +8356,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -7942,6 +8367,13 @@ export type GetApiChannelsByIdScheduleResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;
@@ -8005,6 +8437,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -8014,6 +8448,13 @@ export type GetApiChannelsByIdScheduleResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 type: 'filler';
                 fillerListId: string;
@@ -8049,6 +8490,8 @@ export type GetApiChannelsByIdScheduleResponses = {
                         type: 'initial_then_interval';
                         initialDelayMs: number;
                         intervalMs: number;
+                    } | {
+                        type: 'detected';
                     };
                     maxBreaks: number;
                     minProgramDurationMs: number;
@@ -8058,6 +8501,13 @@ export type GetApiChannelsByIdScheduleResponses = {
                     breakDurationMaxMs?: number;
                     programTypes?: Array<'movie' | 'episode' | 'track' | 'music_video' | 'other_video'>;
                     strategy: 'eager' | 'lazy';
+                    splitSlotFlex?: {
+                        tailShare: number;
+                        minTailMs: number;
+                        minBreakMs: number;
+                    };
+                    minFirstBreakMs?: number;
+                    minBreakIntervalMs?: number;
                 };
                 cooldownMs: number;
                 periodMs?: number;

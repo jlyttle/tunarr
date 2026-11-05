@@ -78,6 +78,8 @@ export function resolveBreakPoints(
       }
       break;
     }
+    case 'detected':
+      return null;
   }
 
   // Use max of range for conservative filtering
