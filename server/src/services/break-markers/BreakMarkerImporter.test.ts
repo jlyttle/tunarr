@@ -74,6 +74,18 @@ describe('matchMarkerEpisodes', () => {
     expect(result.rows).toEqual([{ programId: 'p1', offsetsMs: [660_000] }]);
   });
 
+  test('emits one row per program when it has several matching files', () => {
+    const result = matchMarkerEpisodes(
+      [episode('TV/X/a.mkv', 1_000_000)],
+      [
+        { programId: 'p1', path: '/data/TV/X/a.mkv', durationMs: 1_000_000 },
+        { programId: 'p1', path: '/backup/TV/X/a.mkv', durationMs: 1_000_000 },
+      ],
+    );
+
+    expect(result.rows).toEqual([{ programId: 'p1', offsetsMs: [660_000] }]);
+  });
+
   test('gives every program with the same path a row', () => {
     const result = matchMarkerEpisodes(
       [episode('TV/X/a.mkv', 1_000_000)],
@@ -149,6 +161,79 @@ describe('BreakMarkerImporter', () => {
     expect(markers.offsetsFor(['p1', 'p2'])).toEqual(
       new Map([['p1', [660_000]]]),
     );
+  });
+
+  function addEpisode(id: string, path: string) {
+    sqlite.prepare('insert into program values (?, ?)').run(id, 'episode');
+    sqlite
+      .prepare('insert into program_version values (?, ?, ?)')
+      .run(`v-${id}`, 1_000_000, id);
+    sqlite
+      .prepare('insert into program_media_file values (?, ?, ?)')
+      .run(`f-${id}`, path, `v-${id}`);
+  }
+
+  const fileFor = (...relativePaths: string[]): BreakMarkerFile => ({
+    ...file,
+    episodes: relativePaths.map((p) => episode(p, 1_000_000)),
+  });
+
+  test('finds an NFD database path from an NFC marker name', async () => {
+    const name = 'TV/Caf\u00e9/a.mkv';
+    addEpisode('n1', `/data/${name.normalize('NFD')}`);
+
+    const result = await importer.import(fileFor(name.normalize('NFC')));
+
+    expect(result.unmatched).toEqual([]);
+    expect(markers.offsetsFor(['n1']).has('n1')).toBe(true);
+  });
+
+  test('finds an NFC database path from an NFD marker name', async () => {
+    const name = 'TV/Caf\u00e9/a.mkv';
+    addEpisode('n2', `/data/${name.normalize('NFC')}`);
+
+    const result = await importer.import(fileFor(name.normalize('NFD')));
+
+    expect(result.unmatched).toEqual([]);
+    expect(markers.offsetsFor(['n2']).has('n2')).toBe(true);
+  });
+
+  test('matches names containing an underscore', async () => {
+    addEpisode('u1', '/data/TV/X/a_b.mkv');
+
+    const result = await importer.import(fileFor('TV/X/a_b.mkv'));
+
+    expect(result.matched).toBe(1);
+  });
+
+  test('matches names containing an apostrophe', async () => {
+    addEpisode('q1', "/data/TV/X/Bob's Show.mkv");
+
+    const result = await importer.import(fileFor("TV/X/Bob's Show.mkv"));
+
+    expect(result.matched).toBe(1);
+  });
+
+  test('matches across the basename batch boundary', async () => {
+    const names = Array.from({ length: 150 }, (_, i) => `TV/X/ep${i}.mkv`);
+    names.forEach((n, i) => addEpisode(`b${i}`, `/data/${n}`));
+
+    const result = await importer.import(fileFor(...names));
+
+    expect(result).toEqual({ matched: 150, unmatched: [], programs: 150 });
+  });
+
+  test('counts a program with two files once', async () => {
+    sqlite
+      .prepare('insert into program_version values (?, ?, ?)')
+      .run('v1b', 1_000_000, 'p1');
+    sqlite
+      .prepare('insert into program_media_file values (?, ?, ?)')
+      .run('f1b', '/backup/TV/X/a.mkv', 'v1b');
+
+    const result = await importer.import(fileFor('TV/X/a.mkv'));
+
+    expect(result.programs).toBe(1);
   });
 
   test('importing twice is idempotent', async () => {

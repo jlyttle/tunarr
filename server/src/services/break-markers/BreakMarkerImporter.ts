@@ -47,8 +47,11 @@ export function matchMarkerEpisodes(
       continue;
     }
     const offsetsMs = episode.breaks.map((b) => b.offsetMs);
-    for (const match of matches) {
-      rows.push({ programId: match.programId, offsetsMs });
+    for (const programId of new Set(matches.map((m) => m.programId))) {
+      const existing = rows.find((row) => row.programId === programId);
+      if (existing === undefined) {
+        rows.push({ programId, offsetsMs });
+      }
     }
   }
   return { rows, unmatched };
@@ -77,7 +80,14 @@ export class BreakMarkerImporter {
   private findCandidates(
     episodes: BreakMarkerFile['episodes'],
   ): MarkerCandidate[] {
-    const names = [...new Set(episodes.map((e) => basename(e.relativePath)))];
+    const names = [
+      ...new Set(
+        episodes.flatMap((e) => {
+          const name = basename(e.relativePath);
+          return [name.normalize('NFC'), name.normalize('NFD')];
+        }),
+      ),
+    ];
     const found = new Map<string, MarkerCandidate>();
     for (const batch of chunk(names, BasenameBatchSize)) {
       const results = this.db
@@ -97,10 +107,7 @@ export class BreakMarkerImporter {
           and(
             eq(Program.type, 'episode'),
             or(
-              ...batch.flatMap((name) => [
-                like(ProgramMediaFile.path, `%/${name}`),
-                like(ProgramMediaFile.path, `%/${name.normalize('NFD')}`),
-              ]),
+              ...batch.map((name) => like(ProgramMediaFile.path, `%/${name}`)),
             ),
           ),
         )
