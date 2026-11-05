@@ -27,7 +27,7 @@ import { useEffect, useState } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 
 type MidRollBreakRuleFormFields = {
-  type: 'fixed_interval' | 'percentage' | 'initial_then_interval';
+  type: 'fixed_interval' | 'percentage' | 'initial_then_interval' | 'detected';
   intervalMs?: number;
   points?: number[];
   initialDelayMs?: number;
@@ -43,6 +43,13 @@ type MidRollFormFields = {
     breakDurationMs?: number;
     breakDurationMinMs?: number;
     breakDurationMaxMs?: number;
+    splitSlotFlex?: {
+      tailShare: number;
+      minTailMs: number;
+      minBreakMs: number;
+    };
+    minFirstBreakMs?: number;
+    minBreakIntervalMs?: number;
     programTypes?: string[];
     strategy: 'eager' | 'lazy';
   };
@@ -70,6 +77,15 @@ const breakRuleLabels: Record<
   fixed_interval: msg`Fixed Interval`,
   percentage: msg`Percentage-Based`,
   initial_then_interval: msg`Initial Delay + Interval`,
+  detected: msg`Detected breaks (breakdetect markers)`,
+};
+
+type DurationMode = 'fixed' | 'range' | 'split';
+
+const defaultSplitSlotFlex = {
+  tailShare: 0.25,
+  minTailMs: 60_000,
+  minBreakMs: 60_000,
 };
 
 function msToMinutes(ms: number): number {
@@ -89,9 +105,12 @@ export const MidRollConfigPanel = () => {
   const strategy = watch('midRoll.strategy');
 
   const [newPoint, setNewPoint] = useState('');
-  const [durationMode, setDurationMode] = useState<'fixed' | 'range'>(() =>
-    getValues('midRoll.breakDurationMinMs') !== undefined ? 'range' : 'fixed',
-  );
+  const [durationMode, setDurationMode] = useState<DurationMode>(() => {
+    if (getValues('midRoll.splitSlotFlex') !== undefined) return 'split';
+    return getValues('midRoll.breakDurationMinMs') !== undefined
+      ? 'range'
+      : 'fixed';
+  });
 
   // Migrate V1 intervalMs to breakRule on mount
   useEffect(() => {
@@ -128,6 +147,9 @@ export const MidRollConfigPanel = () => {
           intervalMs: minutesToMs(30),
         });
         break;
+      case 'detected':
+        setValue('midRoll.breakRule', { type: 'detected' });
+        break;
     }
   };
 
@@ -151,17 +173,24 @@ export const MidRollConfigPanel = () => {
     );
   };
 
-  const handleDurationModeChange = (mode: 'fixed' | 'range') => {
+  const handleDurationModeChange = (mode: DurationMode) => {
     setDurationMode(mode);
-    if (mode === 'fixed') {
-      setValue('midRoll.breakDurationMs', minutesToMs(3));
-      setValue('midRoll.breakDurationMinMs', undefined);
-      setValue('midRoll.breakDurationMaxMs', undefined);
-    } else {
-      setValue('midRoll.breakDurationMs', undefined);
-      setValue('midRoll.breakDurationMinMs', minutesToMs(2));
-      setValue('midRoll.breakDurationMaxMs', minutesToMs(5));
-    }
+    setValue(
+      'midRoll.breakDurationMs',
+      mode === 'fixed' ? minutesToMs(3) : undefined,
+    );
+    setValue(
+      'midRoll.breakDurationMinMs',
+      mode === 'range' ? minutesToMs(2) : undefined,
+    );
+    setValue(
+      'midRoll.breakDurationMaxMs',
+      mode === 'range' ? minutesToMs(5) : undefined,
+    );
+    setValue(
+      'midRoll.splitSlotFlex',
+      mode === 'split' ? { ...defaultSplitSlotFlex } : undefined,
+    );
   };
 
   return (
@@ -196,6 +225,14 @@ export const MidRollConfigPanel = () => {
           </FormControl>
         )}
       />
+
+      {breakRuleType === 'detected' && (
+        <Typography variant="body2" color="text.secondary">
+          <Trans>
+            Episodes without imported markers play straight through.
+          </Trans>
+        </Typography>
+      )}
 
       {breakRuleType === 'fixed_interval' && (
         <Controller
@@ -320,7 +357,7 @@ export const MidRollConfigPanel = () => {
         value={durationMode}
         exclusive
         onChange={(_, value) => {
-          if (value) handleDurationModeChange(value as 'fixed' | 'range');
+          if (value) handleDurationModeChange(value as DurationMode);
         }}
         size="small"
       >
@@ -330,6 +367,9 @@ export const MidRollConfigPanel = () => {
         </ToggleButton>
         <ToggleButton value="range">
           <Trans>Range</Trans>
+        </ToggleButton>
+        <ToggleButton value="split">
+          <Trans>Split slot flex</Trans>
         </ToggleButton>
       </ToggleButtonGroup>
 
@@ -399,6 +439,66 @@ export const MidRollConfigPanel = () => {
         </Stack>
       )}
 
+      {durationMode === 'split' && (
+        <Stack direction="row" spacing={2}>
+          <Controller
+            control={control}
+            name="midRoll.splitSlotFlex.tailShare"
+            render={({ field }) => (
+              <TextField
+                fullWidth
+                label={t`Tail share (%)`}
+                type="number"
+                slotProps={{ htmlInput: { min: 0, max: 100 } }}
+                value={
+                  field.value !== undefined ? Math.round(field.value * 100) : ''
+                }
+                onChange={(e) => field.onChange(Number(e.target.value) / 100)}
+                helperText={t`Share of the slot flex placed after the program`}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="midRoll.splitSlotFlex.minTailMs"
+            render={({ field }) => (
+              <TextField
+                fullWidth
+                label={t`Minimum tail (minutes)`}
+                type="number"
+                slotProps={{ htmlInput: { min: 0 } }}
+                value={
+                  field.value !== undefined ? msToMinutes(field.value) : ''
+                }
+                onChange={(e) =>
+                  field.onChange(minutesToMs(Number(e.target.value)))
+                }
+                helperText={t`Smallest flex block left at the end of the slot`}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="midRoll.splitSlotFlex.minBreakMs"
+            render={({ field }) => (
+              <TextField
+                fullWidth
+                label={t`Minimum break (minutes)`}
+                type="number"
+                slotProps={{ htmlInput: { min: 0 } }}
+                value={
+                  field.value !== undefined ? msToMinutes(field.value) : ''
+                }
+                onChange={(e) =>
+                  field.onChange(minutesToMs(Number(e.target.value)))
+                }
+                helperText={t`Smallest flex block worth inserting as a break`}
+              />
+            )}
+          />
+        </Stack>
+      )}
+
       <Divider />
 
       <Typography variant="subtitle2">Limits</Typography>
@@ -415,6 +515,49 @@ export const MidRollConfigPanel = () => {
             value={field.value}
             onChange={(e) => field.onChange(Number(e.target.value))}
             helperText={t`Maximum number of breaks per program (0 = unlimited)`}
+          />
+        )}
+      />
+      <Typography variant="subtitle2">
+        <Trans>Placement</Trans>
+      </Typography>
+      <Controller
+        control={control}
+        name="midRoll.minFirstBreakMs"
+        render={({ field }) => (
+          <TextField
+            label={t`No break before (minutes)`}
+            type="number"
+            slotProps={{ htmlInput: { min: 0 } }}
+            value={field.value !== undefined ? msToMinutes(field.value) : ''}
+            onChange={(e) =>
+              field.onChange(
+                e.target.value === ''
+                  ? undefined
+                  : minutesToMs(Number(e.target.value)),
+              )
+            }
+            helperText={t`Keep the start of the program free of breaks`}
+          />
+        )}
+      />
+      <Controller
+        control={control}
+        name="midRoll.minBreakIntervalMs"
+        render={({ field }) => (
+          <TextField
+            label={t`Minimum gap between breaks (minutes)`}
+            type="number"
+            slotProps={{ htmlInput: { min: 0 } }}
+            value={field.value !== undefined ? msToMinutes(field.value) : ''}
+            onChange={(e) =>
+              field.onChange(
+                e.target.value === ''
+                  ? undefined
+                  : minutesToMs(Number(e.target.value)),
+              )
+            }
+            helperText={t`Drop breaks that fall closer together than this`}
           />
         )}
       />
