@@ -6,8 +6,11 @@ import { maxBy, minBy, sumBy } from 'lodash-es';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createFakeProgramOrm } from '../../testing/fakes/entityCreators.ts';
 import { groupByUniq } from '../../util/index.ts';
+import type { CondensedContentProgram } from '@tunarr/types';
 import type { SlotSchedulerProgram } from './slotSchedulerUtil.js';
 import {
+  applyMidRollBreaks,
+  PaddedProgram,
   createFillerIterators,
   createProgramMap,
   createSlotIterators,
@@ -15,6 +18,7 @@ import {
   getFillerIteratorsForSlot,
 } from './slotSchedulerUtil.js';
 import { RotationState } from './rotation/RotationState.ts';
+import { TimeSlotImpl } from './TimeSlotImpl.ts';
 import { scheduleTimeSlots } from './TimeSlotService.ts';
 import { MersenneTwister19937, Random } from 'random-js';
 
@@ -4611,5 +4615,173 @@ describe('guide titles', () => {
       expect(item).not.toHaveProperty('guideTitle');
       expect(item).not.toHaveProperty('guideDescription');
     }
+  });
+});
+
+describe('detected breaks', () => {
+  const oneMin = 60 * 1000;
+  const midnight = dayjs('2024-01-01T00:00:00.000Z').utc();
+
+  type LineupItem = {
+    type: string;
+    id?: string;
+    duration: number;
+    startOffsetMs?: number;
+    fillerConfig?: { origin?: string };
+  };
+
+  const detectedConfig = {
+    breakRule: { type: 'detected' as const },
+    breakDurationMs: 180_000,
+    maxBreaks: 0,
+    minProgramDurationMs: 0,
+  };
+
+  const episode = (): SlotSchedulerProgram => ({
+    ...createFakeProgramOrm({
+      uuid: 'ep1',
+      title: 'Episode 1',
+      type: 'episode',
+      duration: 22 * oneMin,
+      episode: 1,
+      tvShowUuid: 'show1',
+      show: { uuid: 'show1' },
+    }),
+    parentFillerLists: [],
+    parentCustomShows: [],
+    parentSmartCollections: [],
+  });
+
+  const scheduleOneSlot = async (
+    midRoll: TimeSlotSchedule['slots'][number]['midRoll'],
+    breakMarkers?: ReadonlyMap<string, number[]>,
+  ) => {
+    const schedule: TimeSlotSchedule = {
+      type: 'time',
+      period: 'day',
+      maxDays: 1,
+      flexPreference: 'end',
+      padMs: 30 * oneMin,
+      latenessMs: 0,
+      overflow: { type: 'duration', maxMs: 0 },
+      timeZoneOffset: 0,
+      slots: [
+        {
+          id: randomUUID(),
+          startTime: 0,
+          type: 'show',
+          showId: 'show1',
+          order: 'next',
+          direction: 'asc',
+          seasonFilter: [],
+          midRoll,
+        },
+      ],
+    };
+    const result = await scheduleTimeSlots(
+      schedule,
+      [episode()],
+      [42, 99],
+      undefined,
+      midnight,
+      breakMarkers,
+    );
+    return firstSlot(result.lineup as LineupItem[]);
+  };
+
+  const firstSlot = (lineup: LineupItem[]) => {
+    let elapsed = 0;
+    return lineup.filter((item) => {
+      const inSlot = elapsed < 30 * oneMin;
+      elapsed += item.duration;
+      return inSlot;
+    });
+  };
+
+  test('splits an episode at its detected marker', async () => {
+    const lineup = await scheduleOneSlot(
+      detectedConfig,
+      new Map([['ep1', [660_000]]]),
+    );
+
+    const first = lineup.findIndex((i) => i.id === 'ep1');
+    expect(lineup[first].startOffsetMs ?? 0).toBe(0);
+    expect(lineup[first + 1]).toMatchObject({
+      type: 'flex',
+      fillerConfig: { origin: 'midroll' },
+    });
+    expect(lineup[first + 2]).toMatchObject({
+      id: 'ep1',
+      startOffsetMs: 660_000,
+    });
+    expect(lineup.filter((i) => i.id === 'ep1')).toHaveLength(2);
+  });
+
+  test('leaves an episode without markers whole', async () => {
+    const lineup = await scheduleOneSlot(detectedConfig, new Map());
+
+    expect(lineup.filter((i) => i.id === 'ep1')).toHaveLength(1);
+  });
+
+  test('a fixed_interval rule with no mid filler list still makes no breaks', async () => {
+    const lineup = await scheduleOneSlot(
+      {
+        breakRule: { type: 'fixed_interval', intervalMs: 8 * oneMin },
+        breakDurationMs: 180_000,
+        maxBreaks: 2,
+        minProgramDurationMs: 0,
+      },
+      new Map([['ep1', [660_000]]]),
+    );
+
+    expect(lineup.filter((i) => i.id === 'ep1')).toHaveLength(1);
+  });
+
+  test('shifts markers by the program start offset', () => {
+    const slot = new TimeSlotImpl(
+      {
+        id: randomUUID(),
+        startTime: 0,
+        type: 'show',
+        showId: 'show1',
+        order: 'next',
+        direction: 'asc',
+        seasonFilter: [],
+        midRoll: detectedConfig,
+      },
+      {
+        current: () => null,
+        next: () => {},
+        reset: () => {},
+        fork: () => {
+          throw new Error('unused');
+        },
+      },
+      new Random(MersenneTwister19937.seedWithArray([1])),
+    );
+    const program: CondensedContentProgram = {
+      type: 'content',
+      id: 'ep1',
+      subtype: 'episode',
+      duration: 10 * oneMin,
+      startOffsetMs: 600_000,
+      persisted: true,
+    };
+
+    const segments = applyMidRollBreaks(
+      new PaddedProgram(program, 0, {}),
+      slot,
+      detectedConfig,
+      new Random(MersenneTwister19937.seedWithArray([1])),
+      0,
+      Infinity,
+      new Map([['ep1', [660_000]]]),
+    );
+
+    expect(segments.map((s) => s.program.duration)).toEqual([
+      60_000, 180_000, 540_000,
+    ]);
+    expect(segments[0].program).toMatchObject({ startOffsetMs: 600_000 });
+    expect(segments[2].program).toMatchObject({ startOffsetMs: 660_000 });
   });
 });

@@ -11,6 +11,7 @@ import {
   uniq,
   values,
 } from 'lodash-es';
+import { BreakMarkerDB } from '../../db/BreakMarkerDB.ts';
 import { CustomShowDB } from '../../db/CustomShowDB.ts';
 import { FillerDB } from '../../db/FillerListDB.ts';
 import type { IChannelDB } from '../../db/interfaces/IChannelDB.ts';
@@ -40,12 +41,17 @@ export class SlotSchedulerHelper {
   @InjectLogger() declare private readonly logger: Logger;
 
   constructor(
+    @inject(BreakMarkerDB) private breakMarkerDB: BreakMarkerDB,
     @inject(CustomShowDB) private customShowDB: CustomShowDB,
     @inject(FillerDB) private fillerDB: FillerDB,
     @inject(KEYS.ProgramDB) private programDB: ProgramDB,
     @inject(SmartCollectionsDB) private smartCollectionsDB: SmartCollectionsDB,
     @inject(KEYS.ChannelDB) private channelDB: IChannelDB,
   ) {}
+
+  loadBreakMarkers(programs: SlotSchedulerProgram[]): Map<string, number[]> {
+    return this.breakMarkerDB.offsetsFor(programs.map((p) => p.uuid));
+  }
 
   async collectSlotProgramming(
     request: TimeSlotScheduleServiceRequest | SlotScheduleServiceRequest,

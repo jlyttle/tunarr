@@ -107,6 +107,7 @@ export async function scheduleTimeSlots(
   seed: number[] = createEntropy(),
   discardCount: number = 0,
   startTime: dayjs.Dayjs = dayjs.tz(),
+  breakMarkers: ReadonlyMap<string, number[]> = new Map(),
 ): Promise<TimeSlotScheduleResult> {
   const mt = MersenneTwister19937.seedWithArray(seed).discard(discardCount);
   const random = new Random(mt);
@@ -391,6 +392,7 @@ export async function scheduleTimeSlots(
         random,
         +timeCursor + midRollOffset,
         breakBudgetMs,
+        breakMarkers,
       );
       const breakMs = sumBy(segments, (s) => s.totalDuration) - unsplitDuration;
       breakBudgetMs -= breakMs;

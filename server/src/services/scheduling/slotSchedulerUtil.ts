@@ -1040,8 +1040,13 @@ export function applyMidRollBreaks(
   random: Random,
   timeCursor: number,
   maxBreakMs: number = Infinity,
+  breakMarkers: ReadonlyMap<string, number[]> = new Map(),
 ): PaddedProgram[] {
-  if (!midRollConfig || slot.getMidFillerListIds().length === 0) {
+  if (!midRollConfig) {
+    return [paddedProgram];
+  }
+  const isDetected = midRollConfig.breakRule?.type === 'detected';
+  if (!isDetected && slot.getMidFillerListIds().length === 0) {
     return [paddedProgram];
   }
 
@@ -1063,10 +1068,17 @@ export function applyMidRollBreaks(
   }
 
   const programDurationMs = program.duration;
-  const breakPoints = resolveBreakPoints(programDurationMs, midRollConfig);
+  const breakPoints = resolveBreakPoints(
+    programDurationMs,
+    midRollConfig,
+    localMarkers(program, breakMarkers),
+  );
   if (!breakPoints) return [paddedProgram];
 
-  if (midRollConfig.strategy === 'lazy') {
+  const useLazy =
+    midRollConfig.strategy === 'lazy' ||
+    (isDetected && slot.getMidFillerListIds().length === 0);
+  if (useLazy) {
     return buildLazyBreaks(
       paddedProgram,
       program,
@@ -1087,6 +1099,14 @@ export function applyMidRollBreaks(
     timeCursor,
     maxBreakMs,
   );
+}
+
+function localMarkers(
+  program: SplittableProgram,
+  breakMarkers: ReadonlyMap<string, number[]>,
+): number[] {
+  const startOffsetMs = program.startOffsetMs ?? 0;
+  return (breakMarkers.get(program.id) ?? []).map((m) => m - startOffsetMs);
 }
 
 /**

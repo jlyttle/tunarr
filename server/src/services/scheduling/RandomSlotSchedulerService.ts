@@ -74,6 +74,7 @@ export class SlotSchedulerService {
       request.seed,
       request.discardCount,
       request.startTime ? dayjs(request.startTime) : undefined,
+      this.slotSchedulerHelper.loadBreakMarkers(slotPrograms),
     );
   }
 }

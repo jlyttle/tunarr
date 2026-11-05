@@ -73,6 +73,7 @@ export class TimeSlotSchedulerService {
       request.seed,
       request.discardCount ?? 0,
       request.startTime ? dayjs(request.startTime) : undefined,
+      this.slotSchedulerHelper.loadBreakMarkers(slotPrograms),
     );
   }
 }

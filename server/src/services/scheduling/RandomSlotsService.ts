@@ -230,6 +230,7 @@ export class RandomSlotScheduler {
     seed: number[] = createEntropy(),
     discardCount: number = 0,
     startTime: dayjs.Dayjs = dayjs.tz(),
+    breakMarkers: ReadonlyMap<string, number[]> = new Map(),
   ): SlotScheduleResult {
     this.validateSchedule();
 
@@ -353,6 +354,8 @@ export class RandomSlotScheduler {
             currSlot.midRollConfig,
             context.random,
             +context.timeCursor + midRollOffset,
+            Infinity,
+            breakMarkers,
           ),
         );
         midRollOffset += pp.totalDuration;
