@@ -33,9 +33,36 @@ export function resolveBreakDuration(
   return config.breakDurationMs;
 }
 
+function detectedOffsets(
+  programDurationMs: number,
+  markersMs: readonly number[],
+): number[] {
+  const inside = markersMs.filter((m) => m > 0 && m < programDurationMs);
+  return [...new Set(inside)].sort((a, b) => a - b);
+}
+
+function dropBefore(offsets: number[], minFirstBreakMs: number): number[] {
+  return offsets.filter((offset) => offset >= minFirstBreakMs);
+}
+
+function enforceMinInterval(
+  offsets: number[],
+  minIntervalMs: number,
+): number[] {
+  const kept: number[] = [];
+  for (const offset of offsets) {
+    const previous = kept[kept.length - 1];
+    if (previous === undefined || offset - previous >= minIntervalMs) {
+      kept.push(offset);
+    }
+  }
+  return kept;
+}
+
 export function resolveBreakPoints(
   programDurationMs: number,
   config: MidRollConfig,
+  markersMs?: readonly number[],
 ): BreakPoint[] | null {
   if (programDurationMs < config.minProgramDurationMs) return null;
 
@@ -79,16 +106,25 @@ export function resolveBreakPoints(
       break;
     }
     case 'detected':
-      return null;
+      offsets = detectedOffsets(programDurationMs, markersMs ?? []);
+      break;
   }
 
   // Use max of range for conservative filtering
-  const breakDuration = resolveBreakDuration(config);
+  const breakDuration = config.splitSlotFlex ? 0 : resolveBreakDuration(config);
   const tailBuffer = config.tailBufferMs ?? 0;
 
   offsets = offsets.filter(
     (offset) => programDurationMs - offset - breakDuration >= tailBuffer,
   );
+
+  if (config.minFirstBreakMs !== undefined) {
+    offsets = dropBefore(offsets, config.minFirstBreakMs);
+  }
+
+  if (config.minBreakIntervalMs !== undefined) {
+    offsets = enforceMinInterval(offsets, config.minBreakIntervalMs);
+  }
 
   if (config.maxBreaks > 0) {
     offsets = offsets.slice(0, config.maxBreaks);
