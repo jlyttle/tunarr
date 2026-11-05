@@ -56,6 +56,7 @@ import {
   ProgramBreakAnalysis,
   BreakDetectorQualification,
 } from './ProgramBreakAnalysis.ts';
+import { ProgramBreakMarker } from './ProgramBreakMarker.ts';
 import { ProgramChapter, ProgramChapterRelations } from './ProgramChapter.ts';
 import {
   ProgramExternalId,
@@ -101,6 +102,7 @@ import { TranscodeConfig } from './TranscodeConfig.ts';
 
 export const schema = {
   programBreakAnalysis: ProgramBreakAnalysis,
+  programBreakMarker: ProgramBreakMarker,
   breakDetectorQualification: BreakDetectorQualification,
   channels: Channel,
   channelRelations: ChannelRelations,

@@ -7,6 +7,7 @@ import type { Factory } from 'inversify';
 import { ContainerModule } from 'inversify';
 import type { Kysely } from 'kysely';
 import { DBAccess } from './DBAccess.ts';
+import { BreakMarkerDB } from './BreakMarkerDB.ts';
 import { FillerDB } from './FillerListDB.ts';
 import { ProgramPlayHistoryDB } from './ProgramPlayHistoryDB.ts';
 import { BasicChannelRepository } from './channel/BasicChannelRepository.ts';
@@ -88,6 +89,7 @@ const DBModule = new ContainerModule(({ bind }) => {
   );
   bind(KEYS.FillerListDB).to(FillerDB).inSingletonScope();
   bind(ProgramPlayHistoryDB).toSelf().inSingletonScope();
+  bind(BreakMarkerDB).toSelf().inSingletonScope();
 
   bind(ProgramGroupingMinter).toSelf().inSingletonScope();
   bind(ProgramDaoMinter).toSelf();

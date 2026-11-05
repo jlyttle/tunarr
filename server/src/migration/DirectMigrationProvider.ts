@@ -277,6 +277,9 @@ export class DirectMigrationProvider implements MigrationProvider {
         migration1793189086: makeMigrationFromSqlFile(
           './sql/0057_music_video_labels.sql',
         ),
+        migration1793840366: makeMigrationFromSqlFile(
+          './sql/0058_break_markers.sql',
+        ),
       } satisfies Record<string, TunarrDatabaseMigration>,
       wrapWithTransaction,
     );

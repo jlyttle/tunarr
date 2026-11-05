@@ -17,6 +17,7 @@ import type {
   ProgramBreakAnalysisTable,
   BreakDetectorQualificationTable,
 } from './ProgramBreakAnalysis.ts';
+import type { ProgramBreakMarkerTable } from './ProgramBreakMarker.ts';
 import type { ProgramChapterTable } from './ProgramChapter.ts';
 import type { ProgramExternalIdTable } from './ProgramExternalId.ts';
 import type { ProgramGroupingTable } from './ProgramGrouping.ts';
@@ -32,6 +33,7 @@ import type { TranscodeConfigTable } from './TranscodeConfig.ts';
 
 export interface DB {
   programBreakAnalysis: ProgramBreakAnalysisTable;
+  programBreakMarker: ProgramBreakMarkerTable;
   breakDetectorQualification: BreakDetectorQualificationTable;
   cachedImage: CachedImageTable;
   channel: ChannelTable;
