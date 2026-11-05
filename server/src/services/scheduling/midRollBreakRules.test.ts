@@ -1,5 +1,6 @@
 import { MidRollConfigSchema } from '@tunarr/types/api';
 import { describe, expect, it } from 'vitest';
+import { resolveBreakPoints } from './midRollBreakRules.ts';
 
 describe('MidRollConfigSchema', () => {
   const detectedBase = {
@@ -33,5 +34,43 @@ describe('MidRollConfigSchema', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it('rejects a negative minFirstBreakMs', () => {
+    const result = MidRollConfigSchema.safeParse({
+      ...detectedBase,
+      splitSlotFlex: {},
+      minFirstBreakMs: -1,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('still parses a legacy interval config', () => {
+    const result = MidRollConfigSchema.safeParse({
+      intervalMs: 600_000,
+      maxBreaks: 3,
+      minProgramDurationMs: 0,
+      breakDurationMs: 30_000,
+    });
+
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('resolveBreakPoints', () => {
+  const detectedBase = {
+    breakRule: { type: 'detected' },
+    maxBreaks: 0,
+    minProgramDurationMs: 0,
+  };
+
+  it('returns null for a detected rule on a long program', () => {
+    const config = MidRollConfigSchema.parse({
+      ...detectedBase,
+      splitSlotFlex: {},
+    });
+
+    expect(resolveBreakPoints(2 * 60 * 60 * 1000, config)).toBeNull();
   });
 });
