@@ -4627,7 +4627,7 @@ describe('detected breaks', () => {
     id?: string;
     duration: number;
     startOffsetMs?: number;
-    fillerConfig?: { origin?: string };
+    fillerConfig?: { origin?: string; fillerListIds?: string[] };
   };
 
   const detectedConfig = {
@@ -4710,6 +4710,7 @@ describe('detected breaks', () => {
       type: 'flex',
       fillerConfig: { origin: 'midroll' },
     });
+    expect(lineup[first + 1].fillerConfig?.fillerListIds).toBeUndefined();
     expect(lineup[first + 2]).toMatchObject({
       id: 'ep1',
       startOffsetMs: 660_000,
@@ -4808,10 +4809,17 @@ describe('detected breaks', () => {
       parentSmartCollections: [],
     });
 
+    type SlotOptions = {
+      padMs?: number;
+      flexPreference?: TimeSlotSchedule['flexPreference'];
+      midFillerListId?: string;
+    };
+
     const scheduleSlot = async (
       programs: SlotSchedulerProgram[],
       slotMinutes: number,
       breakMarkers: ReadonlyMap<string, number[]>,
+      options: SlotOptions = {},
     ) => {
       const showSlot = (startTime: number, midRoll?: typeof splitConfig) => ({
         id: randomUUID(),
@@ -4823,16 +4831,29 @@ describe('detected breaks', () => {
         seasonFilter: [],
         midRoll,
       });
+      const firstSlot = {
+        ...showSlot(0, splitConfig),
+        filler:
+          options.midFillerListId !== undefined
+            ? [
+                {
+                  types: ['mid' as const],
+                  fillerListId: options.midFillerListId,
+                  fillerOrder: 'uniform' as const,
+                },
+              ]
+            : undefined,
+      };
       const schedule: TimeSlotSchedule = {
         type: 'time',
         period: 'day',
         maxDays: 1,
-        flexPreference: 'end',
-        padMs: 30 * oneMin,
+        flexPreference: options.flexPreference ?? 'end',
+        padMs: options.padMs ?? 30 * oneMin,
         latenessMs: 0,
         overflow: { type: 'duration', maxMs: 0 },
         timeZoneOffset: 0,
-        slots: [showSlot(0, splitConfig), showSlot(slotMinutes * oneMin)],
+        slots: [firstSlot, showSlot(slotMinutes * oneMin)],
       };
       const result = await scheduleTimeSlots(
         schedule,
@@ -4883,6 +4904,7 @@ describe('detected breaks', () => {
 
       expect(breaksOf(lineup)).toHaveLength(0);
       expect(lineup.filter((i) => i.id === 'ep1')).toHaveLength(1);
+      expect(lineup.reduce((sum, i) => sum + i.duration, 0)).toBe(30 * oneMin);
     });
 
     test('gives each program its share of the spare time', async () => {
@@ -4892,14 +4914,189 @@ describe('detected breaks', () => {
         new Map([['ep1', [300_000, 900_000]]]),
       );
 
-      const spareMs = 60 * oneMin - 44 * oneMin;
-      const totalBreakMs = breaksOf(lineup).reduce(
-        (sum, b) => sum + b.duration,
-        0,
-      );
-      expect(totalBreakMs).toBeGreaterThan(0);
-      expect(totalBreakMs).toBeLessThanOrEqual(spareMs / 2);
+      expect(breaksOf(lineup).map((b) => b.duration)).toEqual([
+        180_000, 180_000,
+      ]);
+      expect(lineup.reduce((sum, i) => sum + i.duration, 0)).toBe(60 * oneMin);
       expect(lineup.filter((i) => i.id === 'ep2')).toHaveLength(1);
+    });
+
+    const shape = (lineup: LineupItem[]) =>
+      lineup.map((i) => ({
+        type: i.type,
+        id: i.id,
+        duration: i.duration,
+        startOffsetMs: i.startOffsetMs,
+        origin: i.fillerConfig?.origin,
+      }));
+
+    test('an unmarked episode keeps its share, so the next episode stays on the pad grid', async () => {
+      const lineup = await scheduleSlot(
+        [numberedEpisode(1), numberedEpisode(2)],
+        60,
+        new Map([['ep2', [300_000, 900_000]]]),
+        { padMs: 15 * oneMin, flexPreference: 'end' },
+      );
+
+      expect(shape(lineup)).toEqual([
+        {
+          type: 'content',
+          id: 'ep1',
+          duration: 1_320_000,
+          startOffsetMs: undefined,
+          origin: undefined,
+        },
+        {
+          type: 'flex',
+          id: undefined,
+          duration: 480_000,
+          startOffsetMs: undefined,
+          origin: undefined,
+        },
+        {
+          type: 'content',
+          id: 'ep2',
+          duration: 300_000,
+          startOffsetMs: 0,
+          origin: undefined,
+        },
+        {
+          type: 'flex',
+          id: undefined,
+          duration: 180_000,
+          startOffsetMs: undefined,
+          origin: 'midroll',
+        },
+        {
+          type: 'content',
+          id: 'ep2',
+          duration: 600_000,
+          startOffsetMs: 300_000,
+          origin: undefined,
+        },
+        {
+          type: 'flex',
+          id: undefined,
+          duration: 180_000,
+          startOffsetMs: undefined,
+          origin: 'midroll',
+        },
+        {
+          type: 'content',
+          id: 'ep2',
+          duration: 420_000,
+          startOffsetMs: 900_000,
+          origin: undefined,
+        },
+        {
+          type: 'flex',
+          id: undefined,
+          duration: 120_000,
+          startOffsetMs: undefined,
+          origin: undefined,
+        },
+      ]);
+      const ep2Start = lineup
+        .slice(
+          0,
+          lineup.findIndex((i) => i.id === 'ep2'),
+        )
+        .reduce((sum, i) => sum + i.duration, 0);
+      expect(ep2Start).toBe(30 * oneMin);
+    });
+
+    test('distribute adds slot flex after the program, not into its breaks', async () => {
+      const shortEpisode = { ...numberedEpisode(1), duration: 6 * oneMin };
+      const lineup = await scheduleSlot(
+        [shortEpisode],
+        9,
+        new Map([['ep1', [180_000]]]),
+        { padMs: 1, flexPreference: 'distribute' },
+      );
+
+      expect(shape(lineup)).toEqual([
+        {
+          type: 'content',
+          id: 'ep1',
+          duration: 180_000,
+          startOffsetMs: 0,
+          origin: undefined,
+        },
+        {
+          type: 'flex',
+          id: undefined,
+          duration: 120_000,
+          startOffsetMs: undefined,
+          origin: 'midroll',
+        },
+        {
+          type: 'content',
+          id: 'ep1',
+          duration: 180_000,
+          startOffsetMs: 180_000,
+          origin: undefined,
+        },
+        {
+          type: 'flex',
+          id: undefined,
+          duration: 60_000,
+          startOffsetMs: undefined,
+          origin: undefined,
+        },
+      ]);
+    });
+
+    test('distribute keeps a split episode on the pad grid', async () => {
+      const lineup = await scheduleSlot(
+        [numberedEpisode(1)],
+        30,
+        new Map([['ep1', [300_000, 900_000]]]),
+        { padMs: 15 * oneMin, flexPreference: 'distribute' },
+      );
+
+      expect(lineup.map((i) => i.duration)).toEqual([
+        300_000, 180_000, 600_000, 180_000, 420_000, 120_000,
+      ]);
+      expect(lineup[lineup.length - 1]).toMatchObject({ type: 'flex' });
+      expect(lineup[lineup.length - 1].fillerConfig).toBeUndefined();
+      expect(lineup.reduce((sum, i) => sum + i.duration, 0)).toBe(30 * oneMin);
+    });
+
+    test('fills planned breaks from a mid filler list', async () => {
+      const midList = randomUUID();
+      const fillers: SlotSchedulerProgram[] = Array.from(
+        { length: 6 },
+        (_, i) => ({
+          ...createFakeProgramOrm({
+            uuid: `mid-${i}`,
+            title: `Mid ${i}`,
+            type: 'movie',
+            duration: oneMin,
+          }),
+          parentFillerLists: [midList],
+          parentCustomShows: [],
+          parentSmartCollections: [],
+        }),
+      );
+      const lineup = await scheduleSlot(
+        [numberedEpisode(1), ...fillers],
+        30,
+        new Map([['ep1', [300_000, 900_000]]]),
+        { midFillerListId: midList },
+      );
+
+      expect(lineup.map((i) => [i.type, i.duration])).toEqual([
+        ['content', 300_000],
+        ['filler', oneMin],
+        ['filler', oneMin],
+        ['filler', oneMin],
+        ['content', 600_000],
+        ['filler', oneMin],
+        ['filler', oneMin],
+        ['filler', oneMin],
+        ['content', 420_000],
+        ['flex', 120_000],
+      ]);
     });
   });
 });

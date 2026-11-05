@@ -825,7 +825,9 @@ describe('random slot pad coverage with a fallback filler', () => {
       'content:movie-2',
       'filler:5min',
     ]);
-    expect(result.lineup.filter((item) => item.type === 'flex')).toHaveLength(0);
+    expect(result.lineup.filter((item) => item.type === 'flex')).toHaveLength(
+      0,
+    );
     // maxDays: 1 fills up to start + (maxDays + 1) days. 96 slots of 30 minutes
     // is 2880 minutes; with the pad covered twice it comes out at 3360.
     expect(sumBy(result.lineup, 'duration')).toBe(2 * oneDay);
@@ -888,4 +890,87 @@ describe('random slot seed reproducibility', () => {
       expect(result1.lineup).toEqual(result2.lineup);
     },
   );
+});
+
+describe('random slot detected breaks', () => {
+  const oneMin = 60 * 1000;
+  const midnight = dayjs('2024-01-01T00:00:00.000Z');
+
+  const movie: SlotSchedulerProgram = {
+    ...createFakeProgramOrm({
+      uuid: 'movie-1',
+      title: 'Movie 1',
+      type: 'movie',
+      duration: 6 * oneMin,
+    }),
+    parentFillerLists: [],
+    parentCustomShows: [],
+    parentSmartCollections: [],
+  };
+
+  const schedule = (
+    padStyle: RandomSlotSchedule['padStyle'],
+  ): RandomSlotSchedule => ({
+    type: 'random',
+    flexPreference: 'distribute',
+    maxDays: 1,
+    padMs: 10 * oneMin,
+    padStyle,
+    randomDistribution: 'uniform',
+    lockWeights: false,
+    slots: [
+      {
+        weight: 100,
+        cooldownMs: 0,
+        durationSpec: { type: 'fixed', durationMs: 10 * oneMin },
+        type: 'movie',
+        order: 'next',
+        direction: 'asc',
+        midRoll: {
+          breakRule: { type: 'detected' },
+          breakDurationMs: 2 * oneMin,
+          maxBreaks: 0,
+          minProgramDurationMs: 0,
+          tailBufferMs: 0,
+          strategy: 'eager',
+        },
+      },
+    ],
+  });
+
+  const firstBlock = (padStyle: RandomSlotSchedule['padStyle']) =>
+    new RandomSlotScheduler(schedule(padStyle))
+      .generateSchedule(
+        [movie],
+        [42, 99],
+        undefined,
+        midnight,
+        new Map([['movie-1', [3 * oneMin]]]),
+      )
+      .lineup.slice(0, 4)
+      .map((item) => ({
+        type: item.type,
+        duration: item.duration,
+        origin: item.type === 'flex' ? item.fillerConfig?.origin : undefined,
+      }));
+
+  test('distribute (slot pad style) adds slot flex after the program, not into its breaks', () => {
+    expect(firstBlock('slot')).toEqual([
+      { type: 'content', duration: 3 * oneMin, origin: undefined },
+      { type: 'flex', duration: 2 * oneMin, origin: 'midroll' },
+      { type: 'content', duration: 3 * oneMin, origin: undefined },
+      { type: 'flex', duration: 2 * oneMin, origin: undefined },
+    ]);
+  });
+
+  test('distribute (episode pad style) keeps the break and ends the block on the pad grid', () => {
+    // Random slots do not take breaks out of the program's padding, so the
+    // block runs to the next pad boundary at 20 minutes.
+    expect(firstBlock('episode')).toEqual([
+      { type: 'content', duration: 3 * oneMin, origin: undefined },
+      { type: 'flex', duration: 2 * oneMin, origin: 'midroll' },
+      { type: 'content', duration: 3 * oneMin, origin: undefined },
+      { type: 'flex', duration: 12 * oneMin, origin: undefined },
+    ]);
+  });
 });

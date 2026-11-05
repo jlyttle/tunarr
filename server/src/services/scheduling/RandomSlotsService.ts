@@ -346,18 +346,22 @@ export class RandomSlotScheduler {
 
       let midRollOffset = 0;
       const finalPrograms: PaddedProgram[] = [];
+      const programEnds: PaddedProgram[] = [];
       for (const pp of paddedPrograms) {
-        finalPrograms.push(
-          ...applyMidRollBreaks(
-            pp,
-            currSlot,
-            currSlot.midRollConfig,
-            context.random,
-            +context.timeCursor + midRollOffset,
-            Infinity,
-            breakMarkers,
-          ),
+        const segments = applyMidRollBreaks(
+          pp,
+          currSlot,
+          currSlot.midRollConfig,
+          context.random,
+          +context.timeCursor + midRollOffset,
+          Infinity,
+          breakMarkers,
         );
+        finalPrograms.push(...segments);
+        const lastSegment = last(segments);
+        if (lastSegment) {
+          programEnds.push(lastSegment);
+        }
         midRollOffset += pp.totalDuration;
       }
 
@@ -376,14 +380,16 @@ export class RandomSlotScheduler {
       // to fill the time for this slot. This works mainly if we're doing a
       // "shuffle" ordering, it won't work for "in order" shows in slots.
       // TODO: Implement greedy filling.
+      // Only each program's last segment takes slot flex. A split program's
+      // earlier segments and its breaks must stay as planned.
       if (flexPreference === 'distribute' && padStyle === 'episode') {
-        distributeFlex(finalPrograms, this.schedule.padMs, remainingTimeInSlot);
+        distributeFlex(programEnds, this.schedule.padMs, remainingTimeInSlot);
       } else if (flexPreference === 'distribute') {
         // We pad the slot as a whole here. We must find the first content-type
         // program to add the padding to.
-        const div = Math.floor(remainingTimeInSlot / finalPrograms.length);
+        const div = Math.floor(remainingTimeInSlot / programEnds.length);
         let totalAdded = 0;
-        forEach(finalPrograms, (paddedProgram) => {
+        forEach(programEnds, (paddedProgram) => {
           if (paddedProgram.program.type === 'filler') {
             return;
           }
@@ -391,7 +397,7 @@ export class RandomSlotScheduler {
           totalAdded += div;
         });
         const firstContent = find(
-          finalPrograms,
+          programEnds,
           ({ program }) => program.type !== 'filler',
         );
         if (firstContent) {

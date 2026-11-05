@@ -826,7 +826,11 @@ export function pushOrExtendFlex(
   }
 
   const lastLineupItem = last(lineup);
-  if (lastLineupItem && isFlexProgram(lastLineupItem)) {
+  if (
+    lastLineupItem &&
+    isFlexProgram(lastLineupItem) &&
+    lastLineupItem.fillerConfig?.origin !== 'midroll'
+  ) {
     const newDuration = lastLineupItem.duration + durationMs;
     const newItem: FlexProgram = {
       type: 'flex',

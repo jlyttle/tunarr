@@ -77,6 +77,7 @@ function pushOrExtendFlex(
   if (
     lastLineupItem &&
     isFlexProgram(lastLineupItem) &&
+    lastLineupItem.fillerConfig?.origin !== 'midroll' &&
     lastLineupItem.guideTitle === guide.guideTitle &&
     lastLineupItem.guideDescription === guide.guideDescription
   ) {
@@ -377,24 +378,28 @@ export async function scheduleTimeSlots(
     // Mid-roll breaks spend the slot's spare time, meaning the unallocated
     // remainder plus every program's padding. They never run the slot past
     // its end, because that would make the next slot late.
-    let breakBudgetMs = Math.max(
-      0,
-      slotDuration - sumBy(paddedPrograms, (pp) => pp.totalDuration - pp.padMs),
-    );
-    let remainingProgramsMs = sumBy(
+    // With split slot flex, each program's share is fixed up front from the
+    // starting budget. A share a program leaves unused stays as its padding,
+    // so the programs after it keep their place on the pad grid.
+    const totalProgramsMs = sumBy(
       paddedPrograms,
       (pp) => pp.totalDuration - pp.padMs,
     );
+    const initialBudgetMs = Math.max(0, slotDuration - totalProgramsMs);
+    let breakBudgetMs = initialBudgetMs;
     let midRollOffset = 0;
     const finalPrograms: PaddedProgram[] = [];
+    const programEnds: PaddedProgram[] = [];
     for (const pp of paddedPrograms) {
       const unsplitDuration = pp.totalDuration;
       const programMs = pp.totalDuration - pp.padMs;
       const maxBreakMs =
-        currSlot.midRollConfig?.splitSlotFlex && remainingProgramsMs > 0
-          ? Math.floor((breakBudgetMs * programMs) / remainingProgramsMs)
+        currSlot.midRollConfig?.splitSlotFlex && totalProgramsMs > 0
+          ? Math.min(
+              breakBudgetMs,
+              Math.floor((initialBudgetMs * programMs) / totalProgramsMs),
+            )
           : breakBudgetMs;
-      remainingProgramsMs -= programMs;
       const segments = applyMidRollBreaks(
         pp,
         currSlot,
@@ -414,6 +419,7 @@ export async function scheduleTimeSlots(
         const fromPad = Math.min(breakMs, lastSegment.padMs);
         lastSegment.padMs -= fromPad;
         remainingTimeInSlot -= breakMs - fromPad;
+        programEnds.push(lastSegment);
       }
 
       finalPrograms.push(...segments);
@@ -455,8 +461,10 @@ export async function scheduleTimeSlots(
       schedule.flexPreference === 'distribute' &&
       currSlot.type !== 'filler'
     ) {
+      // Only each program's last segment takes slot flex. A split program's
+      // earlier segments and its breaks must stay as planned.
       distributeFlex(
-        finalPrograms,
+        programEnds,
         slotPadMs,
         Math.max(
           0,
