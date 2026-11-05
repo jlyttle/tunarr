@@ -54,10 +54,6 @@ export function matchMarkerEpisodes(
   return { rows, unmatched };
 }
 
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
-}
-
 @injectable()
 export class BreakMarkerImporter {
   constructor(
@@ -102,11 +98,8 @@ export class BreakMarkerImporter {
             eq(Program.type, 'episode'),
             or(
               ...batch.flatMap((name) => [
-                like(ProgramMediaFile.path, `%/${escapeLike(name)}`),
-                like(
-                  ProgramMediaFile.path,
-                  `%/${escapeLike(name.normalize('NFD'))}`,
-                ),
+                like(ProgramMediaFile.path, `%/${name}`),
+                like(ProgramMediaFile.path, `%/${name.normalize('NFD')}`),
               ]),
             ),
           ),
