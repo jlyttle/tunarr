@@ -48,7 +48,7 @@ A previous attempt (commits `9e4f0141`..`b0f124e7`, detector `conservative-fade-
 
 ## Shape of the solution (Claude's calls — flagged so the user can reject)
 
-Two phases, in this order:
+Three phases, in this order:
 
 ### Phase A — Offline detector (standalone, iterate fast)
 
@@ -78,6 +78,41 @@ Two phases, in this order:
   - minimum time before the end of the episode
   - maximum breaks per episode
 - Slot-scheduler behavior change ⇒ add a row to `architecture/infinite-schedules/parity-checklist.md`; update docs.
+
+### Phase C — Autonomous detection (planned after Phase B is live on Nickelodeon)
+
+**Goal (decided by the user, 2026-11-04):** every show on Nickelodeon gets breaks, then every other channel, then any show or channel added later. This must run without per-show labelling. The tape-archive recordings (`TV & Tape Archive`) are out of scope.
+
+**Where Phases A and B leave it:**
+- The model is global. It is trained on every labelled show at once, and its signals don't depend on the show: darkness, silence, fades, whether the whole frame goes dark, recurring bumpers, and offsets shared across sibling episodes.
+- Tunarr's `detected` rule doesn't care whether a show's markers came from labels.
+- A show without markers plays straight through, so turning the rule on for every slot is safe, and markers can arrive show by show.
+- What still needs a person: the per-show gate, which wants labelled held-out episodes, and running scan, train, evaluate and export by hand.
+
+**Steps, in order (Claude's calls):**
+1. **Measure label-free quality first.** Add a leave-one-show-out evaluation: train on every other show, then score each show as if it had never been labelled, and report per-show precision and recall. That number is the precision a brand-new show would get, and it decides whether step 2 can work alone. The labelled pool should cover varied styles before the answer is trusted: cartoons, live-action sitcoms, DVD and WEB sources, and shows with stylized fades like Rugrats.
+2. **A gate that needs no labels.** Enable an unlabelled show when its predictions agree with each other across its episodes:
+   - most episodes predict breaks near the same offsets, with a similar break count
+   - the predicted cuts are full-frame dark and silent
+   - recurring bumpers back the offsets up
+   - scores clear a stricter threshold than labelled shows use, derived from the leave-one-show-out results
+
+   Shows that don't agree, like Rugrats, stay off and play straight through. Labels remain a way to rescue a show that fails or to improve the model, never a requirement.
+3. **Spot-check as an interim step.** Until the label-free gate has a track record, a newly enabled show is queued on the spot-check page (8 cuts, a couple of minutes). Spot-check verdicts count toward the show's precision. Drop the step once spot-checks stop finding bad cuts.
+4. **Automate the pipeline:**
+   - find new or changed episodes, either from Plex/Tunarr library scans or by comparing the feature cache with the libraries
+   - extract features: on the Mac by default, or on Unraid only at low priority with few workers and in short batches (see the load limits from the 2026-10-31 hard reset)
+   - score and gate each show, then export markers
+   - push markers to Tunarr through `POST /api/break-markers`
+   - channels using the `detected` rule pick them up the next time their schedule is generated
+
+   A failed scan or import leaves the earlier markers in place.
+5. **Rollout:** all Nickelodeon shows first, then other channels a few at a time, with the `detected` rule and placement policy set per channel. A short live watch on each channel before moving on.
+
+**Open questions for later:**
+- the exact label-free precision bar
+- whether a per-show offset prior learned from predictions (not labels) helps shows like Rugrats
+- where the automation runs: a Mac launchd job, a container beside Tunarr, or a Tunarr task
 
 ## Left to the builder
 
