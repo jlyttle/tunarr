@@ -4022,6 +4022,7 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4080,6 +4081,7 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4163,6 +4165,7 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4214,6 +4217,7 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4298,6 +4302,7 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4348,6 +4353,7 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4403,6 +4409,7 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4492,6 +4499,7 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4562,6 +4570,7 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4609,6 +4618,7 @@ export type GetApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4797,6 +4807,7 @@ export type PostApiChannelsByIdProgrammingData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4855,6 +4866,7 @@ export type PostApiChannelsByIdProgrammingData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4938,6 +4950,7 @@ export type PostApiChannelsByIdProgrammingData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -4989,6 +5002,7 @@ export type PostApiChannelsByIdProgrammingData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5073,6 +5087,7 @@ export type PostApiChannelsByIdProgrammingData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5129,6 +5144,7 @@ export type PostApiChannelsByIdProgrammingData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5184,6 +5200,7 @@ export type PostApiChannelsByIdProgrammingData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5273,6 +5290,7 @@ export type PostApiChannelsByIdProgrammingData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5343,6 +5361,7 @@ export type PostApiChannelsByIdProgrammingData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5390,6 +5409,7 @@ export type PostApiChannelsByIdProgrammingData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5603,6 +5623,7 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5661,6 +5682,7 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5744,6 +5766,7 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5795,6 +5818,7 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5879,6 +5903,7 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5929,6 +5954,7 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -5984,6 +6010,7 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -6073,6 +6100,7 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -6143,6 +6171,7 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -6190,6 +6219,7 @@ export type PostApiChannelsByIdProgrammingResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -6768,6 +6798,7 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -6826,6 +6857,7 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -6909,6 +6941,7 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -6960,6 +6993,7 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -7044,6 +7078,7 @@ export type PostApiChannelsByChannelIdScheduleTimeSlotsData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -7194,6 +7229,7 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -7249,6 +7285,7 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -7338,6 +7375,7 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -7408,6 +7446,7 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -7455,6 +7494,7 @@ export type PostApiChannelsByChannelIdScheduleSlotsData = {
                         tailShare?: number;
                         minTailMs?: number;
                         minBreakMs?: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -7669,6 +7709,7 @@ export type GetApiChannelsByIdScheduleResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -7727,6 +7768,7 @@ export type GetApiChannelsByIdScheduleResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -7923,6 +7965,7 @@ export type GetApiChannelsByIdScheduleResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -8000,6 +8043,7 @@ export type GetApiChannelsByIdScheduleResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -8082,6 +8126,7 @@ export type GetApiChannelsByIdScheduleResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -8140,6 +8185,7 @@ export type GetApiChannelsByIdScheduleResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -8195,6 +8241,7 @@ export type GetApiChannelsByIdScheduleResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -8404,6 +8451,7 @@ export type GetApiChannelsByIdScheduleResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -8485,6 +8533,7 @@ export type GetApiChannelsByIdScheduleResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;
@@ -8538,6 +8587,7 @@ export type GetApiChannelsByIdScheduleResponses = {
                         tailShare: number;
                         minTailMs: number;
                         minBreakMs: number;
+                        maxBreakMs?: number;
                     };
                     minFirstBreakMs?: number;
                     minBreakIntervalMs?: number;

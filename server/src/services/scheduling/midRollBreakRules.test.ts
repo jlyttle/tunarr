@@ -27,6 +27,25 @@ describe('MidRollConfigSchema', () => {
     });
   });
 
+  it('rejects a longest break below the minimum break', () => {
+    const result = MidRollConfigSchema.safeParse({
+      ...detectedBase,
+      splitSlotFlex: { minBreakMs: 120_000, maxBreakMs: 60_000 },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a longest break at or above the minimum break', () => {
+    const result = MidRollConfigSchema.safeParse({
+      ...detectedBase,
+      splitSlotFlex: { minBreakMs: 60_000, maxBreakMs: 360_000 },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.splitSlotFlex?.maxBreakMs).toBe(360_000);
+  });
+
   it('still requires a break duration without split slot flex', () => {
     expect(MidRollConfigSchema.safeParse(detectedBase).success).toBe(false);
   });
@@ -150,6 +169,18 @@ describe('splitBreakDurations', () => {
 
   it('plans no break when the budget cannot cover one', () => {
     expect(splitBreakDurations(100_000, 1, defaults)).toEqual([]);
+  });
+
+  it('caps each break at the longest break', () => {
+    expect(
+      splitBreakDurations(2_400_000, 2, { ...defaults, maxBreakMs: 360_000 }),
+    ).toEqual([360_000, 360_000]);
+  });
+
+  it('leaves breaks under the longest break alone', () => {
+    expect(
+      splitBreakDurations(480_000, 2, { ...defaults, maxBreakMs: 360_000 }),
+    ).toEqual([180_000, 180_000]);
   });
 
   it('uses the minimum break for an unbounded budget', () => {

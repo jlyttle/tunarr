@@ -73,9 +73,12 @@ Instead of a fixed or random break length, **Split slot flex** sizes the breaks 
 | **Tail share** | Fraction of a program's share of spare time kept as flex after the last segment | 25% |
 | **Minimum tail** | Smallest tail kept after the last segment | 1 minute |
 | **Minimum break** | Breaks shorter than this are dropped | 1 minute |
+| **Longest break** | Breaks never run longer than this. Leave empty for no limit. Must be at least the minimum break. | No limit |
 
 - The slot's spare time is shared across its programs in proportion to their durations. A share a program does not use, for example because the episode has no markers, stays as that program's padding, so the programs after it keep their place on the pad grid.
 - Each program keeps a tail of at least the minimum tail, or its share times the tail share if that is larger. The rest is split evenly across its breaks.
+- On a padded schedule, each program's breaks come out of its own padding, so every program stays on the pad grid. The share is capped at that padding.
+- Time the longest break removes is not spent. It stays as the program's padding or as flex at the end of the slot.
 - Any slot flex left over is added after a program's last segment, never to its breaks, whether the schedule's flex preference is end or distribute.
 - If breaks would come out shorter than the minimum break, the latest breaks are dropped until they fit.
 - In random slots there is no fixed slot length, so each break is the minimum break.

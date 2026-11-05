@@ -88,7 +88,13 @@ export const MidRollConfigSchema = z
         tailShare: z.number().min(0).max(1).default(0.25),
         minTailMs: z.number().nonnegative().default(60_000),
         minBreakMs: z.number().nonnegative().default(60_000),
+        maxBreakMs: z.number().positive().optional(),
       })
+      .refine(
+        (data) =>
+          data.maxBreakMs === undefined || data.maxBreakMs >= data.minBreakMs,
+        { message: 'maxBreakMs must be at least minBreakMs' },
+      )
       .optional(),
     minFirstBreakMs: z.number().nonnegative().optional(),
     minBreakIntervalMs: z.number().nonnegative().optional(),

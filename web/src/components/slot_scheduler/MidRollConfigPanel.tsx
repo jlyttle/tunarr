@@ -48,6 +48,7 @@ type MidRollFormFields = {
       tailShare: number;
       minTailMs: number;
       minBreakMs: number;
+      maxBreakMs?: number;
     };
     minFirstBreakMs?: number;
     minBreakIntervalMs?: number;
@@ -505,6 +506,29 @@ export const MidRollConfigPanel = () => {
                   field.onChange(minutesToMs(Number(e.target.value)))
                 }
                 helperText={t`Smallest flex block worth inserting as a break`}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="midRoll.splitSlotFlex.maxBreakMs"
+            render={({ field }) => (
+              <TextField
+                fullWidth
+                label={t`Longest break (minutes)`}
+                type="number"
+                slotProps={{ htmlInput: { min: 0 } }}
+                value={
+                  field.value !== undefined ? msToMinutes(field.value) : ''
+                }
+                onChange={(e) =>
+                  field.onChange(
+                    e.target.value === ''
+                      ? undefined
+                      : minutesToMs(Number(e.target.value)),
+                  )
+                }
+                helperText={t`Leave empty for no limit`}
               />
             )}
           />

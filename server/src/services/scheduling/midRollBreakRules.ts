@@ -140,7 +140,8 @@ export type SplitSlotFlex = NonNullable<MidRollConfig['splitSlotFlex']>;
 /**
  * Sizes breaks from a program's share of the slot's spare time. A tail of the
  * budget is kept back, and the rest is shared evenly. Breaks are dropped from
- * the end until each is at least the minimum break.
+ * the end until each is at least the minimum break. Each break is capped at
+ * the longest break, and the time the cap frees stays unspent.
  */
 export function splitBreakDurations(
   budgetMs: number,
@@ -150,6 +151,7 @@ export function splitBreakDurations(
   if (!Number.isFinite(budgetMs)) {
     return Array<number>(breakCount).fill(split.minBreakMs);
   }
+  const capped = (ms: number) => Math.min(ms, split.maxBreakMs ?? Infinity);
   const tail = Math.min(
     budgetMs,
     Math.max(split.minTailMs, budgetMs * split.tailShare),
@@ -157,7 +159,7 @@ export function splitBreakDurations(
   for (let n = breakCount; n >= 1; n--) {
     const each = Math.floor((budgetMs - tail) / n);
     if (each >= split.minBreakMs) {
-      return Array<number>(n).fill(each);
+      return Array<number>(n).fill(capped(each));
     }
   }
   return [];

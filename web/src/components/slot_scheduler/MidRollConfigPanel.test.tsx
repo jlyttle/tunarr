@@ -52,6 +52,25 @@ describe('MidRollConfigPanel', () => {
     expect(screen.getByLabelText('Tail share (%)')).toHaveValue(25);
   });
 
+  test('longest break stores minutes as ms and clears to undefined', async () => {
+    const { user } = renderWithProviders(<Harness />);
+    await user.click(screen.getByRole('button', { name: 'Split slot flex' }));
+
+    const field = screen.getByLabelText('Longest break (minutes)');
+    expect(field).toHaveValue(null);
+    expect(screen.getByText('Leave empty for no limit')).toBeVisible();
+
+    await user.type(field, '6');
+    expect(currentForm.getValues('midRoll.splitSlotFlex.maxBreakMs')).toBe(
+      360_000,
+    );
+
+    await user.clear(field);
+    expect(
+      currentForm.getValues('midRoll.splitSlotFlex.maxBreakMs'),
+    ).toBeUndefined();
+  });
+
   test('switching back to fixed clears split slot flex', async () => {
     const { user } = renderWithProviders(<Harness />);
 
