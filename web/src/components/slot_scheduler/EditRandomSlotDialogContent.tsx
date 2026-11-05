@@ -32,7 +32,10 @@ import { Controller, FormProvider, useForm } from 'react-hook-form';
 import type { StrictOmit } from 'ts-essentials';
 import { match } from 'ts-pattern';
 import { v4 } from 'uuid';
-import { deriveMidRollDefaults } from '../../helpers/midRollDefaults.ts';
+import {
+  deriveMidRollDefaults,
+  shouldSeedMidRollDefaults,
+} from '../../helpers/midRollDefaults.ts';
 import { useSlotProgramOptionsContext } from '../../hooks/programming_controls/useSlotProgramOptions.ts';
 import { useFillerLists } from '../../hooks/useFillerLists.ts';
 import useStore from '../../store/index.ts';
@@ -167,10 +170,13 @@ export const EditRandomSlotDialogContent = ({
   const channelPrograms = useMemo(() => values(programLookup), [programLookup]);
 
   useEffect(() => {
-    if (!hasMidFiller && tab === 2) {
-      setTab(0);
-    }
-    if (hasMidFiller && !getValues('midRoll')) {
+    if (
+      shouldSeedMidRollDefaults({
+        hasMidFiller,
+        midRollTabOpen: tab === 2,
+        hasMidRollConfig: getValues('midRoll') !== undefined,
+      })
+    ) {
       setValue('midRoll', deriveMidRollDefaults(getValues(), channelPrograms));
     }
   }, [hasMidFiller, tab, getValues, setValue, channelPrograms]);
@@ -423,7 +429,7 @@ export const EditRandomSlotDialogContent = ({
           >
             <Tab label={t`Programming`} value={0} />
             {programType !== 'flex' && <Tab label={t`Filler`} value={1} />}
-            {hasMidFiller && <Tab label={t`Mid-Roll`} value={2} />}
+            <Tab label={t`Mid-Roll`} value={2} />
           </Tabs>
           <TabPanel value={tab} index={0}>
             <Stack gap={2} useFlexGap>

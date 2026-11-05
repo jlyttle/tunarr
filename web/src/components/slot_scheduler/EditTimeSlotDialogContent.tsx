@@ -31,7 +31,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, FormProvider, useForm } from 'react-hook-form';
 import { match } from 'ts-pattern';
 import { v4 } from 'uuid';
-import { deriveMidRollDefaults } from '../../helpers/midRollDefaults.ts';
+import {
+  deriveMidRollDefaults,
+  shouldSeedMidRollDefaults,
+} from '../../helpers/midRollDefaults.ts';
 import { useSlotProgramOptionsContext } from '../../hooks/programming_controls/useSlotProgramOptions.ts';
 import { useTimeSlotFormContext } from '../../hooks/slot_scheduler/useTimeSlotFormContext.ts';
 import { useFillerLists } from '../../hooks/useFillerLists.ts';
@@ -185,10 +188,13 @@ export const EditTimeSlotDialogContent = ({
   const [tab, setTab] = useState(0);
 
   useEffect(() => {
-    if (!hasMidFiller && tab === 3) {
-      setTab(0);
-    }
-    if (hasMidFiller && !formMethods.getValues('midRoll')) {
+    if (
+      shouldSeedMidRollDefaults({
+        hasMidFiller,
+        midRollTabOpen: tab === 3,
+        hasMidRollConfig: formMethods.getValues('midRoll') !== undefined,
+      })
+    ) {
       formMethods.setValue(
         'midRoll',
         deriveMidRollDefaults(formMethods.getValues(), channelPrograms),
@@ -332,7 +338,7 @@ export const EditTimeSlotDialogContent = ({
               disabled={slotType === 'flex' || fillerLists.length === 0}
             />
             <Tab label={t`Config`} value={2} />
-            {hasMidFiller && <Tab label={t`Mid-Roll`} value={3} />}
+            <Tab label={t`Mid-Roll`} value={3} />
           </Tabs>
           <FormProvider {...formMethods}>
             <TabPanel value={tab} index={0}>

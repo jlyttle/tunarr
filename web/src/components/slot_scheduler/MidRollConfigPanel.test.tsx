@@ -6,9 +6,16 @@ import { MidRollConfigPanel } from './MidRollConfigPanel';
 type TestValues = Record<string, unknown>;
 let currentForm: ReturnType<typeof useForm<TestValues>>;
 
-const Harness = ({ defaults }: { defaults?: TestValues }) => {
+const Harness = ({
+  defaults,
+  filler,
+}: {
+  defaults?: TestValues;
+  filler?: { types: string[] }[];
+}) => {
   const form = useForm<TestValues>({
     defaultValues: {
+      filler,
       midRoll: {
         breakRule: { type: 'fixed_interval', intervalMs: 1_800_000 },
         maxBreaks: 0,
@@ -90,5 +97,30 @@ describe('MidRollConfigPanel', () => {
 
     expect(currentForm.getValues('midRoll.minFirstBreakMs')).toBe(300_000);
     expect(currentForm.getValues('midRoll.minBreakIntervalMs')).toBe(600_000);
+  });
+
+  const noMidFillerHelp =
+    "Without a Mid filler list, only the Detected rule adds breaks; they are filled from the channel's filler at play time.";
+
+  test('explains that only the Detected rule works without a Mid filler list', () => {
+    renderWithProviders(<Harness />);
+
+    expect(screen.getByText(noMidFillerHelp)).toBeVisible();
+  });
+
+  test('hides the no-Mid-filler note when the slot has a Mid filler list', () => {
+    renderWithProviders(<Harness filler={[{ types: ['mid'] }]} />);
+
+    expect(screen.queryByText(noMidFillerHelp)).not.toBeInTheDocument();
+  });
+
+  test('minimum tail helper describes the flex kept after each program', async () => {
+    const { user } = renderWithProviders(<Harness />);
+
+    await user.click(screen.getByRole('button', { name: 'Split slot flex' }));
+
+    expect(
+      screen.getByText('Smallest flex block kept after each program'),
+    ).toBeVisible();
   });
 });

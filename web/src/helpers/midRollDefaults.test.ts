@@ -9,6 +9,7 @@ import {
 import {
   deriveMidRollDefaults,
   FallbackMidRollDefaults,
+  shouldSeedMidRollDefaults,
 } from './midRollDefaults.ts';
 
 const OneMinute = 60_000;
@@ -129,5 +130,47 @@ describe('deriveMidRollDefaults', () => {
     expect(deriveMidRollDefaults(showSlot('show-1'), [])).toEqual(
       FallbackMidRollDefaults,
     );
+  });
+});
+
+describe('shouldSeedMidRollDefaults', () => {
+  test('leaves a slot without a Mid filler list alone until the tab is opened', () => {
+    expect(
+      shouldSeedMidRollDefaults({
+        hasMidFiller: false,
+        midRollTabOpen: false,
+        hasMidRollConfig: false,
+      }),
+    ).toBe(false);
+  });
+
+  test('seeds when the Mid-Roll tab is opened without a Mid filler list', () => {
+    expect(
+      shouldSeedMidRollDefaults({
+        hasMidFiller: false,
+        midRollTabOpen: true,
+        hasMidRollConfig: false,
+      }),
+    ).toBe(true);
+  });
+
+  test('seeds when a Mid filler list is assigned', () => {
+    expect(
+      shouldSeedMidRollDefaults({
+        hasMidFiller: true,
+        midRollTabOpen: false,
+        hasMidRollConfig: false,
+      }),
+    ).toBe(true);
+  });
+
+  test('never replaces an existing config', () => {
+    expect(
+      shouldSeedMidRollDefaults({
+        hasMidFiller: true,
+        midRollTabOpen: true,
+        hasMidRollConfig: true,
+      }),
+    ).toBe(false);
   });
 });

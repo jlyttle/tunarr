@@ -84,3 +84,18 @@ export function deriveMidRollDefaults(
     strategy: 'eager',
   };
 }
+
+/**
+ * A slot gets mid-roll defaults once mid-roll is in play for it: a Mid filler
+ * list is assigned, or the user opens the Mid-Roll tab. A slot that has
+ * neither keeps saving without a midRoll config.
+ */
+export function shouldSeedMidRollDefaults(state: {
+  hasMidFiller: boolean;
+  midRollTabOpen: boolean;
+  hasMidRollConfig: boolean;
+}): boolean {
+  return (
+    !state.hasMidRollConfig && (state.hasMidFiller || state.midRollTabOpen)
+  );
+}

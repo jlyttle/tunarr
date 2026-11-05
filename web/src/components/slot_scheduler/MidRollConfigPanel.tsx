@@ -34,6 +34,7 @@ type MidRollBreakRuleFormFields = {
 };
 
 type MidRollFormFields = {
+  filler?: { types?: string[] }[];
   midRoll: {
     intervalMs?: number;
     breakRule?: MidRollBreakRuleFormFields;
@@ -103,6 +104,8 @@ export const MidRollConfigPanel = () => {
   const breakRuleType = watch('midRoll.breakRule.type');
   const points = watch('midRoll.breakRule.points');
   const strategy = watch('midRoll.strategy');
+  const hasMidFiller =
+    watch('filler')?.some((f) => f.types?.includes('mid')) ?? false;
 
   const [newPoint, setNewPoint] = useState('');
   const [durationMode, setDurationMode] = useState<DurationMode>(() => {
@@ -195,6 +198,15 @@ export const MidRollConfigPanel = () => {
 
   return (
     <Stack spacing={2}>
+      {!hasMidFiller && (
+        <Typography variant="body2" color="text.secondary">
+          <Trans>
+            Without a Mid filler list, only the Detected rule adds breaks; they
+            are filled from the channel's filler at play time.
+          </Trans>
+        </Typography>
+      )}
+
       {/* Section 1: Break Positioning */}
       <Typography variant="subtitle2">
         <Trans>Break Positioning</Trans>
@@ -473,7 +485,7 @@ export const MidRollConfigPanel = () => {
                 onChange={(e) =>
                   field.onChange(minutesToMs(Number(e.target.value)))
                 }
-                helperText={t`Smallest flex block left at the end of the slot`}
+                helperText={t`Smallest flex block kept after each program`}
               />
             )}
           />
