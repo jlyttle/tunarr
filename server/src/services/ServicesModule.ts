@@ -1,5 +1,6 @@
 import { VideoScanDetectionService } from './VideoScanDetectionService.ts';
 import { BreakAnalysisService } from './break-analysis/BreakAnalysisService.ts';
+import { BreakMarkerImporter } from './break-markers/BreakMarkerImporter.ts';
 import { MediaSourceType } from '@/db/schema/base.js';
 import type { ProgramLike } from '@tunarr/types';
 import type { EmbyItem } from '@tunarr/types/emby';
@@ -65,6 +66,7 @@ import { StreamSelectionProfileResolver } from './StreamSelectionProfileResolver
 
 export const ServicesModule = new ContainerModule(({ bind }) => {
   bind(BreakAnalysisService).toSelf().inSingletonScope();
+  bind(BreakMarkerImporter).toSelf().inSingletonScope();
   bind(VideoScanDetectionService).toSelf().inSingletonScope();
   bind<Canonicalizer<PlexMedia>>(KEYS.PlexCanonicalizer)
     .to(PlexMediaCanonicalizer)

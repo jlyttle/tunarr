@@ -3014,6 +3014,39 @@ export type GetApiProgramsByIdBreakAnalysisResponses = {
 
 export type GetApiProgramsByIdBreakAnalysisResponse = GetApiProgramsByIdBreakAnalysisResponses[keyof GetApiProgramsByIdBreakAnalysisResponses];
 
+export type PostApiBreakMarkersData = {
+    body: {
+        schema: 1;
+        detector: string;
+        show: string;
+        threshold: number;
+        episodes: Array<{
+            relativePath: string;
+            durationMs: number;
+            breaks: Array<{
+                offsetMs: number;
+                score: number;
+            }>;
+        }>;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/break-markers';
+};
+
+export type PostApiBreakMarkersResponses = {
+    /**
+     * Default Response
+     */
+    200: {
+        matched: number;
+        unmatched: Array<string>;
+        programs: number;
+    };
+};
+
+export type PostApiBreakMarkersResponse = PostApiBreakMarkersResponses[keyof PostApiBreakMarkersResponses];
+
 export type GetChannelsData = {
     body?: never;
     path?: never;

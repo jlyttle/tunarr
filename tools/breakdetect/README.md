@@ -95,3 +95,9 @@ Library-scale throughput matters most: 8 uncached episodes (2 Batman TAS, 3 Rugr
 | vaapi, `--workers 4` | 160 s | 0.89 | 20 |
 
 The per-episode times inside a parallel run are inflated because the workers share the CPU, so use the wall numbers. Software decode with `--workers 4` is the recommended Unraid setting: it passes the 30 s gate at library scale, and more workers add nothing once the 12 threads are saturated. A single 1080p episode run alone is still about 40 s.
+
+## Import into Tunarr
+
+Marker files written to `data/markers/<show>.json` are imported with one request. Episodes match by path suffix and duration (within 2 s); unmatched episodes are listed in the response.
+
+    curl -X POST -H 'Content-Type: application/json' --data @data/markers/<show>.json http://<tunarr-host>:8000/api/break-markers

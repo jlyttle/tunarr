@@ -41,6 +41,7 @@ import { SmartCollectionsApiController } from './smartCollectionsApi.ts';
 import { systemApiRouter } from './systemApi.js';
 import { tasksApiRouter } from './tasksApi.js';
 import { breakAnalysisApi } from './breakAnalysisApi.ts';
+import { breakMarkersApi } from './breakMarkersApi.ts';
 import { trashApi } from './trashApi.ts';
 import { streamSelectionRouter } from './streamSelectionApi.ts';
 import { troubleshootApiRouter } from './troubleshootApi.js';
@@ -66,6 +67,7 @@ export const apiRouter: RouterPluginAsyncCallback = async (fastify) => {
     })
     .register(tasksApiRouter)
     .register(breakAnalysisApi)
+    .register(breakMarkersApi)
     .register(channelsApi)
     .register(nativePlaybackApi)
     .register(customShowsApiV2)
