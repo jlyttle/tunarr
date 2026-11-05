@@ -1097,6 +1097,7 @@ describe('ChannelDB', () => {
         {} as any,
         {} as any,
         {} as any,
+        {} as any,
         channelDb,
       );
       const programs = await helper.collectSlotProgramming({

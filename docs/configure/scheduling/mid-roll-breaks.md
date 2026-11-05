@@ -15,7 +15,7 @@ When editing a slot in the Slot Editor or Time Slots editor, add a filler list a
 
 ## Break Positioning
 
-Mid-roll breaks support three positioning rules that control _where_ breaks are inserted within a program.
+Mid-roll breaks support four positioning rules that control _where_ breaks are inserted within a program.
 
 ### Fixed Interval
 
@@ -48,6 +48,12 @@ Combines an initial delay before the first break with a regular interval for sub
 
 A 2-hour movie with a 15-minute initial delay and 30-minute interval gets breaks at 15m, 45m, 75m, and 105m.
 
+### Detected Breaks
+
+Uses break positions found by breakdetect (`tools/breakdetect`), which scans episodes for the black-frame and silence gaps where the original broadcast cut to commercials. The rule has no settings of its own. Each episode breaks where its imported markers say.
+
+An episode with no imported markers plays whole. See [Importing Markers](#importing-markers).
+
 ## Break Duration
 
 Break duration can be configured in two modes:
@@ -57,6 +63,21 @@ Break duration can be configured in two modes:
 
 In a time slot, breaks only use the slot's spare time, which is the padding and flex left after its programs. They never push the slot past its end, so the next slot still starts on time. When the spare time runs low, a break is shortened to fit, but never below the minimum break duration (or the fixed duration). A break that cannot fit at that length is dropped, along with the rest of that program's breaks. For example, a 53-minute episode in a one-hour slot gets at most 7 minutes of breaks. A program's breaks use its own padding first, so the programs after it keep their start times.
 
+### Split Slot Flex
+
+Instead of a fixed or random break length, **Split slot flex** sizes the breaks from the slot's spare time, so a time slot fills to its end without a long filler gap after the last segment. It suits the Detected rule, where the number of breaks varies by episode.
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Tail share** | Fraction of a program's share of spare time kept as flex after the last segment | 25% |
+| **Minimum tail** | Smallest tail kept after the last segment | 1 minute |
+| **Minimum break** | Breaks shorter than this are dropped | 1 minute |
+
+- The slot's spare time is shared across its programs in proportion to their durations. A program that cannot use its share passes the rest on to later programs.
+- Each program keeps a tail of at least the minimum tail, or its share times the tail share if that is larger. The rest is split evenly across its breaks.
+- If breaks would come out shorter than the minimum break, the latest breaks are dropped until they fit.
+- In random slots there is no fixed slot length, so each break is the minimum break.
+
 ## Limits and Filters
 
 | Setting | Description | Default |
@@ -64,6 +85,8 @@ In a time slot, breaks only use the slot's spare time, which is the padding and 
 | **Max Breaks** | Maximum number of breaks per program. 0 = unlimited. | 0 |
 | **Minimum Program Duration** | Programs shorter than this are skipped entirely. | Fitted to the slot |
 | **Tail Buffer** | Minimum amount of content preserved at the end of the program before the credits. No breaks are inserted within this window. | 0 |
+| **No break before** | No break is placed earlier than this into the program. Applies to every rule. | Off |
+| **Minimum gap between breaks** | Breaks closer together than this are dropped. Applies to every rule. | Off |
 | **Program Types** | Restrict mid-roll to specific content types (Movies, Episodes, Music Tracks, Music Videos, Other Videos). Empty = all types. | All |
 
 ### Starting Values
@@ -78,6 +101,20 @@ channel whose programs have not loaded — starts at a 15 minute interval and a
 
 These are starting values, not rules. Raise the minimum to leave shorter
 programs whole.
+
+## Importing Markers
+
+The Detected rule reads markers that breakdetect writes to `data/markers/<show>.json`. Import a file with one request:
+
+```bash
+curl -X POST -H 'Content-Type: application/json' \
+  --data @data/markers/<show>.json \
+  http://<tunarr-host>:8000/api/break-markers
+```
+
+An episode matches a program when the program's media file path ends with the episode's `relativePath` and the durations differ by no more than 2 seconds. The response lists how many episodes `matched` and which were `unmatched`. Importing a file again replaces the markers of the programs it matches.
+
+With the Detected rule and no Mid filler list on the slot, breaks are filled from the channel's filler at play time.
 
 ## Scheduling Strategy
 

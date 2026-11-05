@@ -443,6 +443,11 @@ const HOUR_MS = 60 * 60 * 1000;
 // a weekly schedule. "Sat 20:30" is weekly, "20:30" is daily, a number is raw ms.
 function slotOffsetMs(at, period) {
   if (typeof at === 'number') return at;
+  const now = /^now(?:\+(\d+)m)?$/.exec(String(at));
+  if (now && period !== 'week') {
+    const d = new Date();
+    return (((d.getHours() * 60 + d.getMinutes()) * 60 + d.getSeconds()) * 1000 + Number(now[1] ?? 0) * 60_000) % (24 * HOUR_MS);
+  }
   const m = /^(?:([a-z]{3})\w*\s+)?(\d{1,2}):(\d{2})$/i.exec(String(at).trim());
   if (!m) throw new Error(`slot time "${at}" must look like "Sat 20:30", "20:30", or a number of ms`);
   const day = m[1] ? DAYS.indexOf(m[1].toLowerCase()) : -1;
@@ -494,12 +499,30 @@ function buildSlot(spec, period, showIds, channelIds) {
   throw new Error(`slot at ${at} needs customShow, redirect, flex, or a raw type`);
 }
 
+// Imports breakdetect markers through POST /api/break-markers. The importer only
+// matches episodes, and synthetic clips scan as other videos, so the programs
+// become episodes first. Clip I is "clipII.mkv", the name makeClips gives it.
+async function importBreakMarkers(base, clipPrograms, markers) {
+  execFileSync('sqlite3', [path.join(dbDir, 'db.db'), "UPDATE program SET type = 'episode';"]);
+  const episodes = markers.map(({ clip, breaks }) => {
+    const p = clipPrograms[clip - 1];
+    if (!p) throw new Error(`breakMarkers: no clip ${clip} (there are ${clipPrograms.length})`);
+    return {
+      relativePath: `clip${String(clip).padStart(2, '0')}.mkv`,
+      durationMs: p.durationMs,
+      breaks: breaks.map((offsetMs) => ({ offsetMs, score: 1 })),
+    };
+  });
+  return api(base, 'POST', '/api/break-markers', { schema: 1, detector: 'stream-repro', show: 'repro', threshold: 0.5, episodes });
+}
+
 // Builds custom shows and time-slot channels from a --schedule spec, then
 // records each channel's saved lineup and, when asked, its guide window.
 async function applySchedule(base, channel, specFile) {
   const spec = JSON.parse(fs.readFileSync(specFile, 'utf8'));
   if (!spec.channels?.length) throw new Error('--schedule needs a non-empty "channels" list');
   const clipPrograms = channel.programs;
+  let result_markers;
   const titles = Object.fromEntries(clipPrograms.map((p) => [p.id, p.title]));
 
   const showIds = {};
@@ -515,6 +538,8 @@ async function applySchedule(base, channel, specFile) {
     showIds[name] = show.id;
   }
 
+  if (spec.breakMarkers?.length) result_markers = await importBreakMarkers(base, clipPrograms, spec.breakMarkers);
+
   // The first channel reuses the capture channel; the rest are copies of it.
   // Every channel exists before any schedule is saved, so redirects can point anywhere.
   const channelIds = {};
@@ -524,7 +549,7 @@ async function applySchedule(base, channel, specFile) {
   }
 
   const allProgramIds = clipPrograms.map((p) => p.id);
-  const result = { customShows: showIds, channels: [] };
+  const result = { customShows: showIds, channels: [], ...(result_markers ? { breakMarkers: result_markers } : {}) };
   for (const c of spec.channels) {
     const period = c.period ?? 'day';
     const schedule = {

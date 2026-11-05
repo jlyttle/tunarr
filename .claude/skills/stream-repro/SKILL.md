@@ -126,8 +126,13 @@ node .claude/skills/stream-repro/scripts/repro.mjs --clip-durations 1800,1800,57
 - A slot takes `at` plus one of `customShow`, `redirect` (a channel name), or `flex: true`. Any other
   field passes through to the slot, such as `"order": "shuffle"` or `"padMs"`. A slot with its own `type`
   passes through whole, for slot kinds the shorthand does not cover.
-- `at` is `"Sat 20:30"` for `"period": "week"`, `"20:30"` for the default daily period, or raw
+- `at` is `"Sat 20:30"` for `"period": "week"`, `"20:30"` for the default daily period, `"now"` or `"now+9m"` (daily period) for the current local time plus an offset, or raw
   milliseconds into the period. Weeks start on Sunday.
+- `breakMarkers` imports detected break markers through `POST /api/break-markers` before the schedules
+  are saved, for example `[{ "clip": 1, "breaks": [660000] }]` (1-based clip, break offsets in ms). The
+  programs are first turned into episodes, because the importer matches only episodes. Pair it with a slot
+  `midRoll` of `{ "breakRule": { "type": "detected" }, "splitSlotFlex": {}, "maxBreaks": 0,
+  "minProgramDurationMs": 0, "strategy": "eager" }`. `report.schedule.breakMarkers` holds the import result.
 - `settings` overrides schedule defaults, which match the editor's "Do not pad", "Do not allow"
   lateness, and "Between videos" flex: `padMs: 1`, `latenessMs: 0`, `flexPreference: "distribute"`.
   `maxDays` defaults to 14.
