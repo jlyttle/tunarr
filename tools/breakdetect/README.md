@@ -41,6 +41,14 @@ Mark every point where the show itself is built to cut away: an act-out fade, th
 
 At least one held-out prediction must also be a true positive.
 
+## Unseen-show evaluation
+
+    uv run breakdetect loso [--cache DIR]
+
+Scores each labelled show as if it had never been labelled. The model is trained on every other show. The threshold is chosen from the other shows only, each scored by a model that saw neither it nor the target show. The pooled row is the precision a brand-new show would get. Only shows with complete ground truth take part. The command writes nothing.
+
+2026-11-05, 4 shows: pooled precision 0.93, recall 0.51 (29 predictions). Are You Afraid of the Dark gave 2 false cuts in 3 predictions (S02E05 at 7:34, S04E12 at 12:09), both away from the episode's usual break window.
+
 ## Extraction benchmark (Mac, 1 worker, SMB share, cold cache)
 
 | File | Size | Codec / resolution | No hwaccel (s, s/media-min) | videotoolbox (s, s/media-min) |

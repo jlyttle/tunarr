@@ -7,6 +7,7 @@ from breakdetect.evaluate import (
     ShowThreshold,
     evaluate,
     format_table,
+    load_gt_pool,
     save_evaluation,
     show_dirs_to_slugs,
     thresholds_out_of_date,
@@ -14,6 +15,7 @@ from breakdetect.evaluate import (
 )
 from breakdetect.export import ExportError, StaleSignalsError, export_show, load_approved_model, locate_show_dir, remove_stale_markers, summarize
 from breakdetect.labels import import_seeds, load_or_empty, merge_labels, save_labels
+from breakdetect.loso import evaluate_unseen_shows, format_loso_table
 from breakdetect.media import default_roots, discover_episodes
 from breakdetect.review.server import make_server
 from breakdetect.train import model_path, train
@@ -99,6 +101,11 @@ def _evaluate(args: argparse.Namespace) -> int:
     return 1 if missing else 0
 
 
+def _loso(args: argparse.Namespace) -> int:
+    print(format_loso_table(evaluate_unseen_shows(load_gt_pool(FeatureCache(args.cache), default_roots()))))
+    return 0
+
+
 def _export_one(show_dir: Path, cache: FeatureCache) -> bool:
     try:
         marker = export_show(show_dir, cache)
@@ -162,6 +169,9 @@ def _parser() -> argparse.ArgumentParser:
     ev.add_argument("show_dirs", nargs="*", type=Path)
     ev.add_argument("--cache", type=Path, default=default_cache_root())
     ev.set_defaults(handler=_evaluate)
+    loso = sub.add_parser("loso", help="leave-one-show-out evaluation: score each show as if it had never been labelled")
+    loso.add_argument("--cache", type=Path, default=default_cache_root())
+    loso.set_defaults(handler=_loso)
     exp = sub.add_parser("export", help="write break markers for shows that passed the precision gate")
     exp.add_argument("show_dirs", nargs="*", type=Path)
     exp.add_argument("--all-enabled", action="store_true")
