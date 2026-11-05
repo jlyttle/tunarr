@@ -6,12 +6,12 @@ Mid-roll breaks are configured per-slot in the [Slot Editor](random-slots.md) an
 
 ## Prerequisites
 
-To use mid-roll breaks, you need:
+Every rule except Detected needs:
 
 1. A [filler list](../library/filler.md) with content (commercials, bumpers, etc.)
 2. The filler list assigned to a slot with the **Mid** filler type
 
-When editing a slot in the Slot Editor or Time Slots editor, add a filler list and select "Mid" as one of its types. Once a "Mid" filler is assigned, the mid-roll configuration panel appears.
+When editing a slot in the Slot Editor or Time Slots editor, add a filler list and select "Mid" as one of its types, then configure breaks on the **Mid-Roll** tab. The tab is always available. Without a Mid filler list, only the [Detected](#detected-breaks) rule adds breaks; they are filled from the channel's filler at play time.
 
 ## Break Positioning
 
@@ -56,10 +56,11 @@ An episode with no imported markers plays whole. See [Importing Markers](#import
 
 ## Break Duration
 
-Break duration can be configured in two modes:
+Break duration can be configured in three modes:
 
 - **Fixed**: Every break has the same duration (e.g., 3 minutes).
 - **Range**: Each break's duration is randomly chosen between a minimum and maximum value (e.g., 2–5 minutes). This makes breaks feel less mechanical.
+- **Split slot flex**: Breaks are sized from the slot's spare time. This replaces a fixed or range duration. See [Split Slot Flex](#split-slot-flex).
 
 In a time slot, breaks only use the slot's spare time, which is the padding and flex left after its programs. They never push the slot past its end, so the next slot still starts on time. When the spare time runs low, a break is shortened to fit, but never below the minimum break duration (or the fixed duration). A break that cannot fit at that length is dropped, along with the rest of that program's breaks. For example, a 53-minute episode in a one-hour slot gets at most 7 minutes of breaks. A program's breaks use its own padding first, so the programs after it keep their start times.
 
@@ -73,8 +74,9 @@ Instead of a fixed or random break length, **Split slot flex** sizes the breaks 
 | **Minimum tail** | Smallest tail kept after the last segment | 1 minute |
 | **Minimum break** | Breaks shorter than this are dropped | 1 minute |
 
-- The slot's spare time is shared across its programs in proportion to their durations. A program that cannot use its share passes the rest on to later programs.
+- The slot's spare time is shared across its programs in proportion to their durations. A share a program does not use, for example because the episode has no markers, stays as that program's padding, so the programs after it keep their place on the pad grid.
 - Each program keeps a tail of at least the minimum tail, or its share times the tail share if that is larger. The rest is split evenly across its breaks.
+- Any slot flex left over is added after a program's last segment, never to its breaks, whether the schedule's flex preference is end or distribute.
 - If breaks would come out shorter than the minimum break, the latest breaks are dropped until they fit.
 - In random slots there is no fixed slot length, so each break is the minimum break.
 
@@ -112,7 +114,9 @@ curl -X POST -H 'Content-Type: application/json' \
   http://<tunarr-host>:8000/api/break-markers
 ```
 
-An episode matches a program when the program's media file path ends with the episode's `relativePath` and the durations differ by no more than 2 seconds. The response lists how many episodes `matched` and which were `unmatched`. Importing a file again replaces the markers of the programs it matches.
+An episode matches a program when the program's media file path ends with the episode's `relativePath` and the durations differ by no more than 2 seconds. The response lists how many episodes `matched` and which were `unmatched`. Unmatched episodes are skipped; nothing is stored for them. Importing a file again replaces the markers of the programs it matches.
+
+Lineups are generated ahead of time, so imported markers take effect only once the channel's schedule is regenerated.
 
 With the Detected rule and no Mid filler list on the slot, breaks are filled from the channel's filler at play time.
 
