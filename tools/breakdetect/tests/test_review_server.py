@@ -375,3 +375,43 @@ def test_held_out_saved_immediately_and_survives_decisions(served):
     call(served, "POST", "/api/add-break", {"rel": REL, "ms": ADDED_MS})
     _, data = call(served, "GET", f"/api/episode?rel={REL}")
     assert json.loads(data)["held_out"] is True
+
+
+def _write_marker(cuts: list[int]) -> None:
+    markers = Path(os.environ["BREAKDETECT_DATA"]) / "markers"
+    markers.mkdir(parents=True, exist_ok=True)
+    (markers / "show.json").write_text(json.dumps({"episodes": [{"relativePath": REL, "durationMs": 142_000, "breaks": [{"offsetMs": ms} for ms in cuts]}]}))
+
+
+def test_api_lists_predicted_breaks_of_unlabelled_episodes(served):
+    _write_marker([71_000])
+    response, data = call(served, "GET", "/api/spotcheck")
+    assert response.status == 200
+    assert json.loads(data)["episodes"] == [{"rel": REL, "name": "ep1.mkv", "breaks": [{"cut_ms": 71_000, "verdict": None}]}]
+
+
+def test_api_hides_labelled_episodes(served):
+    _write_marker([71_000])
+    save_labels(ShowLabels("Show", {REL: EpisodeLabels(complete=True)}))
+    _, data = call(served, "GET", "/api/spotcheck")
+    assert json.loads(data)["episodes"] == []
+
+
+def test_api_without_markers_says_so(served):
+    response, data = call(served, "GET", "/api/spotcheck")
+    assert response.status == 404
+    assert "export" in json.loads(data)["error"]
+
+
+def test_api_saves_verdict(served):
+    _write_marker([71_000])
+    response, _ = call(served, "POST", "/api/spotcheck", {"rel": REL, "cut_ms": 71_000, "verdict": "bad"})
+    assert response.status == 200
+    _, data = call(served, "GET", "/api/spotcheck")
+    assert json.loads(data)["episodes"][0]["breaks"] == [{"cut_ms": 71_000, "verdict": "bad"}]
+
+
+def test_api_rejects_unknown_verdict(served):
+    _write_marker([71_000])
+    response, _ = call(served, "POST", "/api/spotcheck", {"rel": REL, "cut_ms": 71_000, "verdict": "maybe"})
+    assert response.status == 400

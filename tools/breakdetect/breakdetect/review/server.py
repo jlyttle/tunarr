@@ -21,6 +21,7 @@ from breakdetect.features import FPS, Features
 from breakdetect.labels import DEDUPE_WINDOW_MS, Decision, EpisodeLabels, ShowLabels, is_stale, load_or_empty, save_labels, slugify
 from breakdetect.durations import DurationCache
 from breakdetect.media import default_roots, discover_episodes, file_identity, relative_path
+from breakdetect.spotcheck import load_marker, load_verdicts, sample_episodes, save_verdict
 
 STATIC_DIR = Path(__file__).parent / "static"
 LABELS = {"break", "not_break", "unsure"}
@@ -31,7 +32,7 @@ STRIP_SCALE = 2
 CHUNK = 1 << 20
 ADD_BREAK_EDGE_MS = 60_000
 log = logging.getLogger(__name__)
-PAGES = {"/": "index.html", "/episode": "episode.html", "/review.js": "review.js", "/review.css": "review.css"}
+PAGES = {"/": "index.html", "/episode": "episode.html", "/spotcheck": "spotcheck.html", "/review.js": "review.js", "/review.css": "review.css"}
 
 
 class HttpError(Exception):
@@ -180,6 +181,26 @@ class ReviewApp:
             entry.identity = file_identity(path)
             entry.duration_ms = features.duration_ms
             save_labels(labels)
+        return {"ok": True}
+
+    def spotcheck(self) -> dict:
+        marker = load_marker(self.slug)
+        if marker is None:
+            raise HttpError(HTTPStatus.NOT_FOUND, f"no markers for {self.show}; run `breakdetect export` first")
+        labels = load_or_empty(self.slug, self.show)
+        labelled = {rel for rel, e in labels.episodes.items() if e.complete or any(d.source == "user" for d in e.decisions)}
+        verdicts = load_verdicts(self.slug)
+        return {"show": self.show, "episodes": [self._spotcheck_episode(e, verdicts) for e in sample_episodes(marker, labelled)]}
+
+    def _spotcheck_episode(self, sample: dict, verdicts: dict[str, dict[int, str]]) -> dict:
+        own = verdicts.get(sample["rel"], {})
+        breaks = [{"cut_ms": ms, "verdict": own.get(ms)} for ms in sample["cuts_ms"]]
+        return {"rel": sample["rel"], "name": Path(sample["rel"]).name, "breaks": breaks}
+
+    def set_spotcheck(self, rel: str, cut_ms: int, verdict: str) -> dict:
+        self.resolve(rel)
+        with self.labels_lock:
+            save_verdict(self.slug, rel, cut_ms, verdict)
         return {"ok": True}
 
     def clip(self, rel: str, ms: int) -> Path:
@@ -349,6 +370,8 @@ def make_handler(app: ReviewApp) -> type[BaseHTTPRequestHandler]:
                 self._file(STATIC_DIR / PAGES[route])
             elif route == "/api/show":
                 self._json(app.show_summary())
+            elif route == "/api/spotcheck":
+                self._json(app.spotcheck())
             elif route == "/api/episode":
                 self._json(app.episode(query.get("rel", "")))
             elif route == "/clip":
@@ -383,6 +406,8 @@ def make_handler(app: ReviewApp) -> type[BaseHTTPRequestHandler]:
                 self._json(app.add_break(body["rel"], int(body["ms"])))
             elif route == "/api/mark-rest-not-break":
                 self._json(app.mark_rest_not_break(body["rel"]))
+            elif route == "/api/spotcheck":
+                self._json(app.set_spotcheck(body["rel"], int(body["cut_ms"]), body["verdict"]))
             elif route == "/api/held-out":
                 self._json(app.set_held_out(body["rel"], bool(body["held_out"])))
             elif route == "/api/complete":

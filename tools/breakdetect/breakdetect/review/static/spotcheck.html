@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>breakdetect spot-check</title>
+<link rel="stylesheet" href="/review.css">
+</head>
+<body>
+<p><a href="/">All episodes</a></p>
+<h1 id="show">Loading...</h1>
+<p>Predicted breaks in episodes you have not labelled. Play each clip (5 s before the cut, 3 s after) and judge only the cut point: would a commercial go here?</p>
+<p id="progress"></p>
+<p id="error" class="error" hidden></p>
+<div id="episodes"></div>
+<script src="/review.js"></script>
+<script>reviewSpotcheck();</script>
+</body>
+</html>

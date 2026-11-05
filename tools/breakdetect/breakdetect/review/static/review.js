@@ -249,3 +249,70 @@ async function reviewEpisode() {
     showError(e.message);
   }
 }
+
+const VERDICTS = { good: "Good cut", bad: "Bad cut" };
+const spot = { episodes: [] };
+
+function spotProgress() {
+  const breaks = spot.episodes.flatMap((e) => e.breaks);
+  const judged = breaks.filter((b) => b.verdict !== null);
+  const bad = judged.filter((b) => b.verdict === "bad").length;
+  el("progress").textContent = `${judged.length} of ${breaks.length} cuts judged, ${bad} bad.`;
+}
+
+async function judge(episode, cut, verdict, node) {
+  showError("");
+  try {
+    await request("/api/spotcheck", { rel: episode.rel, cut_ms: cut.cut_ms, verdict });
+    cut.verdict = verdict;
+    node.replaceWith(spotRow(episode, cut));
+    spotProgress();
+  } catch (e) {
+    showError(`Verdict NOT saved: ${e.message}`);
+  }
+}
+
+function spotRow(episode, cut) {
+  const node = make("div", "row");
+  if (cut.verdict) node.classList.add(cut.verdict === "good" ? "decided-break" : "decided-not_break");
+  const head = make("div", "row-head");
+  head.append(make("span", "time", formatTime(cut.cut_ms)), make("span", "meta", cut.verdict ? VERDICTS[cut.verdict] : "not judged"));
+  const video = make("video");
+  video.controls = true;
+  video.preload = "none";
+  video.src = `/clip?rel=${encodeURIComponent(episode.rel)}&ms=${cut.cut_ms}`;
+  const strip = make("img", "strip");
+  strip.loading = "lazy";
+  strip.src = `/strip?rel=${encodeURIComponent(episode.rel)}&ms=${cut.cut_ms}`;
+  const box = make("div", "buttons");
+  for (const [verdict, text] of Object.entries(VERDICTS)) {
+    const button = make("button", cut.verdict === verdict ? "active" : "", text);
+    button.addEventListener("click", () => judge(episode, cut, verdict, node));
+    box.appendChild(button);
+  }
+  node.append(head, strip, video, box);
+  return node;
+}
+
+function spotEpisode(episode) {
+  const section = make("section");
+  const title = make("h2");
+  const link = make("a", "", episode.name);
+  link.href = `/episode?rel=${encodeURIComponent(episode.rel)}`;
+  title.appendChild(link);
+  section.append(title, ...episode.breaks.map((cut) => spotRow(episode, cut)));
+  return section;
+}
+
+async function reviewSpotcheck() {
+  try {
+    const summary = await request("/api/spotcheck");
+    spot.episodes = summary.episodes;
+    el("show").textContent = `Spot-check: ${summary.show}`;
+    document.title = `${summary.show} spot-check - breakdetect`;
+    el("episodes").replaceChildren(...spot.episodes.map(spotEpisode));
+    spotProgress();
+  } catch (e) {
+    showError(e.message);
+  }
+}
