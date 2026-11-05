@@ -1,4 +1,12 @@
+import pytest
+
 from breakdetect.spotcheck import load_verdicts, sample_episodes, save_verdict
+
+
+
+@pytest.fixture(autouse=True)
+def data_dir(tmp_path, monkeypatch):
+    monkeypatch.setenv("BREAKDETECT_DATA", str(tmp_path / "data"))
 
 
 def _marker(episodes: list[tuple[str, list[int]]]) -> dict:
