@@ -1,7 +1,10 @@
 import type { MidRollConfig } from '@tunarr/types/api';
 import { MidRollConfigSchema } from '@tunarr/types/api';
 import { describe, expect, it } from 'vitest';
-import { resolveBreakPoints } from './midRollBreakRules.ts';
+import {
+  resolveBreakPoints,
+  splitBreakDurations,
+} from './midRollBreakRules.ts';
 
 describe('MidRollConfigSchema', () => {
   const detectedBase = {
@@ -129,5 +132,29 @@ describe('resolveBreakPoints detected', () => {
       minFirstBreakMs: 400_000,
     });
     expect(offsets(config)).toEqual([600_000, 900_000, 1_200_000]);
+  });
+});
+
+describe('splitBreakDurations', () => {
+  const defaults = { tailShare: 0.25, minTailMs: 60_000, minBreakMs: 60_000 };
+
+  it('shares the budget minus the tail across the breaks', () => {
+    expect(splitBreakDurations(480_000, 2, defaults)).toEqual([
+      180_000, 180_000,
+    ]);
+  });
+
+  it('drops breaks until each one is long enough', () => {
+    expect(splitBreakDurations(150_000, 2, defaults)).toEqual([90_000]);
+  });
+
+  it('plans no break when the budget cannot cover one', () => {
+    expect(splitBreakDurations(100_000, 1, defaults)).toEqual([]);
+  });
+
+  it('uses the minimum break for an unbounded budget', () => {
+    expect(splitBreakDurations(Infinity, 2, defaults)).toEqual([
+      60_000, 60_000,
+    ]);
   });
 });

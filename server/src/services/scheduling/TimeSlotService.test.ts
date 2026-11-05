@@ -4784,4 +4784,122 @@ describe('detected breaks', () => {
     expect(segments[0].program).toMatchObject({ startOffsetMs: 600_000 });
     expect(segments[2].program).toMatchObject({ startOffsetMs: 660_000 });
   });
+
+  describe('splitSlotFlex', () => {
+    const splitConfig = {
+      breakRule: { type: 'detected' as const },
+      splitSlotFlex: { tailShare: 0.25, minTailMs: 60_000, minBreakMs: 60_000 },
+      maxBreaks: 0,
+      minProgramDurationMs: 0,
+    };
+
+    const numberedEpisode = (n: number): SlotSchedulerProgram => ({
+      ...createFakeProgramOrm({
+        uuid: `ep${n}`,
+        title: `Episode ${n}`,
+        type: 'episode',
+        duration: 22 * oneMin,
+        episode: n,
+        tvShowUuid: 'show1',
+        show: { uuid: 'show1' },
+      }),
+      parentFillerLists: [],
+      parentCustomShows: [],
+      parentSmartCollections: [],
+    });
+
+    const scheduleSlot = async (
+      programs: SlotSchedulerProgram[],
+      slotMinutes: number,
+      breakMarkers: ReadonlyMap<string, number[]>,
+    ) => {
+      const showSlot = (startTime: number, midRoll?: typeof splitConfig) => ({
+        id: randomUUID(),
+        startTime,
+        type: 'show' as const,
+        showId: 'show1',
+        order: 'next' as const,
+        direction: 'asc' as const,
+        seasonFilter: [],
+        midRoll,
+      });
+      const schedule: TimeSlotSchedule = {
+        type: 'time',
+        period: 'day',
+        maxDays: 1,
+        flexPreference: 'end',
+        padMs: 30 * oneMin,
+        latenessMs: 0,
+        overflow: { type: 'duration', maxMs: 0 },
+        timeZoneOffset: 0,
+        slots: [showSlot(0, splitConfig), showSlot(slotMinutes * oneMin)],
+      };
+      const result = await scheduleTimeSlots(
+        schedule,
+        programs,
+        [42, 99],
+        undefined,
+        midnight,
+        breakMarkers,
+      );
+      let elapsed = 0;
+      return (result.lineup as LineupItem[]).filter((item) => {
+        const inSlot = elapsed < slotMinutes * oneMin;
+        elapsed += item.duration;
+        return inSlot;
+      });
+    };
+
+    const breaksOf = (lineup: LineupItem[]) =>
+      lineup.filter((i) => i.fillerConfig?.origin === 'midroll');
+
+    test('sizes each break from the slot spare time', async () => {
+      const lineup = await scheduleSlot(
+        [numberedEpisode(1)],
+        30,
+        new Map([['ep1', [300_000, 900_000]]]),
+      );
+
+      expect(breaksOf(lineup).map((b) => b.duration)).toEqual([
+        180_000, 180_000,
+      ]);
+      expect(lineup.reduce((sum, i) => sum + i.duration, 0)).toBe(30 * oneMin);
+      expect(lineup[lineup.length - 1]).toMatchObject({
+        type: 'flex',
+        duration: 120_000,
+      });
+    });
+
+    test('plans no break when the spare time is too small', async () => {
+      const longEpisode = {
+        ...numberedEpisode(1),
+        duration: 30 * oneMin - 100_000,
+      };
+      const lineup = await scheduleSlot(
+        [longEpisode],
+        30,
+        new Map([['ep1', [300_000, 900_000]]]),
+      );
+
+      expect(breaksOf(lineup)).toHaveLength(0);
+      expect(lineup.filter((i) => i.id === 'ep1')).toHaveLength(1);
+    });
+
+    test('gives each program its share of the spare time', async () => {
+      const lineup = await scheduleSlot(
+        [numberedEpisode(1), numberedEpisode(2)],
+        60,
+        new Map([['ep1', [300_000, 900_000]]]),
+      );
+
+      const spareMs = 60 * oneMin - 44 * oneMin;
+      const totalBreakMs = breaksOf(lineup).reduce(
+        (sum, b) => sum + b.duration,
+        0,
+      );
+      expect(totalBreakMs).toBeGreaterThan(0);
+      expect(totalBreakMs).toBeLessThanOrEqual(spareMs / 2);
+      expect(lineup.filter((i) => i.id === 'ep2')).toHaveLength(1);
+    });
+  });
 });

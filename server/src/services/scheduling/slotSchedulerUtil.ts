@@ -59,6 +59,7 @@ import {
   minimumBreakDuration,
   resolveBreakDuration,
   resolveBreakPoints,
+  splitBreakDurations,
 } from './midRollBreakRules.ts';
 import {
   ContentProgramChunkedShuffle,
@@ -1068,12 +1069,24 @@ export function applyMidRollBreaks(
   }
 
   const programDurationMs = program.duration;
-  const breakPoints = resolveBreakPoints(
+  const resolvedBreakPoints = resolveBreakPoints(
     programDurationMs,
     midRollConfig,
     localMarkers(program, breakMarkers),
   );
-  if (!breakPoints) return [paddedProgram];
+  if (!resolvedBreakPoints) return [paddedProgram];
+
+  let breakPoints = resolvedBreakPoints;
+  let plannedDurations: number[] | undefined;
+  if (midRollConfig.splitSlotFlex) {
+    plannedDurations = splitBreakDurations(
+      maxBreakMs,
+      breakPoints.length,
+      midRollConfig.splitSlotFlex,
+    );
+    breakPoints = breakPoints.slice(0, plannedDurations.length);
+    if (breakPoints.length === 0) return [paddedProgram];
+  }
 
   const useLazy =
     midRollConfig.strategy === 'lazy' ||
@@ -1087,6 +1100,7 @@ export function applyMidRollBreaks(
       slot,
       random,
       maxBreakMs,
+      plannedDurations,
     );
   }
   return buildEagerBreaks(
@@ -1098,6 +1112,7 @@ export function applyMidRollBreaks(
     random,
     timeCursor,
     maxBreakMs,
+    plannedDurations,
   );
 }
 
@@ -1139,14 +1154,16 @@ function buildEagerBreaks(
   random: Random,
   timeCursor: number,
   maxBreakMs: number,
+  plannedDurations?: number[],
 ): PaddedProgram[] {
   const baseOffset = program.startOffsetMs ?? 0;
   const result: PaddedProgram[] = [];
   const budget = { remainingMs: maxBreakMs };
   let segmentStart = 0;
 
-  for (const bp of breakPoints) {
-    const breakDuration = nextBreakDuration(config, random, budget);
+  for (const [index, bp] of breakPoints.entries()) {
+    const breakDuration =
+      plannedDurations?.[index] ?? nextBreakDuration(config, random, budget);
     if (breakDuration <= 0) {
       break;
     }
@@ -1213,6 +1230,7 @@ function buildLazyBreaks(
   slot: SlotImpl<BaseSlot>,
   random: Random,
   maxBreakMs: number,
+  plannedDurations?: number[],
 ): PaddedProgram[] {
   const baseOffset = program.startOffsetMs ?? 0;
   const midFillerListIds = slot.getMidFillerListIds();
@@ -1220,8 +1238,9 @@ function buildLazyBreaks(
   const budget = { remainingMs: maxBreakMs };
   let segmentStart = 0;
 
-  for (const bp of breakPoints) {
-    const breakDuration = nextBreakDuration(config, random, budget);
+  for (const [index, bp] of breakPoints.entries()) {
+    const breakDuration =
+      plannedDurations?.[index] ?? nextBreakDuration(config, random, budget);
     if (breakDuration <= 0) {
       break;
     }

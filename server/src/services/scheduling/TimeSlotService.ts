@@ -381,17 +381,27 @@ export async function scheduleTimeSlots(
       0,
       slotDuration - sumBy(paddedPrograms, (pp) => pp.totalDuration - pp.padMs),
     );
+    let remainingProgramsMs = sumBy(
+      paddedPrograms,
+      (pp) => pp.totalDuration - pp.padMs,
+    );
     let midRollOffset = 0;
     const finalPrograms: PaddedProgram[] = [];
     for (const pp of paddedPrograms) {
       const unsplitDuration = pp.totalDuration;
+      const programMs = pp.totalDuration - pp.padMs;
+      const maxBreakMs =
+        currSlot.midRollConfig?.splitSlotFlex && remainingProgramsMs > 0
+          ? Math.floor((breakBudgetMs * programMs) / remainingProgramsMs)
+          : breakBudgetMs;
+      remainingProgramsMs -= programMs;
       const segments = applyMidRollBreaks(
         pp,
         currSlot,
         currSlot.midRollConfig,
         random,
         +timeCursor + midRollOffset,
-        breakBudgetMs,
+        maxBreakMs,
         breakMarkers,
       );
       const breakMs = sumBy(segments, (s) => s.totalDuration) - unsplitDuration;
