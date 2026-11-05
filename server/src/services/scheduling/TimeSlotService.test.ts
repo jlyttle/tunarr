@@ -19,7 +19,7 @@ import {
 } from './slotSchedulerUtil.js';
 import { RotationState } from './rotation/RotationState.ts';
 import { TimeSlotImpl } from './TimeSlotImpl.ts';
-import { scheduleTimeSlots } from './TimeSlotService.ts';
+import { programBreakBudget, scheduleTimeSlots } from './TimeSlotService.ts';
 import { MersenneTwister19937, Random } from 'random-js';
 
 describe('createSlotIterators unit', () => {
@@ -4813,6 +4813,7 @@ describe('detected breaks', () => {
       padMs?: number;
       flexPreference?: TimeSlotSchedule['flexPreference'];
       midFillerListId?: string;
+      maxBreakMs?: number;
     };
 
     const scheduleSlot = async (
@@ -4832,7 +4833,13 @@ describe('detected breaks', () => {
         midRoll,
       });
       const firstSlot = {
-        ...showSlot(0, splitConfig),
+        ...showSlot(0, {
+          ...splitConfig,
+          splitSlotFlex: {
+            ...splitConfig.splitSlotFlex,
+            maxBreakMs: options.maxBreakMs,
+          },
+        }),
         filler:
           options.midFillerListId !== undefined
             ? [
@@ -5060,6 +5067,72 @@ describe('detected breaks', () => {
       expect(lineup[lineup.length - 1]).toMatchObject({ type: 'flex' });
       expect(lineup[lineup.length - 1].fillerConfig).toBeUndefined();
       expect(lineup.reduce((sum, i) => sum + i.duration, 0)).toBe(30 * oneMin);
+    });
+
+    test('keeps every episode on the pad grid when a share outgrows its own padding', async () => {
+      const longEpisode = { ...numberedEpisode(1), duration: 24 * oneMin };
+      const shortEpisode = { ...numberedEpisode(2), duration: 12 * oneMin };
+      const lineup = await scheduleSlot(
+        [longEpisode, shortEpisode],
+        60,
+        new Map([['ep1', [720_000]]]),
+        { padMs: 15 * oneMin, flexPreference: 'distribute' },
+      );
+
+      let elapsed = 0;
+      const starts: number[] = [];
+      for (const item of lineup) {
+        if (item.type === 'content' && (item.startOffsetMs ?? 0) === 0) {
+          starts.push(elapsed);
+        }
+        elapsed += item.duration;
+      }
+      expect(starts.map((s) => s % (15 * oneMin))).toEqual([0, 0]);
+
+      const ep2Index = lineup.findIndex((i) => i.id === 'ep2');
+      const lastEp1Index = lineup.findLastIndex(
+        (item, idx) => idx < ep2Index && item.id === 'ep1',
+      );
+      const ep1ContentEnd = lineup
+        .slice(0, lastEp1Index + 1)
+        .reduce((sum, i) => sum + i.duration, 0);
+      expect(ep1ContentEnd).toBeLessThanOrEqual(30 * oneMin);
+      expect(lineup.reduce((sum, i) => sum + i.duration, 0)).toBe(60 * oneMin);
+    });
+
+    test('programBreakBudget keeps the share without a pad grid', () => {
+      expect(programBreakBudget(true, 600_000, 400_000, undefined)).toBe(
+        400_000,
+      );
+      expect(programBreakBudget(true, 300_000, 400_000, undefined)).toBe(
+        300_000,
+      );
+    });
+
+    test('programBreakBudget caps the share at the own padding on a grid', () => {
+      expect(programBreakBudget(true, 600_000, 400_000, 100_000)).toBe(100_000);
+    });
+
+    test('programBreakBudget ignores the share without split slot flex', () => {
+      expect(programBreakBudget(false, 600_000, 400_000, 100_000)).toBe(
+        600_000,
+      );
+    });
+
+    test('caps each break at the longest break', async () => {
+      const episode = { ...numberedEpisode(1), duration: 21 * oneMin };
+      const schedule = await scheduleSlot(
+        [episode],
+        60,
+        new Map([['ep1', [600_000]]]),
+        { padMs: 1, maxBreakMs: 6 * oneMin },
+      );
+
+      const breaks = breaksOf(schedule);
+      expect(breaks.map((b) => b.duration)).toEqual([6 * oneMin, 6 * oneMin]);
+      expect(schedule.reduce((sum, i) => sum + i.duration, 0)).toBe(
+        60 * oneMin,
+      );
     });
 
     test('fills planned breaks from a mid filler list', async () => {

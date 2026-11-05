@@ -64,6 +64,22 @@ const OneHourMillis = 1000 * 60 * 60;
 // If the final program is flex with the same guide fields, just extends it
 // Returns amount to increment the cursor
 // Mutates the lineup array
+/**
+ * A program's share of the slot's break budget. On a padded schedule a split
+ * share also stays within the program's own padding, so its breaks never push
+ * later programs off the pad grid.
+ */
+export function programBreakBudget(
+  splitSlotFlex: boolean,
+  remainingBudgetMs: number,
+  shareMs: number,
+  ownPadMs: number | undefined,
+): number {
+  if (!splitSlotFlex) return remainingBudgetMs;
+  const share = ownPadMs !== undefined ? Math.min(shareMs, ownPadMs) : shareMs;
+  return Math.min(remainingBudgetMs, share);
+}
+
 function pushOrExtendFlex(
   lineup: CondensedChannelProgram[],
   flexDurationMs: number,
@@ -393,13 +409,13 @@ export async function scheduleTimeSlots(
     for (const pp of paddedPrograms) {
       const unsplitDuration = pp.totalDuration;
       const programMs = pp.totalDuration - pp.padMs;
-      const maxBreakMs =
-        currSlot.midRollConfig?.splitSlotFlex && totalProgramsMs > 0
-          ? Math.min(
-              breakBudgetMs,
-              Math.floor((initialBudgetMs * programMs) / totalProgramsMs),
-            )
-          : breakBudgetMs;
+      const maxBreakMs = programBreakBudget(
+        currSlot.midRollConfig?.splitSlotFlex !== undefined &&
+          totalProgramsMs > 0,
+        breakBudgetMs,
+        Math.floor((initialBudgetMs * programMs) / totalProgramsMs),
+        slotPadMs > 1 ? pp.padMs : undefined,
+      );
       const segments = applyMidRollBreaks(
         pp,
         currSlot,
