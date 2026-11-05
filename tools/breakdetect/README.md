@@ -47,7 +47,16 @@ At least one held-out prediction must also be a true positive.
 
 Scores each labelled show as if it had never been labelled. The model is trained on every other show. The threshold is chosen from the other shows only, each scored by a model that saw neither it nor the target show. The pooled row is the precision a brand-new show would get. Only shows with complete ground truth take part. The command writes nothing.
 
-2026-11-05, 4 shows: pooled precision 0.93, recall 0.51 (29 predictions). Are You Afraid of the Dark gave 2 false cuts in 3 predictions (S02E05 at 7:34, S04E12 at 12:09), both away from the episode's usual break window.
+Each show is reported twice. "raw" is every predicted cut. "consistent" keeps a cut only when at least `MIN_SUPPORT` (2) other episodes of the same show have a predicted cut within `SUPPORT_WINDOW_MS` (60 s) of it (`breakdetect/consistency.py`). Support comes from every cached episode of the show, labelled or not, so it needs no labels.
+
+2026-11-05, 4 shows with complete ground truth:
+
+| | Predictions | Precision | Recall |
+|---|---|---|---|
+| raw | 29 | 0.93 | 0.51 |
+| consistent | 25 | 0.96 | 0.45 |
+
+The check dropped Are You Afraid of the Dark S02E05 at 7:34, the only predicted cut before 9:00 across its 91 episodes, and three true breaks: two in SpongeBob specials, one in Fresh Prince. S04E12 at 12:09 remains: it is a minute before the real break, inside the show's usual window.
 
 ## Extraction benchmark (Mac, 1 worker, SMB share, cold cache)
 

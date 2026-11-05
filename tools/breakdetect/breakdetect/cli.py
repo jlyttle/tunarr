@@ -4,6 +4,7 @@ from pathlib import Path
 
 from breakdetect.cache import BatchResult, FeatureCache, default_cache_root, run_batch
 from breakdetect.evaluate import (
+    GtEpisode,
     ShowThreshold,
     evaluate,
     format_table,
@@ -15,9 +16,10 @@ from breakdetect.evaluate import (
 )
 from breakdetect.export import ExportError, StaleSignalsError, export_show, load_approved_model, locate_show_dir, remove_stale_markers, summarize
 from breakdetect.labels import import_seeds, load_or_empty, merge_labels, save_labels
-from breakdetect.loso import evaluate_unseen_shows, format_loso_table
+from breakdetect.loso import evaluate_unseen_shows, format_loso_table, gt_siblings
 from breakdetect.media import default_roots, discover_episodes
 from breakdetect.review.server import make_server
+from breakdetect.showsignals import ShowSignals, show_signals
 from breakdetect.train import model_path, train
 
 HWACCELS = ["auto", "videotoolbox", "vaapi", "qsv"]
@@ -102,7 +104,13 @@ def _evaluate(args: argparse.Namespace) -> int:
 
 
 def _loso(args: argparse.Namespace) -> int:
-    print(format_loso_table(evaluate_unseen_shows(load_gt_pool(FeatureCache(args.cache), default_roots()))))
+    cache = FeatureCache(args.cache)
+
+    def siblings(episodes: list[GtEpisode]) -> ShowSignals:
+        show_dir = episodes[0].show_dir
+        return show_signals(show_dir, cache) if show_dir is not None else gt_siblings(episodes)
+
+    print(format_loso_table(evaluate_unseen_shows(load_gt_pool(cache, default_roots()), siblings=siblings)))
     return 0
 
 

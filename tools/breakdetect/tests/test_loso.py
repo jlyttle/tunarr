@@ -1,8 +1,8 @@
 import numpy as np
 
 from breakdetect.candidates import Candidate
-from breakdetect.evaluate import GtEpisode
-from breakdetect.loso import LosoReport, evaluate_unseen_show, format_loso_table, pooled
+from breakdetect.evaluate import GtEpisode, Totals
+from breakdetect.loso import LosoReport, evaluate_unseen_show, format_loso_table, gt_siblings, pooled
 from breakdetect.model import LogisticModel
 from breakdetect.signals import SIGNAL_NAMES
 
@@ -22,20 +22,27 @@ def _episode(slug: str, rel: str, breaks: int = 6, mark: float = 0.0) -> GtEpiso
     return GtEpisode(slug, rel, False, [_cand(c) for c in cuts], X, truth)
 
 
-def _pool(shows: str = "abc", per_show: int = 2) -> list[GtEpisode]:
+def _pool(shows: str = "abc", per_show: int = 3) -> list[GtEpisode]:
     return [_episode(s, f"{s}/{n}.mkv") for s in shows for n in range(per_show)]
+
+
+def _with_outlier(episode: GtEpisode, cut_ms: int) -> None:
+    episode.candidates.append(_cand(cut_ms))
+    row = np.zeros((1, len(SIGNAL_NAMES)))
+    row[0, 0] = 5.0
+    episode.X = np.vstack([episode.X, row])
 
 
 def test_unseen_show_scores_with_threshold_from_other_shows():
     report = evaluate_unseen_show("a", _pool())
     assert report.threshold is not None
-    assert (report.precision, report.recall) == (1.0, 1.0)
-    assert report.episodes == 2
-    assert report.predictions == 12
+    assert (report.raw.precision, report.raw.recall) == (1.0, 1.0)
+    assert report.episodes == 3
+    assert report.raw.tp + report.raw.fp == 18
 
 
 def test_target_show_never_enters_any_fit():
-    pool = [_episode("a", "a/0.mkv", mark=TARGET_MARK), _episode("a", "a/1.mkv", mark=TARGET_MARK)] + _pool("bcd")
+    pool = [_episode("a", f"a/{n}.mkv", mark=TARGET_MARK) for n in range(3)] + _pool("bcd")
     fitted = []
 
     def spy(X, y):
@@ -57,32 +64,38 @@ def test_threshold_fits_leave_out_target_and_the_show_they_score():
 def test_show_with_no_other_shows_has_no_threshold():
     report = evaluate_unseen_show("a", _pool("a"))
     assert report.threshold is None
-    assert report.precision is None
-    assert report.predictions == 0
+    assert report.raw.precision is None
+    assert report.consistent.recall == 0.0
 
 
-def test_false_cuts_on_unseen_show_are_reported():
+def test_consistency_check_drops_cut_no_other_episode_shares():
     pool = _pool()
-    for ep in pool:
-        if ep.slug == "a":
-            ep.truth.clear()
+    _with_outlier(pool[0], 2_000_000)
     report = evaluate_unseen_show("a", pool)
-    assert report.precision == 0.0
-    assert report.false_positives and report.false_positives[0][0].startswith("a/")
+    assert report.raw.fp == 1
+    assert report.raw.false_positives[0][:2] == ("a/0.mkv", 2_000_000)
+    assert (report.consistent.fp, report.consistent.tp) == (0, 18)
+
+
+def test_consistency_support_comes_from_unlabelled_siblings():
+    pool = _pool()
+    _with_outlier(pool[0], 2_000_000)
+    siblings = [_episode("a", f"a/u{n}.mkv") for n in range(2)]
+    for s in siblings:
+        _with_outlier(s, 2_010_000)
+    report = evaluate_unseen_show("a", pool, siblings=lambda eps: gt_siblings(eps + siblings))
+    assert report.consistent.fp == 1
 
 
 def test_pooled_sums_counts_across_shows():
-    reports = [
-        LosoReport("a", 2, 0.9, tp=9, fp=1, fn=2),
-        LosoReport("b", 2, None, tp=0, fp=0, fn=4),
-    ]
-    total = pooled(reports)
+    total = pooled([Totals(9, 1, 2), Totals(0, 0, 4)])
     assert (total.tp, total.fp, total.fn) == (9, 1, 6)
     assert total.precision == 0.9
 
 
-def test_format_loso_table_lists_shows_and_pooled_row():
-    text = format_loso_table([LosoReport("a", 2, 0.9, tp=9, fp=1, fn=2, false_positives=[("a/0.mkv", 125_000, 0.97)])])
-    assert "a" in text and "0.90" in text
+def test_format_loso_table_lists_raw_consistent_and_pooled():
+    consistent = Totals(9, 1, 2, [("a/0.mkv", 125_000, 0.97)])
+    text = format_loso_table([LosoReport("a", 2, 0.9, Totals(9, 3, 2), consistent)])
+    assert "0.75" in text and "0.90" in text
     assert "pooled" in text
     assert "a/0.mkv  2:05  0.970" in text
