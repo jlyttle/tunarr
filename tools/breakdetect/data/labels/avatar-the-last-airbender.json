@@ -5,16 +5,1393 @@
     "Kids TV/Avatar The Last Airbender/Season 1/Avatar.The.Last.Airbender.S01E07.1080p.BluRay.x264-CiNEFiLE.mkv": {
       "identity": "2348341790:1610354234000000000",
       "duration_ms": 1435520,
-      "complete": false,
+      "complete": true,
       "held_out": false,
-      "decisions": []
+      "decisions": [
+        {
+          "cut_ms": 112800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 116300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 132400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 140150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 153250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 210750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 215250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 218700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 227450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 230700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 233900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 236650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 253250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 268450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 309150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 375850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 380550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 384100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 386400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 400700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 408800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 415650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 417500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 421850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 426400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 430700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 510850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 519250,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 614000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 625400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 627350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 629400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 631250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 640900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 649850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 681850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 688400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 690200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 693250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 747900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 750650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 762100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 767700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 773950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 783300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 786350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 789550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 813250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 816850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 823350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 826600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 828250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 831950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 859150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 889650,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1003150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1005600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1012500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1049050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1051050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1053800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1228600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1236600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1255100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1268300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1299550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1321600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1327800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1332200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1335100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1336500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1342250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1344250,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
     },
     "Kids TV/Avatar The Last Airbender/Season 3/Avatar.The.Last.Airbender.S03E07.1080p.BluRay.x264-CiNEFiLE.mkv": {
       "identity": "2348121912:1610268200000000000",
       "duration_ms": 1475776,
-      "complete": false,
+      "complete": true,
       "held_out": false,
-      "decisions": []
+      "decisions": [
+        {
+          "cut_ms": 65600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 69200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 72400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 81950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 111450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 168050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 185850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 204300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 209850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 214100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 238400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 243050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 245850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 275400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 290050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 308300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 312300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 314900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 316950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 319050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 324000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 334850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 362000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 365600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 376400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 380150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 381950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 386400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 390750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 394700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 397000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 401550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 405550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 410600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 501750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 507500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 510450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 514700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 519200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 520850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 523500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 525350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 530200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 535100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 543400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 557300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 561000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 563600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 565450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 568050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 572250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 576300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 589750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 591200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 626400,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 637300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 647250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 650100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 652100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 655250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 667900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 669350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 671900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 674950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 678850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 681150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 685100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 691300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 696100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 701900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 704900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 708550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 710100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 714300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 717900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 720800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 724900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 740700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 744050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 747050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 753200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 759000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 762750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 769800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 772850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 774400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 779000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 782550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 784450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 786750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 788150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 790950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 818500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 820950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 823200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 826600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 832550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 834650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 838000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 845850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 851750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 877800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 882600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 885300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 888400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 893500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 896950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 901750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 909100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 910550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 911700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 913150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 917450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 920300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 922200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 926450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 929450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 937700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 940450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 942700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 945850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 948050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 950800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 953850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 956500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 959050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 963300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 978300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 981350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 983000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 985400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 987400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 993000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 997800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1001150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1003250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1003950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1005750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1008000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1008900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1010300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1012400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1014800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1016300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1018050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1021250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1024250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1029050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1030700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1032300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1033850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1038900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1043050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1046850,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1088850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1091600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1093500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1094200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1094800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1095700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1096800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1098150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1102050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1104700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1107400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1117900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1120700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1126200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1136050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1138000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1139600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1141000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1142800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1143700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1145550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1151600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1156350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1161050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1163450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1166250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1171600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1176150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1178950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1182550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1187050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1198550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1203300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1209850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1213250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1215350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1246350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1265100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1278850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1383350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1387350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1389100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1392150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1396550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1401000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1404300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1407150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1412700,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
     }
   }
 }

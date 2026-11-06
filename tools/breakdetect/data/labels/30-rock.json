@@ -5,16 +5,1063 @@
     "TV/30 Rock/Season 1/30 Rock - S01E01 - Pilot.mkv": {
       "identity": "766241775:1358709270000000000",
       "duration_ms": 1322368,
-      "complete": false,
+      "complete": true,
       "held_out": false,
-      "decisions": []
+      "decisions": [
+        {
+          "cut_ms": 84900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 90800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 99550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 115100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 135400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 147250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 149700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 151550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 155000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 158850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 167600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 172500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 177100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 180900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 191200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 199700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 209800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 212850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 215250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 217100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 225450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 232600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 251650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 258300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 261450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 275300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 279700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 281300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 287800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 296050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 311100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 314400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 316150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 317600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 320600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 326300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 339550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 352000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 353750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 355300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 359850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 363550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 369750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 374100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 378500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 382950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 396000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 397950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 400300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 401700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 414900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 417000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 434800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 441400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 445650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 447550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 456100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 459850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 461650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 464600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 472650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 474500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 476850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 486350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 490450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 493100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 498700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 503250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 509750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 516650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 527550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 533400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 537000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 543700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 547650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 550800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 554700,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 572200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 592000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 618600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 650350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 652500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 691700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 693500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 695350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 733800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 737250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 776900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 882900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 884900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 889100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 919400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 941600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1004950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1068500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1072750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1079300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1084350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1097100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1103750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1109550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1125200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1127700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1131150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1133400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1137900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1143800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1147000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1172100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1175900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1181150,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
     },
     "TV/30 Rock/Season 2/30 Rock - S02E01 - Seinfeld Vision.mkv": {
       "identity": "730574141:1257218189469375000",
       "duration_ms": 1305600,
-      "complete": false,
+      "complete": true,
       "held_out": false,
-      "decisions": []
+      "decisions": [
+        {
+          "cut_ms": 119100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 120550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 121900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 133600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 135600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 182000,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 215300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 220900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 223700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 228450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 231250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 233850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 236650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 248100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 250600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 259200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 261950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 268500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 273600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 287800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 301200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 312700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 354350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 367200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 369900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 379500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 382600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 387400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 389800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 391700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 394200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 396250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 425700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 435350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 439550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 443100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 450350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 453500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 495700,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 658450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 660400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 675300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 680800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 686200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 709850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 712800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 727950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 732800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 737200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 740650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 756350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 758800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 760950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 776500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 811200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 822600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 830400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 832600,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 840550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 923300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 929750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 932900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 943550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 955350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 969900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 973750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 989550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 993300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 996000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 999900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1001850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1003650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1005600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1009150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1018100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1047850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1056350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1071950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1105700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1119800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1123500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1131500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1136000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1142700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1146900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1148800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1159700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1165100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1167150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1170650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1172700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1186850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1189200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1191900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1197700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1199650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1202000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1240700,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
     }
   }
 }

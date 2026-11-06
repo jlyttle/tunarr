@@ -5,24 +5,830 @@
     "Kids TV/What's New Scooby-Doo?/Season 1/What's.New,.Scooby-Doo.s01e01.There's.No.Creature.Like.Snow.Creature.DVDRip.x264-TVV.mkv": {
       "identity": "244530730:1629430229000000000",
       "duration_ms": 1277318,
-      "complete": false,
+      "complete": true,
       "held_out": false,
-      "decisions": []
+      "decisions": [
+        {
+          "cut_ms": 71000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 96000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 103850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 109750,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 137050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 140250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 144500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 189050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 206400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 208250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 210400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 213850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 220850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 222400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 237450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 251300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 254400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 268900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 304550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 307900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 313700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 316650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 353500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 356550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 360300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 362400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 364600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 382300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 386400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 395400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 440950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 457200,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 493600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 495500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 498950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 506050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 509300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 568300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 593950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 595900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 598850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 601100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 638100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 641900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 659700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 747750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 749900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 751650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 753900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 757700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 759600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 771850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 794300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 819550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 825000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 839900,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 848450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 861550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 894150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 895750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 901950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 904400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 906350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 908300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 914450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 918650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 943100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 948950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 977450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 994450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1003600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1006150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1008100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1056750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1092000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1114600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1117950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1124300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1127350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1137200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1150300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1159650,
+          "label": "not_break",
+          "source": "user"
+        }
+      ]
     },
     "Kids TV/What's New Scooby-Doo?/Season 2/What's.New,.Scooby-Doo.s02e07.The.San.Franpsycho.DVDRip.x264-TVV.mkv": {
       "identity": "244396387:1629430095000000000",
       "duration_ms": 1275258,
-      "complete": false,
+      "complete": true,
       "held_out": false,
       "decisions": [
+        {
+          "cut_ms": 62050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 71200,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 88650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 144100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 149950,
+          "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 175900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 181100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 185450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 189000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 194000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 198900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 224850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 323950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 345900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 357750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 360150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 387750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 408400,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 418150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 437800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 440550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 444300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 451150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 453850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 472600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 508800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 517750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 521000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 524600,
+          "label": "not_break",
+          "source": "user"
+        },
         {
           "cut_ms": 564000,
           "label": "break",
           "source": "user"
         },
         {
+          "cut_ms": 568850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 576800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 602900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 606450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 610600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 626300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 632600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 642050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 659350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 704700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 737700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 739150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 771250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 777000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 780800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 785700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 798000,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 800850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 802950,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 810550,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 813700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 817700,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 825350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 829050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 832500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 837050,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 842450,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 844750,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 847150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 850350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 851800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 854500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 858250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 860300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 862150,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
           "cut_ms": 903000,
           "label": "break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 926100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 929500,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 936250,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1026300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1033300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1049800,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1053300,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1057350,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1062900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1090100,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1169650,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1172850,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1192600,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1196900,
+          "label": "not_break",
+          "source": "user"
+        },
+        {
+          "cut_ms": 1210800,
+          "label": "not_break",
           "source": "user"
         }
       ]
