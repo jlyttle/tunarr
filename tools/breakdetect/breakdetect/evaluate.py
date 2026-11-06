@@ -72,11 +72,16 @@ def match(pred_ms: list[int], truth_ms: list[int], tol_ms: int = MATCH_WINDOW_MS
     return tp, len(pred_ms) - tp, len(truth_ms) - tp
 
 
+def _can_move_to(candidates: list[Candidate], scores: np.ndarray, i: int, k: int) -> bool:
+    return (
+        "quiet" in candidates[k].kind
+        and scores[k] >= CLUSTER_FLOOR
+        and 0 <= candidates[i].cut_ms - candidates[k].cut_ms <= CLUSTER_MS
+    )
+
+
 def _earliest_in_cluster(candidates: list[Candidate], scores: np.ndarray, i: int) -> int:
-    cluster = [
-        k for k in range(len(candidates))
-        if scores[k] >= CLUSTER_FLOOR and 0 <= candidates[i].cut_ms - candidates[k].cut_ms <= CLUSTER_MS
-    ] or [i]
+    cluster = [k for k in range(len(candidates)) if _can_move_to(candidates, scores, i, k)] or [i]
     return min(cluster, key=lambda k: candidates[k].cut_ms)
 
 

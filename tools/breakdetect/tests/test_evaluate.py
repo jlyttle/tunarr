@@ -55,11 +55,20 @@ def test_select_breaks_keeps_highest_score_within_gap():
     assert select_breaks(cands, scores, 0.5, min_gap_ms=30_000) == [100_000, 160_000, 400_000]
 
 
+def _quiet_cand(cut_ms: int) -> Candidate:
+    return Candidate(cut_ms - 500, cut_ms + 500, cut_ms, "dark+quiet", 0.0, -90.0)
+
+
 def test_select_breaks_moves_to_earliest_cut_in_cluster():
-    cands = [_cand(714_000), _cand(720_000)]
+    cands = [_quiet_cand(714_000), _cand(720_000)]
     assert select_breaks(cands, np.array([0.95, 1.0]), 0.9) == [714_000]
     assert select_breaks(cands, np.array([0.6, 1.0]), 0.9) == [714_000]
     assert select_breaks(cands, np.array([0.4, 1.0]), 0.9) == [720_000]
+
+
+def test_select_breaks_does_not_move_to_an_earlier_flash_with_sound():
+    cands = [_cand(103_800), _quiet_cand(109_700)]
+    assert select_breaks(cands, np.array([0.84, 1.0]), 0.9) == [109_700]
 
 
 def test_select_breaks_ignores_earlier_cut_outside_cluster():
@@ -92,7 +101,7 @@ def test_choose_threshold_none_when_precision_unreachable():
 
 
 def test_choose_threshold_counts_cluster_as_one_break():
-    episodes = [ScoredEpisode(f"ep{n}", [_cand(714_000), _cand(720_000)], np.array([0.95, 1.0]), [714_000]) for n in range(5)]
+    episodes = [ScoredEpisode(f"ep{n}", [_quiet_cand(714_000), _cand(720_000)], np.array([0.95, 1.0]), [714_000]) for n in range(5)]
     assert choose_threshold(episodes) == 0.95
 
 
