@@ -9,7 +9,9 @@ from breakdetect.series import (
     _similarity,
     bumper_match,
     build_series_context,
+    build_series_context_from,
     offset_support,
+    return_match,
     season_of,
 )
 from breakdetect.signals import SIGNAL_NAMES, candidate_signals
@@ -154,10 +156,10 @@ def test_pruned_best_similarity_equals_brute_force():
     rng = np.random.default_rng(5)
     rng_eps = {f"S/e{i}.mkv": (_features(rng, duration_ms=60_000), [_candidate(c) for c in (10_000, 30_000, 50_000)]) for i in range(8)}
     ctx = build_series_context(rng_eps)
-    rows = np.arange(3, len(ctx.flat))
+    rows = np.arange(3, len(ctx.before.flat))
     for query_row in range(3):
-        query = ctx.flat[query_row]
-        assert _best_similarity(ctx, query, rows) == pytest.approx(_similarity(ctx.flat[rows], query).max())
+        query = ctx.before.flat[query_row]
+        assert _best_similarity(ctx.before, query, rows) == pytest.approx(_similarity(ctx.before.flat[rows], query).max())
 
 
 def test_similarity_extremes():
@@ -165,3 +167,36 @@ def test_similarity_extremes():
     full = np.full(9 * 18 * 32, 255, dtype=np.uint8)
     assert _similarity(full[None, :], full)[0] == 1.0
     assert _similarity(zeros, full)[0] == 0.0
+
+
+def _with_return(f: Features, cut_ms: int, sequence: np.ndarray) -> Features:
+    gap_end = (cut_ms + 200) // 100
+    f.thumbs[gap_end + 15 : gap_end + 24] = sequence
+    return f
+
+
+def test_return_match_detects_repeated_frames_after_the_gap():
+    rng = np.random.default_rng(4)
+    titles = _noise(rng, 9)
+    episodes = {
+        "S/a.mkv": (_with_return(_features(rng), 420_000, titles), [_candidate(420_000)]),
+        "S/b.mkv": (_with_return(_features(rng), 500_000, titles), [_candidate(500_000)]),
+        "S/c.mkv": (_features(rng), [_candidate(300_000)]),
+    }
+    ctx = build_series_context(episodes)
+    assert return_match(ctx, "S/a.mkv", _candidate(420_000)) > 0.95
+    assert bumper_match(ctx, "S/a.mkv", _candidate(420_000)) < 0.7
+    assert return_match(ctx, "S/c.mkv", _candidate(300_000)) < 0.7
+
+
+def test_series_context_without_candidates_is_empty():
+    rng = np.random.default_rng(6)
+    ctx = build_series_context_from([("S/a.mkv", _features(rng), []), ("S/b.mkv", _features(rng), [])])
+    assert len(ctx.before.flat) == 0 and len(ctx.after.coarse) == 0
+    assert ctx.offsets_by_episode == {"S/a.mkv": [], "S/b.mkv": []}
+
+
+def test_candidate_signals_record_time_to_end():
+    f = _features(np.random.default_rng(3))
+    signals = candidate_signals(_candidate(420_000), f)
+    assert signals[SIGNAL_NAMES.index("tail_ms")] == DURATION_MS - 420_000

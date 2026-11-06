@@ -2,9 +2,9 @@ import numpy as np
 
 from breakdetect.candidates import SAMPLE_MS, Candidate, aligned, dark_threshold, quiet_threshold
 from breakdetect.features import Features
-from breakdetect.series import SeriesContext, bumper_match, offset_support
+from breakdetect.series import SeriesContext, bumper_match, offset_support, return_match
 
-SIGNALS_VERSION = "3"
+SIGNALS_VERSION = "4"
 
 SIGNAL_NAMES = [
     "dark_depth",
@@ -21,6 +21,8 @@ SIGNAL_NAMES = [
     "series_offset_support",
     "bumper_match",
     "frame_peak",
+    "return_match",
+    "tail_ms",
 ]
 
 SLOPE_SAMPLES = 15
@@ -79,19 +81,19 @@ def _near_chapter(f: Features, c: Candidate) -> float:
     return 1.0 if any(abs(ch - c.cut_ms) <= CHAPTER_TOLERANCE_MS for ch in f.chapters_ms) else 0.0
 
 
-def _series_signals(series: SeriesContext | None, rel: str | None, c: Candidate) -> tuple[float, float]:
+def _series_signals(series: SeriesContext | None, rel: str | None, c: Candidate) -> tuple[float, float, float]:
     if series is None:
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0
     if rel is None:
         raise ValueError("rel is required when series is given")
-    return offset_support(series, rel, c), bumper_match(series, rel, c)
+    return offset_support(series, rel, c), bumper_match(series, rel, c), return_match(series, rel, c)
 
 
 def candidate_signals(c: Candidate, f: Features, series: SeriesContext | None = None, rel: str | None = None) -> np.ndarray:
     luma, rms_db = aligned(f)
     dark_samples = int((luma[_span(c)] < dark_threshold(luma)).sum())
     quiet_depth, quiet_ms, context_db, audio_missing = _audio_signals(rms_db, c)
-    offset_support_value, bumper_match_value = _series_signals(series, rel, c)
+    offset_support_value, bumper_match_value, return_match_value = _series_signals(series, rel, c)
     return np.array(
         [
             float(np.median(luma)) - c.min_luma,
@@ -108,6 +110,8 @@ def candidate_signals(c: Candidate, f: Features, series: SeriesContext | None = 
             offset_support_value,
             bumper_match_value,
             _frame_peak(f.thumbs, c),
+            return_match_value,
+            f.duration_ms - c.cut_ms,
         ],
         dtype=np.float64,
     )
