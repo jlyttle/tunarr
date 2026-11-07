@@ -15,6 +15,7 @@ Everything the time-slot and random-slot schedulers do that infinite schedules m
 | Mid-roll breaks, kept inside the time slot | `midRollBreakRules.ts` (#2283) | gap | Slice 3b, ships at T (D21) |
 | Detected break markers and split slot flex | `midRollBreakRules.ts`, `TimeSlotService.ts` | gap | breakdetect markers via `program_break_marker` |
 | Flex distribution (`distribute` / `end`) | `SlotImpl.ts` | unverified | |
+| Programs without a media source library are left out of the schedule | `SlotSchedulerHelper.ts` (`canMaterialize`) | unverified | Saving drops a program it cannot materialize along with its duration, which shifted every later program early |
 | Linked slots, `continue` and `rerun` | `slotSchedulerUtil.ts` | unverified | Replaced by slot identity plus `rerun` / `independent` (D7). Includes `rerunOverflow` (`flex` / `continue`) |
 | Filler cooldown shared between linked slots | #2166 | unverified | |
 | Random-slot weights and cooldown | `RandomSlotSchedulerService.ts` | unverified | Shuffle order |

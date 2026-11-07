@@ -36,6 +36,17 @@ import type {
 import { hasSchedulableDuration } from './slotSchedulerUtil.ts';
 import type { TimeSlotScheduleServiceRequest } from './TimeSlotSchedulerService.ts';
 
+// Saving a lineup materializes each program, which needs its media source and
+// library. A program missing either is dropped from the saved lineup along
+// with its duration, so everything after it would air early. Keep such
+// programs out of the schedule instead.
+export function canMaterialize(program: ProgramWithRelationsOrm): boolean {
+  return (
+    isNonEmptyString(program.mediaSourceId) &&
+    isNonEmptyString(program.libraryId)
+  );
+}
+
 @injectable()
 export class SlotSchedulerHelper {
   @InjectLogger() declare private readonly logger: Logger;
@@ -106,6 +117,7 @@ export class SlotSchedulerHelper {
       .concat();
 
     const slotPrograms: SlotSchedulerProgram[] = [];
+    const unmaterializable: string[] = [];
     // Do some deduping.
     for (const program of allPrograms) {
       if (seenContentIds.has(program.uuid)) {
@@ -113,12 +125,25 @@ export class SlotSchedulerHelper {
       }
       seenContentIds.add(program.uuid);
 
+      if (!canMaterialize(program)) {
+        unmaterializable.push(program.uuid);
+        continue;
+      }
+
       slotPrograms.push({
         ...program,
         parentCustomShows: customShowContexts[program.uuid] ?? [],
         parentFillerLists: fillerListsByProgramId[program.uuid] ?? [],
         parentSmartCollections: smartCollectionByProgramId[program.uuid] ?? [],
       });
+    }
+
+    if (unmaterializable.length > 0) {
+      this.logger.warn(
+        'Skipping %d program(s) without a media source library while collecting slot programming: %j',
+        unmaterializable.length,
+        unmaterializable,
+      );
     }
 
     return slotPrograms;
