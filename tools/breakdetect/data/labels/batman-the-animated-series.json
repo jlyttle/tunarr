@@ -10,7 +10,7 @@
       "decisions": [
         {
           "cut_ms": 61700,
-          "label": "not_break",
+          "label": "break",
           "source": "user"
         },
         {
@@ -1023,7 +1023,7 @@
       "decisions": [
         {
           "cut_ms": 62400,
-          "label": "not_break",
+          "label": "break",
           "source": "user"
         },
         {
@@ -2386,7 +2386,7 @@
       "decisions": [
         {
           "cut_ms": 65250,
-          "label": "not_break",
+          "label": "break",
           "source": "user"
         },
         {
@@ -3559,7 +3559,7 @@
       "decisions": [
         {
           "cut_ms": 65200,
-          "label": "not_break",
+          "label": "break",
           "source": "user"
         },
         {
