@@ -14,8 +14,17 @@ from breakdetect.evaluate import (
     thresholds_out_of_date,
     write_report,
 )
-from breakdetect.export import ExportError, StaleSignalsError, export_show, load_approved_model, locate_show_dir, remove_stale_markers, summarize
-from breakdetect.labels import import_seeds, load_or_empty, merge_labels, save_labels
+from breakdetect.export import (
+    ExportError,
+    StaleSignalsError,
+    export_show,
+    export_unseen_show,
+    load_approved_model,
+    locate_show_dir,
+    remove_stale_markers,
+    summarize,
+)
+from breakdetect.labels import import_seeds, labels_dir, load_or_empty, merge_labels, save_labels, slugify
 from breakdetect.loso import evaluate_unseen_shows, format_loso_table, gt_siblings
 from breakdetect.media import default_roots, discover_episodes
 from breakdetect.review.server import make_server
@@ -114,9 +123,14 @@ def _loso(args: argparse.Namespace) -> int:
     return 0
 
 
+def _is_labelled(show_dir: Path) -> bool:
+    return (labels_dir() / f"{slugify(show_dir.name)}.json").exists()
+
+
 def _export_one(show_dir: Path, cache: FeatureCache) -> bool:
+    exporter = export_show if _is_labelled(show_dir) else export_unseen_show
     try:
-        marker = export_show(show_dir, cache)
+        marker = exporter(show_dir, cache)
     except StaleSignalsError as e:
         print(f"export: {e}", file=sys.stderr)
         return False
@@ -180,7 +194,7 @@ def _parser() -> argparse.ArgumentParser:
     loso = sub.add_parser("loso", help="leave-one-show-out evaluation: score each show as if it had never been labelled")
     loso.add_argument("--cache", type=Path, default=default_cache_root())
     loso.set_defaults(handler=_loso)
-    exp = sub.add_parser("export", help="write break markers for shows that passed the precision gate")
+    exp = sub.add_parser("export", help="write break markers for labelled shows that passed the precision gate, or unlabelled shows whose episodes agree")
     exp.add_argument("show_dirs", nargs="*", type=Path)
     exp.add_argument("--all-enabled", action="store_true")
     exp.add_argument("--cache", type=Path, default=default_cache_root())

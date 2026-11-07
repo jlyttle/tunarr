@@ -175,6 +175,14 @@ def _score_held_out(show_eps: list[GtEpisode], trainable: list[GtEpisode], fitte
     return [_score(e, model) for e in show_eps], []
 
 
+def unseen_threshold(pool: list[GtEpisode], fitter: ModelFitter = LogisticModel.fit) -> float | None:
+    scored = []
+    for slug in sorted({e.slug for e in pool}):
+        model = _fit_on([e for e in pool if e.slug != slug], fitter)
+        scored += [_score(e, model) for e in pool if e.slug == slug] if model is not None else []
+    return choose_threshold(scored)
+
+
 def _gate_passes(threshold: float | None, scored_count: int, loo: Totals | None, held: Totals | None) -> bool:
     if threshold is None or loo is None or held is None or scored_count < MIN_GT_EPISODES:
         return False
@@ -237,6 +245,7 @@ class Evaluation:
     reports: list[ShowReport]
     model_json: str | None
     signals_keys: dict[str, str | None] = field(default_factory=dict)
+    unseen_threshold: float | None = None
 
 
 @dataclass
@@ -259,7 +268,12 @@ def evaluate(cache: FeatureCache, roots: list[Path], model_fitter: ModelFitter =
     pool = load_gt_pool(cache, roots)
     reports = [evaluate_show(slug, pool, model_fitter) for slug in _label_files()]
     global_model = _fit_on([e for e in pool if not e.held_out], model_fitter)
-    return Evaluation(reports, global_model.to_json() if global_model else None, _signals_keys(pool, cache))
+    return Evaluation(
+        reports,
+        global_model.to_json() if global_model else None,
+        _signals_keys(pool, cache),
+        unseen_threshold(pool, model_fitter),
+    )
 
 
 def thresholds_path() -> Path:
@@ -287,6 +301,12 @@ def load_thresholds() -> tuple[str, dict[str, ShowThreshold]]:
     return raw.get("model_sha", ""), {slug: v for slug, v in parsed.items() if v is not None}
 
 
+def load_unseen_threshold() -> float | None:
+    dest = thresholds_path()
+    value = json.loads(dest.read_text()).get("unseen_threshold") if dest.exists() else None
+    return float(value) if isinstance(value, (int, float)) else None
+
+
 def thresholds_out_of_date(model_text: str) -> bool:
     sha, thresholds = load_thresholds()
     return bool(thresholds) and sha != model_sha(model_text)
@@ -304,7 +324,10 @@ def save_evaluation(evaluation: Evaluation) -> None:
         model_path().write_text(evaluation.model_json)
         sha = model_sha(evaluation.model_json)
     thresholds_path().parent.mkdir(parents=True, exist_ok=True)
-    thresholds_path().write_text(json.dumps({"model_sha": sha, "thresholds": dict(sorted(enabled.items()))}, indent=2) + "\n")
+    thresholds_path().write_text(json.dumps(
+        {"model_sha": sha, "unseen_threshold": evaluation.unseen_threshold, "thresholds": dict(sorted(enabled.items()))},
+        indent=2,
+    ) + "\n")
 
 
 def write_report(reports: list[ShowReport], cache: FeatureCache) -> Path:

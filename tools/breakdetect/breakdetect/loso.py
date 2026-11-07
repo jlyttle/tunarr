@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from breakdetect.consistency import supported_cuts
+from breakdetect.consistency import supported_cuts, unseen_gate_passes
 from breakdetect.evaluate import (
     GtEpisode,
     ModelFitter,
@@ -9,9 +9,8 @@ from breakdetect.evaluate import (
     _fit_on,
     _mmss,
     _pct,
-    _score,
-    choose_threshold,
     select_breaks,
+    unseen_threshold,
 )
 from breakdetect.model import LogisticModel
 from breakdetect.showsignals import ShowSignals
@@ -27,6 +26,7 @@ class LosoReport:
     threshold: float | None
     raw: Totals = field(default_factory=Totals)
     consistent: Totals = field(default_factory=Totals)
+    gated: bool = False
 
 
 def _without(pool: list[GtEpisode], *slugs: str) -> list[GtEpisode]:
@@ -42,11 +42,7 @@ def gt_siblings(episodes: list[GtEpisode]) -> ShowSignals:
 
 
 def _transfer_threshold(show: str, pool: list[GtEpisode], fitter: ModelFitter) -> float | None:
-    scored = []
-    for other in sorted({e.slug for e in pool} - {show}):
-        model = _fit_on(_without(pool, show, other), fitter)
-        scored += [_score(e, model) for e in _of(pool, other)] if model is not None else []
-    return choose_threshold(scored)
+    return unseen_threshold(_without(pool, show), fitter)
 
 
 def _cuts(signals: ShowSignals, model: LogisticModel, threshold: float) -> dict[str, list[int]]:
@@ -82,13 +78,14 @@ def evaluate_unseen_show(
         missed = Totals(fn=sum(len(e.truth) for e in episodes))
         return LosoReport(show, len(episodes), threshold, missed, missed)
     own = _cuts(gt_siblings(episodes), model, threshold)
-    every = {**_cuts(siblings(episodes), model, threshold), **own}
+    consistent = supported_cuts({**_cuts(siblings(episodes), model, threshold), **own})
     return LosoReport(
         show,
         len(episodes),
         threshold,
         _cut_totals(episodes, own, model),
-        _cut_totals(episodes, supported_cuts(every), model),
+        _cut_totals(episodes, consistent, model),
+        unseen_gate_passes(consistent),
     )
 
 
@@ -107,12 +104,21 @@ def _columns(t: Totals) -> str:
 
 
 def format_loso_table(reports: list[LosoReport], top_false_positives: int = 15) -> str:
-    lines = [f"{'':48} {'---- raw ----':>17} {'- consistent -':>17}", f"{'show':36} {'GT':>3} {'thresh':>7} {'pred':>5} {'P':>5} {'R':>5} {'pred':>5} {'P':>5} {'R':>5}"]
+    lines = [
+        f"{'':48} {'---- raw ----':>17} {'- consistent -':>17}",
+        f"{'show':36} {'GT':>3} {'thresh':>7} {'pred':>5} {'P':>5} {'R':>5} {'pred':>5} {'P':>5} {'R':>5} gate",
+    ]
     for r in reports:
         threshold = "-" if r.threshold is None else f"{r.threshold:.3f}"
-        lines.append(f"{r.show:36} {r.episodes:>3} {threshold:>7} {_columns(r.raw)} {_columns(r.consistent)}")
+        gate = "on" if r.gated else "off"
+        lines.append(f"{r.show:36} {r.episodes:>3} {threshold:>7} {_columns(r.raw)} {_columns(r.consistent)} {gate}")
     raw, consistent = pooled([r.raw for r in reports]), pooled([r.consistent for r in reports])
     lines.append(f"{'pooled':36} {sum(r.episodes for r in reports):>3} {'':>7} {_columns(raw)} {_columns(consistent)}")
+    gated = [r for r in reports if r.gated]
+    lines.append(
+        f"{'pooled, gate on':36} {sum(r.episodes for r in gated):>3} {'':>7} "
+        f"{_columns(pooled([r.raw for r in gated]))} {_columns(pooled([r.consistent for r in gated]))}"
+    )
     fps = sorted(((r.show, *fp) for r in reports for fp in r.consistent.false_positives), key=lambda x: -x[3])
     if fps:
         lines.append("false positives after the consistency check:")

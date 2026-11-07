@@ -8,9 +8,18 @@ import numpy as np
 
 from breakdetect.cache import FeatureCache
 from breakdetect.candidates import Candidate
-from breakdetect.evaluate import MIN_GAP_MS, ShowThreshold, _select_indices, load_thresholds, model_sha
+from breakdetect.consistency import supported_cuts, unseen_gate_passes
+from breakdetect.evaluate import (
+    MIN_GAP_MS,
+    ShowThreshold,
+    _select_indices,
+    load_thresholds,
+    load_unseen_threshold,
+    model_sha,
+)
 from breakdetect.features import EXTRACTOR_VERSION
 from breakdetect.labels import DEDUPE_WINDOW_MS, EpisodeLabels, ShowLabels, data_dir, is_stale, load_labels, slugify
+from breakdetect.loso import _cuts
 from breakdetect.media import discover_episodes
 from breakdetect.model import LogisticModel
 from breakdetect.showsignals import show_signals, signals_key
@@ -19,6 +28,7 @@ from breakdetect.train import _show_dir, model_path
 SCHEMA = 1
 USER_BREAK_SCORE = 1.0
 REJECTED_LABELS = {"not_break", "unsure"}
+UNSEEN_SOURCE = "unseen"
 
 
 class ExportError(Exception):
@@ -125,6 +135,15 @@ def _episodes(show_dir: Path, cache: FeatureCache, model: LogisticModel, labels:
     return sorted(entries, key=lambda e: e["relativePath"])
 
 
+def _header(sha: str, show_dir: Path, threshold: float) -> dict:
+    return {
+        "schema": SCHEMA,
+        "detector": f"breakdetect/{EXTRACTOR_VERSION}/{sha[:8]}",
+        "show": show_dir.name,
+        "threshold": threshold,
+    }
+
+
 def export_show(show_dir: Path, cache: FeatureCache) -> Path | None:
     sha, model, thresholds = load_approved_model()
     slug = slugify(show_dir.name)
@@ -139,13 +158,40 @@ def export_show(show_dir: Path, cache: FeatureCache) -> Path | None:
         )
     threshold = thresholds[slug].threshold
     episodes = _episodes(show_dir, cache, model, _labels_or_none(slug), threshold)
-    _write_atomic(dest, {
-        "schema": SCHEMA,
-        "detector": f"breakdetect/{EXTRACTOR_VERSION}/{sha[:8]}",
-        "show": show_dir.name,
-        "threshold": threshold,
-        "episodes": episodes,
-    })
+    _write_atomic(dest, {**_header(sha, show_dir, threshold), "episodes": episodes})
+    return dest
+
+
+def _scored(cuts: list[int], candidates: list[Candidate], scores: np.ndarray) -> list[dict]:
+    by_cut = {c.cut_ms: float(s) for c, s in zip(candidates, scores)}
+    return [{"offsetMs": cut, "score": by_cut[cut]} for cut in cuts]
+
+
+def _unseen_episodes(show_dir: Path, cache: FeatureCache, signals, model: LogisticModel, cuts) -> list[dict]:
+    entries = []
+    for path in discover_episodes(show_dir):
+        rel = cache.rel_path(path)
+        features = cache.get(path) if rel in signals else None
+        if features is not None:
+            candidates, X = signals[rel]
+            breaks = _scored(cuts[rel], candidates, model.predict(X)) if len(candidates) else []
+            entries.append({"relativePath": rel, "durationMs": features.duration_ms, "breaks": breaks})
+    return sorted(entries, key=lambda e: e["relativePath"])
+
+
+def export_unseen_show(show_dir: Path, cache: FeatureCache) -> Path | None:
+    sha, model, _ = load_approved_model()
+    threshold = load_unseen_threshold()
+    if threshold is None:
+        raise ExportError("thresholds.json has no unseen-show threshold; run `breakdetect evaluate`")
+    dest = marker_path(slugify(show_dir.name))
+    signals = show_signals(show_dir, cache)
+    cuts = supported_cuts(_cuts(signals, model, threshold))
+    if not unseen_gate_passes(cuts):
+        dest.unlink(missing_ok=True)
+        return None
+    episodes = _unseen_episodes(show_dir, cache, signals, model, cuts)
+    _write_atomic(dest, {**_header(sha, show_dir, threshold), "source": UNSEEN_SOURCE, "episodes": episodes})
     return dest
 
 
@@ -163,8 +209,15 @@ def locate_show_dir(slug: str, roots: list[Path]) -> Path | None:
     return None
 
 
+def _is_unseen(marker: Path) -> bool:
+    try:
+        return json.loads(marker.read_text()).get("source") == UNSEEN_SOURCE
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def remove_stale_markers(enabled: set[str]) -> list[str]:
-    stale = [p for p in sorted(markers_dir().glob("*.json")) if p.stem not in enabled]
+    stale = [p for p in sorted(markers_dir().glob("*.json")) if p.stem not in enabled and not _is_unseen(p)]
     for p in stale:
         p.unlink()
     return [p.stem for p in stale]

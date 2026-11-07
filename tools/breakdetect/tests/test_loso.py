@@ -99,3 +99,18 @@ def test_format_loso_table_lists_raw_consistent_and_pooled():
     assert "0.75" in text and "0.90" in text
     assert "pooled" in text
     assert "a/0.mkv  2:05  0.970" in text
+
+
+def test_gate_turns_on_when_episodes_agree():
+    assert evaluate_unseen_show("a", _pool(per_show=5)).gated
+
+
+def test_gate_stays_off_for_too_few_episodes():
+    assert not evaluate_unseen_show("a", _pool()).gated
+
+
+def test_format_loso_table_pools_only_gated_shows():
+    on = LosoReport("a", 2, 0.9, Totals(1, 0, 0), Totals(9, 1, 2), gated=True)
+    off = LosoReport("b", 3, 0.9, Totals(1, 0, 0), Totals(0, 5, 2))
+    gated_line = next(l for l in format_loso_table([on, off]).splitlines() if l.startswith("pooled, gate on"))
+    assert gated_line.split()[3:] == ["2", "1", "1.00", "1.00", "10", "0.90", "0.82"]

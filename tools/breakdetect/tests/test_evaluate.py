@@ -17,6 +17,8 @@ from breakdetect.evaluate import (
     _gate_passes,
     evaluate,
     load_thresholds,
+    load_unseen_threshold,
+    unseen_threshold,
     model_sha,
     save_evaluation,
 )
@@ -270,3 +272,29 @@ def test_thresholds_record_the_signals_key_used_by_evaluate(tmp_path, monkeypatc
     monkeypatch.setattr("breakdetect.evaluate.signals_key", lambda d, cache: f"key-of-{d.name}")
     save_evaluation(evaluate(FeatureCache(tmp_path / "features", []), []))
     assert load_thresholds()[1]["show"].signals_key == "key-of-Show"
+
+
+def test_unseen_threshold_scores_each_show_with_a_model_that_never_saw_it():
+    pool = [_episode(s, f"{s}/{n}.mkv") for s in "abc" for n in range(2)]
+    fitted = []
+    unseen_threshold(pool, lambda X, y: fitted.append(len(X)) or LogisticModel.fit(X, y))
+    assert fitted == [48, 48, 48]
+
+
+def test_unseen_threshold_needs_a_second_show():
+    assert unseen_threshold([_episode("a", "a/0.mkv"), _episode("a", "a/1.mkv")]) is None
+
+
+def test_evaluate_saves_the_unseen_threshold(tmp_path, monkeypatch):
+    monkeypatch.setenv("BREAKDETECT_DATA", str(tmp_path))
+    pool = [_episode(s, f"{s}/{n}.mkv") for s in ("show", "other") for n in range(3)]
+    _patch_pool(monkeypatch, ["show", "other"], pool)
+    evaluation = evaluate(FeatureCache(tmp_path / "features", []), [])
+    save_evaluation(evaluation)
+    assert evaluation.unseen_threshold is not None
+    assert load_unseen_threshold() == evaluation.unseen_threshold
+
+
+def test_load_unseen_threshold_when_absent(tmp_path, monkeypatch):
+    monkeypatch.setenv("BREAKDETECT_DATA", str(tmp_path))
+    assert load_unseen_threshold() is None

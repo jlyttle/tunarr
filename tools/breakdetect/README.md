@@ -58,6 +58,22 @@ Each show is reported twice. "raw" is every predicted cut. "consistent" keeps a 
 
 The check dropped Are You Afraid of the Dark S02E05 at 7:34, the only predicted cut before 9:00 across its 91 episodes, and three true breaks: two in SpongeBob specials, one in Fresh Prince. S04E12 at 12:09 remains: it is a minute before the real break, inside the show's usual window.
 
+The `gate` column says whether the show would get markers as an unlabelled show (see below). "pooled, gate on" sums only those shows.
+
+2026-11-07, 22 shows: the gate turned off Are You Afraid of the Dark, Buffy and Rugrats. The 19 shows it kept pool to 119 correct and 6 false cuts (0.95). The false cuts came from Animaniacs (2), MST3K (2), Lost and SpongeBob.
+
+## Unlabelled shows
+
+    uv run breakdetect export <show-dir>...
+
+A show directory without a `data/labels/<show>.json` file is exported as an unseen show:
+
+- The model is the global one. The threshold is `unseen_threshold` in `thresholds.json`. `evaluate` chooses it so that every labelled show, scored by a model trained without it, reaches `MIN_PRECISION` together.
+- Only consistent cuts are kept, as in `loso`.
+- The show gets a marker only if at least `MIN_UNSEEN_EPISODES` (5) episodes are cached, and at least `MIN_AGREEING_FRACTION` (half) of them keep a cut. Otherwise its marker is removed and it plays straight through.
+
+The marker carries `"source": "unseen"`. `export --all-enabled` leaves these markers in place. Re-export them after `evaluate`, since a new model changes their cuts.
+
 ## Extraction benchmark (Mac, 1 worker, SMB share, cold cache)
 
 | File | Size | Codec / resolution | No hwaccel (s, s/media-min) | videotoolbox (s, s/media-min) |

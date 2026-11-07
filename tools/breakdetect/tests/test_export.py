@@ -7,7 +7,14 @@ import pytest
 from breakdetect import export as export_module
 from breakdetect.candidates import Candidate
 from breakdetect.evaluate import model_sha
-from breakdetect.export import ExportError, StaleSignalsError, export_show, markers_dir, remove_stale_markers
+from breakdetect.export import (
+    ExportError,
+    StaleSignalsError,
+    export_show,
+    export_unseen_show,
+    markers_dir,
+    remove_stale_markers,
+)
 from breakdetect.labels import Decision, EpisodeLabels, ShowLabels, save_labels
 from breakdetect.media import file_identity
 from breakdetect.model import LogisticModel
@@ -242,3 +249,75 @@ def test_labels_without_identity_are_ignored(env, monkeypatch):
     _label([Decision(600_000, "break", "user")])
     marker = _export(env, monkeypatch, {REL: _signals([])})
     assert marker["episodes"][0]["breaks"] == []
+
+
+UNSEEN_NAMES = ("a.mkv", "b.mkv", "c.mkv", "d.mkv", "e.mkv")
+
+
+def _unseen_rels(env):
+    for name in UNSEEN_NAMES:
+        (env.show_dir / "Season 1" / name).write_bytes(b"")
+    return [f"Kids/Show/Season 1/{name}" for name in UNSEEN_NAMES]
+
+
+def _enable_unseen(env, threshold=THRESHOLD):
+    payload = {"model_sha": model_sha(env.model_text), "unseen_threshold": threshold, "thresholds": {}}
+    (env.data / "models" / "thresholds.json").write_text(json.dumps(payload))
+
+
+def _export_unseen(env, monkeypatch, per_rel):
+    monkeypatch.setattr(export_module, "show_signals", lambda show_dir, cache: per_rel)
+    marker = export_unseen_show(env.show_dir, FakeCache({r: 1_320_000 for r in per_rel}))
+    return None if marker is None else json.loads(marker.read_text())
+
+
+def test_unseen_show_exports_cuts_its_episodes_share(env, monkeypatch):
+    _enable_unseen(env)
+    rels = _unseen_rels(env)
+    per_rel = {r: _signals([(300_000 + 1_000 * n, 5.0)]) for n, r in enumerate(rels)}
+    per_rel[rels[0]] = _signals([(300_000, 5.0), (1_000_000, 5.0)])
+    marker = _export_unseen(env, monkeypatch, per_rel)
+    assert marker["source"] == "unseen"
+    assert marker["threshold"] == THRESHOLD
+    assert [b["offsetMs"] for b in marker["episodes"][0]["breaks"]] == [300_000]
+    assert marker["episodes"][1]["breaks"][0]["offsetMs"] == 301_000
+
+
+def test_unseen_show_below_threshold_exports_nothing(env, monkeypatch):
+    _enable_unseen(env)
+    per_rel = {r: _signals([(300_000, -5.0)]) for r in _unseen_rels(env)}
+    assert _export_unseen(env, monkeypatch, per_rel) is None
+
+
+def test_unseen_show_whose_episodes_disagree_is_not_exported_and_loses_its_marker(env, monkeypatch):
+    _enable_unseen(env)
+    markers_dir().mkdir(parents=True)
+    (markers_dir() / "show.json").write_text("{}")
+    per_rel = {r: _signals([(300_000 * (n + 1), 5.0)]) for n, r in enumerate(_unseen_rels(env))}
+    assert _export_unseen(env, monkeypatch, per_rel) is None
+    assert not (markers_dir() / "show.json").exists()
+
+
+def test_unseen_export_refuses_without_an_unseen_threshold(env, monkeypatch):
+    _enable(env)
+    with pytest.raises(ExportError):
+        _export_unseen(env, monkeypatch, {})
+
+
+def test_remove_stale_markers_keeps_unseen_markers(env):
+    markers_dir().mkdir(parents=True)
+    (markers_dir() / "unseen.json").write_text(json.dumps({"source": "unseen"}))
+    (markers_dir() / "gone.json").write_text("{}")
+    assert remove_stale_markers(set()) == ["gone"]
+    assert (markers_dir() / "unseen.json").exists()
+
+
+def test_cli_exports_an_unlabelled_show_as_unseen(env, monkeypatch, tmp_path):
+    from breakdetect import cli
+
+    _enable_unseen(env)
+    per_rel = {r: _signals([(300_000, 5.0)]) for r in _unseen_rels(env)}
+    monkeypatch.setattr(export_module, "show_signals", lambda show_dir, cache: per_rel)
+    monkeypatch.setattr(cli, "FeatureCache", lambda root: FakeCache({r: 1_320_000 for r in per_rel}))
+    assert cli.main(["export", str(env.show_dir)]) == 0
+    assert json.loads((markers_dir() / "show.json").read_text())["source"] == "unseen"
