@@ -31,6 +31,7 @@ import { streamApi } from './streamApi.js';
 
 const MASTER_PLAYLIST = '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nstream.m3u8\n';
 const VARIANT_PLAYLIST = '#EXTM3U\n#EXTINF:4.0,\n/test/data000000.ts\n';
+const SUBTITLE_WINDOW = 'WEBVTT\n\n00:06:40.500 --> 00:06:42.000\nHello\n';
 
 class TestHlsSession extends BaseHlsSession {
   public readonly sessionType = 'hls' as const;
@@ -49,6 +50,11 @@ class TestHlsSession extends BaseHlsSession {
 
   async trimPlaylist() {
     return Result.success({ playlist: VARIANT_PLAYLIST });
+  }
+
+  // HlsSession builds subs<N>.vtt windows from cue files; none is on disk.
+  async subtitleWindow(segmentNumber: number) {
+    return segmentNumber === 100 ? SUBTITLE_WINDOW : undefined;
   }
 
   protected getHlsOptions(): DeepRequired<HlsOptions> {
@@ -221,6 +227,37 @@ describe('streamApi HLS connection registration (issue #2045 invariant)', () => 
 
     expect(res.statusCode).toBe(404);
     expect(session.minByIp.get('203.0.113.10')?.video).toBe(100);
+  });
+
+  it('serves a subtitle window that has no file on disk', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/stream/channels/${makeChannel().uuid}/hls/subs000100.vtt`,
+      remoteAddress: '203.0.113.10',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('text/vtt');
+    expect(res.body).toBe(
+      'WEBVTT\nX-TIMESTAMP-MAP=MPEGTS:0,LOCAL:00:00:00.000\n\n00:06:40.500 --> 00:06:42.000\nHello\n',
+    );
+    expect(session.minByIp.get('203.0.113.10')?.subtitle).toBe(100);
+  });
+
+  it('a subtitle window outside the playlist returns 404 and does not move the client position', async () => {
+    await app.inject({
+      method: 'GET',
+      url: `/stream/channels/${makeChannel().uuid}/hls/subs000100.vtt`,
+      remoteAddress: '203.0.113.10',
+    });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/stream/channels/${makeChannel().uuid}/hls/subs000035.vtt`,
+      remoteAddress: '203.0.113.10',
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(session.minByIp.get('203.0.113.10')?.subtitle).toBe(100);
   });
 });
 
