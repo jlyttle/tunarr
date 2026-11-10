@@ -1,6 +1,7 @@
 import type { ISettingsDB } from '@/db/interfaces/ISettingsDB.js';
 import type { ChannelOrmWithTranscodeConfig } from '@/db/schema/derivedTypes.js';
 import type { OutputFormat } from '@/ffmpeg/builder/constants.js';
+import type { FeatureFlagService } from '@/services/FeatureFlagService.js';
 import type { OnDemandChannelService } from '@/services/OnDemandChannelService.js';
 import type { PlayerContext } from '@/stream/PlayerStreamContext.js';
 import type { StreamProgramCalculator } from '@/stream/StreamProgramCalculator.js';
@@ -35,10 +36,15 @@ vi.mock('@/stream/ConnectionTracker.ts', () => {
 
 const channelUuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 
-function makeSession(transcodeDirectory: string): HlsSession {
+function makeSession(
+  transcodeDirectory: string,
+  channelOverrides: Partial<ChannelOrmWithTranscodeConfig> = {},
+  webvttSidecarEnabled = false,
+): HlsSession {
   const channel = {
     uuid: channelUuid,
     transcodeConfig: {},
+    ...channelOverrides,
   } as ChannelOrmWithTranscodeConfig;
 
   const options = {
@@ -57,8 +63,30 @@ function makeSession(transcodeDirectory: string): HlsSession {
       ctx: PlayerContext,
       fmt: OutputFormat,
     ) => ProgramStream,
+    { get: () => webvttSidecarEnabled } as unknown as FeatureFlagService,
   );
 }
+
+const subtitledChannel: Partial<ChannelOrmWithTranscodeConfig> = {
+  subtitlesEnabled: true,
+  subtitleDeliveryMethod: 'hls',
+};
+
+const ffmpegMasterPlaylist = [
+  '#EXTM3U',
+  '#EXT-X-VERSION:6',
+  '#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=640x480',
+  'stream.m3u8',
+].join('\n');
+
+async function writeMasterPlaylist(session: HlsSession) {
+  await fs.mkdir(session.workingDirectory, { recursive: true });
+  await fs.writeFile(
+    path.join(session.workingDirectory, 'playlist.m3u8'),
+    ffmpegMasterPlaylist,
+  );
+}
+
 describe('HlsSession', () => {
   describe('getMasterPlaylist', () => {
     let dir: tmp.DirResult;
@@ -78,6 +106,76 @@ describe('HlsSession', () => {
       const result = await session.getMasterPlaylist();
       expect(result.isSuccess()).toBe(true);
       expect(result.get()).toBeUndefined();
+    });
+
+    test('declares the subtitle rendition before any item with subtitles plays', async () => {
+      const session = makeSession(dir.name, subtitledChannel, true);
+      await writeMasterPlaylist(session);
+
+      const master = (await session.getMasterPlaylist()).get() ?? '';
+
+      expect(master).toContain(
+        `#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",LANGUAGE="und",NAME="und",DEFAULT=NO,AUTOSELECT=NO,FORCED=NO,URI="/stream/channels/${channelUuid}/hls/subs.m3u8"`,
+      );
+      expect(master).toContain(
+        '#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=640x480,SUBTITLES="subs"',
+      );
+    });
+
+    test.each([
+      ['subtitles are off', { subtitlesEnabled: false }, true],
+      [
+        'subtitles are burned in',
+        { ...subtitledChannel, subtitleDeliveryMethod: 'burn' as const },
+        true,
+      ],
+      ['the WebVTT sidecar flag is off', subtitledChannel, false],
+    ])(
+      'declares no subtitle rendition when %s',
+      async (_, channelOverrides, webvttSidecarEnabled) => {
+        const session = makeSession(
+          dir.name,
+          channelOverrides,
+          webvttSidecarEnabled,
+        );
+        await writeMasterPlaylist(session);
+
+        const master = (await session.getMasterPlaylist()).get() ?? '';
+
+        expect(master).not.toContain('TYPE=SUBTITLES');
+        expect(master).not.toContain('SUBTITLES="subs"');
+      },
+    );
+  });
+
+  describe('subtitleWindow', () => {
+    let dir: tmp.DirResult;
+
+    beforeEach(() => {
+      dir = tmp.dirSync({ unsafeCleanup: true });
+    });
+
+    afterEach(() => {
+      dir.removeCallback();
+    });
+
+    test('is an empty WebVTT document for a segment with no cues', async () => {
+      const session = makeSession(dir.name, subtitledChannel, true);
+      await fs.mkdir(session.workingDirectory, { recursive: true });
+      await fs.writeFile(
+        path.join(session.workingDirectory, 'stream.m3u8'),
+        [
+          '#EXTM3U',
+          '#EXT-X-MEDIA-SEQUENCE:0',
+          '#EXTINF:4.000000,',
+          'data000000.ts',
+          '#EXTINF:4.000000,',
+          'data000001.ts',
+        ].join('\n'),
+      );
+
+      expect(await session.subtitleWindow(1)).toBe('WEBVTT\n\n');
+      expect(await session.subtitleWindow(2)).toBeUndefined();
     });
   });
 

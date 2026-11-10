@@ -70,7 +70,7 @@ export function subtitleWindowVtt(cues: Cue[], start: number, end: number) {
     .filter((cue) => cue.start >= start && cue.start < end)
     .sort((a, b) => a.start - b.start)
     .map((cue) => cue.block);
-  return ['WEBVTT', '', ...blocks.map((block) => `${block}\n`)].join('\n');
+  return `WEBVTT\n\n${blocks.map((block) => `${block}\n`).join('\n')}`;
 }
 
 /** Lowest cue file number that still has a cue starting at or after `from`. */

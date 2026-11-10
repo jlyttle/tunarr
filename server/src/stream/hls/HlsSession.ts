@@ -7,6 +7,7 @@ import {
   HlsDirectOutputFormat,
   HlsOutputFormat,
 } from '@/ffmpeg/builder/constants.js';
+import type { FeatureFlagService } from '@/services/FeatureFlagService.js';
 import type { OnDemandChannelService } from '@/services/OnDemandChannelService.js';
 import { PlayerContext } from '@/stream/PlayerStreamContext.js';
 import type { StopOptions } from '@/stream/Session.js';
@@ -95,6 +96,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     private settingsDB: ISettingsDB,
     private onDemandService: OnDemandChannelService,
     private programStreamFactory: ProgramStreamFactory,
+    private featureFlagService: FeatureFlagService,
   ) {
     super(channel, options);
   }
@@ -113,7 +115,8 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
         return undefined;
       }
       const content = await fs.readFile(this._masterPlaylistPath, 'utf-8');
-      const rendition = this.#currentSubtitleRendition;
+      const rendition =
+        this.#currentSubtitleRendition ?? this.idleSubtitleRendition();
       const hlsOptions = this.getHlsOptions();
       const lines = HlsMasterPlaylistMutator.rewriteVariantPlaylistUrls(
         content,
@@ -136,6 +139,22 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
       }
       return lines.join('\n');
     });
+  }
+
+  /**
+   * Players read the master once, so a client that tunes in during filler
+   * must still learn of the subtitle rendition. Its windows are empty until
+   * an item with subtitles plays.
+   */
+  private idleSubtitleRendition(): SubtitleRenditionInfo | undefined {
+    const offersSubtitles =
+      this.sessionType === 'hls' &&
+      !!this.channel.subtitlesEnabled &&
+      this.channel.subtitleDeliveryMethod === 'hls' &&
+      this.featureFlagService.get('webvttSidecarEnabled');
+    return offersSubtitles
+      ? { language: 'und', default: false, forced: false }
+      : undefined;
   }
 
   async trimPlaylist(filterOpts?: HlsPlaylistFilterOptions) {

@@ -1,3 +1,4 @@
+import { FeatureFlagService } from '@/services/FeatureFlagService.js';
 import { OnDemandChannelService } from '@/services/OnDemandChannelService.js';
 import type { ConcatSessionFactory } from '@/stream/ConcatSession.js';
 import { ConcatSession } from '@/stream/ConcatSession.js';
@@ -41,6 +42,7 @@ const configure = ({ bind }: ContainerModuleLoadOptions) => {
         ctx.get<ISettingsDB>(KEYS.SettingsDB),
         ctx.get(OnDemandChannelService),
         ctx.get<ProgramStreamFactory>(KEYS.ProgramStreamFactory),
+        ctx.get(FeatureFlagService),
       );
     };
   });
