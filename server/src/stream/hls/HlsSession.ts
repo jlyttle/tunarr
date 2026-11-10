@@ -61,6 +61,25 @@ export interface HlsSessionOptions extends BaseHlsSessionOptions {
 }
 
 /**
+ * The subtitle rendition the master playlist declares. Players read the
+ * master once, so while the channel offers HLS subtitles the rendition is
+ * always declared, and always as the default, whatever is playing at tune
+ * time. Its windows are empty until an item with subtitles plays.
+ */
+export function masterSubtitleRendition(
+  selected: SubtitleRenditionInfo | undefined,
+  offersHlsSubtitles: boolean,
+): SubtitleRenditionInfo | undefined {
+  if (!offersHlsSubtitles) {
+    return selected;
+  }
+  return {
+    ...(selected ?? { language: 'und', forced: false }),
+    default: true,
+  };
+}
+
+/**
  * Initializes an ffmpeg process that concatenates via the /playlist
  * endpoint and outputs an HLS format + segments
  */
@@ -115,8 +134,10 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
         return undefined;
       }
       const content = await fs.readFile(this._masterPlaylistPath, 'utf-8');
-      const rendition =
-        this.#currentSubtitleRendition ?? this.idleSubtitleRendition();
+      const rendition = masterSubtitleRendition(
+        this.#currentSubtitleRendition,
+        this.offersHlsSubtitles(),
+      );
       const hlsOptions = this.getHlsOptions();
       const lines = HlsMasterPlaylistMutator.rewriteVariantPlaylistUrls(
         content,
@@ -141,20 +162,13 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
     });
   }
 
-  /**
-   * Players read the master once, so a client that tunes in during filler
-   * must still learn of the subtitle rendition. Its windows are empty until
-   * an item with subtitles plays.
-   */
-  private idleSubtitleRendition(): SubtitleRenditionInfo | undefined {
-    const offersSubtitles =
+  private offersHlsSubtitles(): boolean {
+    return (
       this.sessionType === 'hls' &&
       !!this.channel.subtitlesEnabled &&
       this.channel.subtitleDeliveryMethod === 'hls' &&
-      this.featureFlagService.get('webvttSidecarEnabled');
-    return offersSubtitles
-      ? { language: 'und', default: true, forced: false }
-      : undefined;
+      this.featureFlagService.get('webvttSidecarEnabled')
+    );
   }
 
   async trimPlaylist(filterOpts?: HlsPlaylistFilterOptions) {

@@ -10,7 +10,8 @@ import path from 'node:path';
 import tmp from 'tmp';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { ProgramStream } from '../ProgramStream.ts';
-import { HlsSession } from './HlsSession.js';
+import { HlsMasterPlaylistMutator } from './HlsMasterPlaylistMutator.js';
+import { HlsSession, masterSubtitleRendition } from './HlsSession.js';
 
 vi.mock('@/util/logging/LoggerFactory.js', () => ({
   LoggerFactory: {
@@ -146,6 +147,50 @@ describe('HlsSession', () => {
         expect(master).not.toContain('SUBTITLES="subs"');
       },
     );
+  });
+
+  describe('masterSubtitleRendition', () => {
+    const selected = {
+      language: 'eng',
+      languageName: 'English',
+      default: false,
+      forced: false,
+    };
+
+    test('declares a selected non-default stream as the default', () => {
+      expect(masterSubtitleRendition(selected, true)).toEqual({
+        ...selected,
+        default: true,
+      });
+    });
+
+    test('falls back to an undetermined default rendition', () => {
+      expect(masterSubtitleRendition(undefined, true)).toEqual({
+        language: 'und',
+        default: true,
+        forced: false,
+      });
+    });
+
+    test('leaves the selected stream alone when the channel offers no HLS subtitles', () => {
+      expect(masterSubtitleRendition(selected, false)).toBe(selected);
+      expect(masterSubtitleRendition(undefined, false)).toBeUndefined();
+    });
+
+    test('a selected non-default stream gives DEFAULT=YES,AUTOSELECT=YES in the master', () => {
+      const rendition = masterSubtitleRendition(selected, true);
+      if (!rendition) {
+        throw new Error('expected a rendition');
+      }
+      const lines = ['#EXTM3U', '#EXT-X-STREAM-INF:BANDWIDTH=1', 'stream.m3u8'];
+      HlsMasterPlaylistMutator.injectSubtitleMediaTag(lines, rendition, {
+        streamBaseUrl: '/s/',
+        subtitleStreamNameFormat: 'subs.m3u8',
+      });
+      expect(lines[1]).toBe(
+        '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",LANGUAGE="eng",NAME="English",DEFAULT=YES,AUTOSELECT=YES,FORCED=NO,URI="/s/subs.m3u8"',
+      );
+    });
   });
 
   describe('subtitleWindow', () => {

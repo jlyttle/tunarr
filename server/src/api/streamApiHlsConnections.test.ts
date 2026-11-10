@@ -27,7 +27,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../container.js', () => ({ container: { get: vi.fn() } }));
 vi.mock('@/stream/VideoStream.js', () => ({ VideoStream: class {} }));
 
-import { streamApi } from './streamApi.js';
+import { injectTimestampMap, streamApi } from './streamApi.js';
 
 const MASTER_PLAYLIST = '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nstream.m3u8\n';
 const VARIANT_PLAYLIST = '#EXTM3U\n#EXTINF:4.0,\n/test/data000000.ts\n';
@@ -54,6 +54,9 @@ class TestHlsSession extends BaseHlsSession {
 
   // HlsSession builds subs<N>.vtt windows from cue files; none is on disk.
   async subtitleWindow(segmentNumber: number) {
+    if (segmentNumber === 101) {
+      return 'WEBVTT\n\n';
+    }
     return segmentNumber === 100 ? SUBTITLE_WINDOW : undefined;
   }
 
@@ -242,6 +245,21 @@ describe('streamApi HLS connection registration (issue #2045 invariant)', () => 
       'WEBVTT\nX-TIMESTAMP-MAP=MPEGTS:0,LOCAL:00:00:00.000\n\n00:06:40.500 --> 00:06:42.000\nHello\n',
     );
     expect(session.minByIp.get('203.0.113.10')?.subtitle).toBe(100);
+  });
+
+  it('serves an empty subtitle window as a valid WebVTT document', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/stream/channels/${makeChannel().uuid}/hls/subs000101.vtt`,
+      remoteAddress: '203.0.113.10',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('text/vtt');
+    expect(res.body).toBe(
+      'WEBVTT\nX-TIMESTAMP-MAP=MPEGTS:0,LOCAL:00:00:00.000\n\n',
+    );
+    expect(res.body).toBe(injectTimestampMap('WEBVTT\n\n'));
   });
 
   it('a subtitle window outside the playlist returns 404 and does not move the client position', async () => {
