@@ -85,6 +85,12 @@ export class LanguageService {
     return code ? (this.normalizeToAlpha3T(code) ?? code) : (code ?? undefined);
   }
 
+  /** True for a missing language or the ISO 639-2 "und" (undetermined) code. */
+  static isUndetermined(code: string | undefined): boolean {
+    const trimmed = code?.trim().toLowerCase();
+    return !trimmed || trimmed === 'und';
+  }
+
   static codesMatch(a: string | undefined, b: string | undefined): boolean {
     if (a === undefined || b === undefined) {
       return false;

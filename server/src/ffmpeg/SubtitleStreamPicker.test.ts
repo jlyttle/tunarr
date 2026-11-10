@@ -168,4 +168,45 @@ describe('SubtitleStreamPicker language matching', () => {
 
     expect(result?.index).toBe(2);
   });
+
+  function makeUntaggedSubtitle(
+    index: number,
+    languageCodeISO6392?: string,
+  ): SubtitleStreamDetails {
+    return {
+      ...makeSubtitle(index, 'und'),
+      languageCodeISO6392,
+      path: `/subs/${index}.srt`,
+    };
+  }
+
+  it('falls back to an untagged stream when no language matches', async () => {
+    const result = await SubtitleStreamPicker.pickSubtitles(
+      [makePreference('eng')],
+      makeLineupItem(),
+      [makeUntaggedSubtitle(1)],
+    );
+
+    expect(result?.index).toBe(1);
+  });
+
+  it('accepts a stream tagged und when no language matches', async () => {
+    const result = await SubtitleStreamPicker.pickSubtitles(
+      [makePreference('eng')],
+      makeLineupItem(),
+      [makeSubtitle(1, 'nld'), makeUntaggedSubtitle(2, 'und')],
+    );
+
+    expect(result?.index).toBe(2);
+  });
+
+  it('prefers a language match over an earlier untagged stream', async () => {
+    const result = await SubtitleStreamPicker.pickSubtitles(
+      [makePreference('eng')],
+      makeLineupItem(),
+      [makeUntaggedSubtitle(1), makeSubtitle(2, 'eng')],
+    );
+
+    expect(result?.index).toBe(2);
+  });
 });

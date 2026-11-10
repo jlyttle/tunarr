@@ -1337,6 +1337,76 @@ describe('evaluateStreamSelectionProfile', () => {
 
       expect(result.subtitleStream).toBeNull();
     });
+
+    const untagged = {
+      language: undefined,
+      languageCodeISO6391: undefined,
+      languageCodeISO6392: undefined,
+    };
+
+    async function pickEnglish(subs: SubtitleStreamDetails[]) {
+      const profile = makeProfile([
+        makeRule({
+          subtitleAction: {
+            type: 'by_language',
+            languages: ['eng'],
+            filterType: 'any',
+            allowImageBased: false,
+            allowExternal: true,
+          },
+        }),
+      ]);
+      const result = await evaluateStreamSelectionProfile(
+        profile,
+        audioStreams,
+        subs,
+        makeCelService(true),
+        celContext,
+        lineupItem,
+      );
+      return result.subtitleStream;
+    }
+
+    it('falls back to an untagged stream when no language matches', async () => {
+      const stream = await pickEnglish([
+        makeSubtitleStream({ index: 2, codec: 'mov_text', ...untagged }),
+      ]);
+
+      expect(stream?.index).toBe(2);
+    });
+
+    it('falls back to a stream tagged und when no language matches', async () => {
+      const stream = await pickEnglish([
+        makeSubtitleStream({
+          index: 2,
+          ...untagged,
+          languageCodeISO6392: 'und',
+        }),
+      ]);
+
+      expect(stream?.index).toBe(2);
+    });
+
+    it('prefers a language match over an earlier untagged stream', async () => {
+      const stream = await pickEnglish([
+        makeSubtitleStream({ index: 2, codec: 'mov_text', ...untagged }),
+        makeSubtitleStream({ index: 3, languageCodeISO6392: 'eng' }),
+      ]);
+
+      expect(stream?.index).toBe(3);
+    });
+
+    it('still applies the image-based check to untagged streams', async () => {
+      const stream = await pickEnglish([
+        makeSubtitleStream({
+          index: 2,
+          codec: 'hdmv_pgs_subtitle',
+          ...untagged,
+        }),
+      ]);
+
+      expect(stream).toBeNull();
+    });
   });
 });
 

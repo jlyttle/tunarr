@@ -143,6 +143,12 @@ export function streamMatchesLanguage(
   return LanguageService.codesMatch(streamLanguage, language);
 }
 
+function isUntaggedStream(stream: LanguageTaggedStream): boolean {
+  return LanguageService.isUndetermined(
+    stream.languageCodeISO6392 ?? stream.languageCodeISO6391 ?? stream.language,
+  );
+}
+
 export function resolveAudioAction(
   action: AudioAction,
   audioStreams: NonEmptyArray<AudioStreamDetails>,
@@ -242,51 +248,68 @@ async function resolveSubtitleAction(
       }
 
       for (const lang of action.languages) {
-        for (const stream of subtitleStreams) {
-          // Language match
-          if (!streamMatchesLanguage(stream, lang)) {
-            continue;
-          }
-
-          // Filter type check
-          if (action.filterType === 'forced' && !stream.forced) {
-            continue;
-          }
-          if (action.filterType === 'default' && !stream.default) {
-            continue;
-          }
-
-          // External check
-          if (!action.allowExternal && stream.type === 'external') {
-            continue;
-          }
-
-          // Image-based check
-          if (!action.allowImageBased && isImageBasedSubtitle(stream.codec)) {
-            continue;
-          }
-
-          // For embedded text-based subs, verify extraction
-          if (
-            !isImageBasedSubtitle(stream.codec) &&
-            stream.type === 'embedded'
-          ) {
-            const extracted =
-              await SubtitleStreamPicker.getSubtitleDetailsWithExtractedPath(
-                lineupItem,
-                stream,
-              );
-            if (extracted) {
-              return extracted;
-            }
-            continue;
-          }
-
-          return stream;
+        const match = await findSubtitleMatch(
+          action,
+          subtitleStreams.filter((stream) =>
+            streamMatchesLanguage(stream, lang),
+          ),
+          lineupItem,
+        );
+        if (match) {
+          return match;
         }
       }
 
-      return null;
+      // Untagged streams are often the only track (Plex reports no language
+      // for many mov_text tracks), so take one rather than show nothing.
+      return await findSubtitleMatch(
+        action,
+        subtitleStreams.filter(isUntaggedStream),
+        lineupItem,
+      );
     }
   }
+}
+
+async function findSubtitleMatch(
+  action: Extract<SubtitleAction, { type: 'by_language' }>,
+  candidates: SubtitleStreamDetails[],
+  lineupItem: ContentBackedStreamLineupItem,
+): Promise<SubtitleStreamDetails | null> {
+  for (const stream of candidates) {
+    // Filter type check
+    if (action.filterType === 'forced' && !stream.forced) {
+      continue;
+    }
+    if (action.filterType === 'default' && !stream.default) {
+      continue;
+    }
+
+    // External check
+    if (!action.allowExternal && stream.type === 'external') {
+      continue;
+    }
+
+    // Image-based check
+    if (!action.allowImageBased && isImageBasedSubtitle(stream.codec)) {
+      continue;
+    }
+
+    // For embedded text-based subs, verify extraction
+    if (!isImageBasedSubtitle(stream.codec) && stream.type === 'embedded') {
+      const extracted =
+        await SubtitleStreamPicker.getSubtitleDetailsWithExtractedPath(
+          lineupItem,
+          stream,
+        );
+      if (extracted) {
+        return extracted;
+      }
+      continue;
+    }
+
+    return stream;
+  }
+
+  return null;
 }
