@@ -115,7 +115,7 @@ describe('HlsSession', () => {
       const master = (await session.getMasterPlaylist()).get() ?? '';
 
       expect(master).toContain(
-        `#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",LANGUAGE="und",NAME="und",DEFAULT=NO,AUTOSELECT=NO,FORCED=NO,URI="/stream/channels/${channelUuid}/hls/subs.m3u8"`,
+        `#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",LANGUAGE="und",NAME="und",DEFAULT=YES,AUTOSELECT=YES,FORCED=NO,URI="/stream/channels/${channelUuid}/hls/subs.m3u8"`,
       );
       expect(master).toContain(
         '#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=640x480,SUBTITLES="subs"',

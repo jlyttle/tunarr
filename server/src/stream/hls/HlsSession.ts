@@ -153,7 +153,7 @@ export class HlsSession extends BaseHlsSession<HlsSessionOptions> {
       this.channel.subtitleDeliveryMethod === 'hls' &&
       this.featureFlagService.get('webvttSidecarEnabled');
     return offersSubtitles
-      ? { language: 'und', default: false, forced: false }
+      ? { language: 'und', default: true, forced: false }
       : undefined;
   }
 
