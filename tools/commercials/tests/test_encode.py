@@ -45,6 +45,10 @@ def test_silent_rejected():
     assert precheck(OK, -20.0) is None
 
 
+def test_no_video_rejected():
+    assert precheck(StreamInfo(True, 0, 0), -20.0) == "no_video"
+
+
 def test_vertical_rejected():
     assert precheck(StreamInfo(True, 720, 1280), -20.0) == "vertical"
 
@@ -56,7 +60,7 @@ def test_parsers():
 
 def test_encode_args_pads_not_crops():
     a = " ".join(encode_args("in.mkv", "out.mp4", MEASURED))
-    assert "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1" in a
+    assert "scale=trunc(iw*sar/2)*2:ih,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1" in a
     assert "crop" not in a
     assert "-movflags +faststart" in a
     assert "-crf 18" in a
@@ -89,3 +93,27 @@ def test_encoded_loudness(make_clip, tmp_path):
     assert (out_info.width, out_info.height) == (1280, 720)
     vol = subprocess.run(["ffmpeg", *volumedetect_args(out)], capture_output=True, text=True, check=True)
     assert parse_mean_volume(vol.stderr) > -60
+
+
+@pytest.mark.integration
+def test_anamorphic_source_not_squashed(tmp_path):
+    src = tmp_path / "ana.mkv"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=white:s=720x480:r=30:d=2",
+         "-f", "lavfi", "-i", "aevalsrc=0.1*sin(2*PI*440*t):s=48000:c=stereo:d=2",
+         "-vf", "setsar=32/27", "-c:v", "libx264", "-c:a", "aac", str(src)],
+        check=True,
+    )
+    res = subprocess.run(["ffmpeg", *loudnorm_measure_args(src)], capture_output=True, text=True, check=True)
+    out = tmp_path / "o.mp4"
+    subprocess.run(["ffmpeg", *encode_args(src, out, parse_loudnorm(res.stderr))], check=True, capture_output=True)
+    from commercials.encode import probe_streams
+
+    info = probe_streams(out)
+    assert (info.width, info.height) == (1280, 720)
+    frame = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(out), "-frames:v", "1", "-vf", "crop=40:720:0:0,format=gray",
+         "-f", "rawvideo", "-"],
+        capture_output=True, check=True,
+    ).stdout
+    assert sum(frame) / len(frame) > 150  # white, not pillarbox black

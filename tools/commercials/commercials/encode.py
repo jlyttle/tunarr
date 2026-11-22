@@ -6,6 +6,7 @@ from pathlib import Path
 
 SILENT_DB = -60.0
 VIDEO_FILTER = (
+    "scale=trunc(iw*sar/2)*2:ih,"
     "scale=1280:720:force_original_aspect_ratio=decrease,"
     "pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1"
 )
@@ -82,6 +83,8 @@ def precheck(info: StreamInfo, mean_volume_db: float) -> str | None:
         return "no_audio"
     if mean_volume_db < SILENT_DB:
         return "silent"
+    if info.width == 0 or info.height == 0:
+        return "no_video"
     if info.width < info.height:
         return "vertical"
     return None
