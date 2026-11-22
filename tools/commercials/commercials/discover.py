@@ -65,7 +65,12 @@ def _ytdlp(*args: str) -> str:
 
 def fetch_upload_date(video_id: str) -> date | None:
     """Fallback for flat entries without upload_date: cheap per-video metadata fetch."""
-    out = _ytdlp("--skip-download", "--print", "%(upload_date)s", f"https://www.youtube.com/watch?v={video_id}").strip()
+    try:
+        out = _ytdlp(
+            "--skip-download", "--print", "%(upload_date)s", f"https://www.youtube.com/watch?v={video_id}"
+        ).strip()
+    except subprocess.CalledProcessError:
+        return None  # skipped now, retried on the next run
     return _parse_date(out) if re.fullmatch(r"\d{8}", out) else None
 
 

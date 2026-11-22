@@ -1,6 +1,8 @@
+import subprocess
 from datetime import date
 from pathlib import Path
 
+from commercials import discover as discover_mod
 from commercials.catalog import Catalog, Compilation
 from commercials.discover import load_sources, new_compilations, parse_flat_playlist, pools_for_title
 
@@ -38,3 +40,33 @@ def test_new_compilations_skips_known_and_old():
     assert [c.video_id for c in out] == ["fresh"]
     assert out[0].pools == {"kids"}
     assert out[0].status == "new"
+
+
+def test_parse_flat_playlist_missing_upload_date_is_none():
+    assert parse_flat_playlist('{"id": "x1", "title": "No Date"}\n') == [("x1", "No Date", None)]
+
+
+def _fail(*args):
+    raise subprocess.CalledProcessError(1, ["yt-dlp"])
+
+
+def test_fetch_upload_date_returns_none_on_failure(monkeypatch):
+    monkeypatch.setattr(discover_mod, "_ytdlp", _fail)
+    assert discover_mod.fetch_upload_date("x1") is None
+
+
+def test_discover_skips_entry_when_fallback_fails(monkeypatch):
+    def fake(*args):
+        if "--flat-playlist" in args:
+            return (
+                '{"id": "nodate", "title": "Nick No Date"}\n'
+                '{"id": "dated", "title": "Nick Dated", "upload_date": "20261115"}\n'
+            )
+        raise subprocess.CalledProcessError(1, ["yt-dlp"])
+
+    monkeypatch.setattr(discover_mod, "_ytdlp", fake)
+    s = load_sources(SOURCES)
+    catalog = Catalog()
+    out = discover_mod.discover(s, catalog, date(2026, 10, 1))
+    assert [c.video_id for c in out] == ["dated"]
+    assert "nodate" not in catalog.compilations
