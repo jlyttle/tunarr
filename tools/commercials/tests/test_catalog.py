@@ -69,3 +69,17 @@ def test_paths_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
 def test_paths_default(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("COMMERCIALS_MEDIA", raising=False)
     assert media_root() == Path.home() / "Media" / "tunarr-commercials"
+
+
+def test_kids_blocked_round_trips(tmp_path: Path):
+    c = Catalog()
+    a = ad()
+    a.kids_blocked = True
+    c.ads["a1"] = a
+    p = tmp_path / "catalog.json"
+    save_catalog(c, p)
+    assert load_catalog(p).ads["a1"].kids_blocked is True
+    raw = json.loads(p.read_text())
+    del raw["ads"]["a1"]["kids_blocked"]  # catalogs written before the field load as False
+    p.write_text(json.dumps(raw))
+    assert load_catalog(p).ads["a1"].kids_blocked is False

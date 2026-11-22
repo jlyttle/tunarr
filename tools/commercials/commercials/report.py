@@ -18,6 +18,8 @@ class Report:
     uptime_after: str | None = None
     delivery: dict = field(default_factory=dict)
     sync: dict[str, str] = field(default_factory=dict)
+    # video ids whose info.json chapters did not match the downloaded file (treated as no chapters)
+    chapters_unreliable: list[str] = field(default_factory=list)
 
     @classmethod
     def from_json(cls, d: dict) -> "Report":
@@ -62,6 +64,8 @@ def markdown(r: Report) -> str:
                        f"{c.get('segments', 0)} | {c.get('accepted', 0)} | {share} |")
     else:
         out.append("None processed.")
+    if r.chapters_unreliable:
+        out += ["", f"Chapters unreliable (ignored): {', '.join(r.chapters_unreliable)}"]
     out += [
         "",
         "## Delivery and sync",

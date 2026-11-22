@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -19,7 +20,7 @@ from commercials.discover import Sources, load_sources
 from commercials.download import info_path
 from commercials.encode import StreamInfo, precheck
 from commercials.fingerprint import find_match, record_segment
-from commercials.pools import apply_blocklist, chapter_text_for, load_blocklist
+from commercials.pools import apply_blocklist, chapter_text_for, enforce_kids_block, load_blocklist
 from commercials.promo_filter import promo_verdict
 from commercials.report import Report, write_report
 from commercials.retention import POOLS, select_active
@@ -35,6 +36,9 @@ from commercials.split import (
 
 PENDING = ("new", "downloaded", "failed")
 MIN_KEEP_S = 0.1  # rejected segments shorter than this are counted but not cut
+REJECTED_KEEP_DAYS = 14
+SPONSORBLOCK_REMOVED = {"sponsor", "intro", "outro", "selfpromo"}  # download.ytdlp_args
+CHAPTER_DURATION_TOL_S = 0.5
 
 PLEX_URL = "http://192.168.1.227:32400"
 PLEX_TOKEN_ENV = "COMMERCIALS_PLEX_TOKEN"
@@ -152,6 +156,35 @@ def _read_info(path: Path) -> dict:
     return json.loads(path.read_text()) if path.exists() else {}
 
 
+def chapters_reliable(info: dict, file_duration_s: float) -> bool:
+    """info.json chapters describe the video before SponsorBlock cuts; distrust them if any were made.
+
+    YouTube reports whole-second durations, so an integer duration gets 0.5 s of rounding slack on top.
+    """
+    blocks = info.get("sponsorblock_chapters") or []
+    if any(b.get("category") in SPONSORBLOCK_REMOVED for b in blocks):
+        return False
+    expected = info.get("duration")
+    if expected is None:
+        return True
+    tol = CHAPTER_DURATION_TOL_S + (0.5 if isinstance(expected, int) else 0.0)
+    return abs(float(expected) - file_duration_s) <= tol
+
+
+def prune_rejected(media: Path, keep_days: int = REJECTED_KEEP_DAYS, now: float | None = None) -> int:
+    """Delete kept reject cuts older than keep_days. Returns the number removed."""
+    root = media / "rejected"
+    if not root.exists():
+        return 0
+    cutoff = (time.time() if now is None else now) - keep_days * 86400
+    removed = 0
+    for f in root.rglob("*"):
+        if f.is_file() and f.stat().st_mtime < cutoff:
+            f.unlink()
+            removed += 1
+    return removed
+
+
 class _Compilation:
     """Processes one downloaded compilation into ads and rejects."""
 
@@ -168,9 +201,13 @@ class _Compilation:
         mkv = t.download(c.video_id, self.ctx.media / "downloads")
         c.status = "downloaded"
         info = _read_info(info_path(mkv))
+        dur = t.duration(mkv)
+        if info.get("chapters") and not chapters_reliable(info, dur):
+            self.report.chapters_unreliable.append(c.video_id)
+            self.row["chapters"] = "unreliable"
+            info = {k: v for k, v in info.items() if k != "chapters"}
         self.chapters = info.get("chapters") or []
         chapter_times = parse_chapters(info)
-        dur = t.duration(mkv)
         stderr = t.detect(mkv)
         segs = segments(boundaries(parse_blackdetect(stderr), parse_silencedetect(stderr), dur,
                                    chapters=chapter_times))
@@ -181,6 +218,7 @@ class _Compilation:
             self._segment(mkv, seg)
         c.status = "split"
         self.row["status"] = "split"
+        mkv.unlink(missing_ok=True)  # the source is not needed again; info.json stays
 
     def _name(self, seg: Segment) -> str:
         return f"{self.comp.video_id}-{seg.start:.3f}"
@@ -211,7 +249,12 @@ class _Compilation:
         cuts = self.ctx.media / "cuts"
         cuts.mkdir(parents=True, exist_ok=True)
         cut = cuts / f"{self._name(seg)}.mkv"
-        self.tools.cut(mkv, seg, cut)
+        try:
+            self.tools.cut(mkv, seg, cut)
+        except subprocess.CalledProcessError:
+            cut.unlink(missing_ok=True)
+            self._reject("cut_failed")
+            return
         reason = self._accept(cut, seg)
         if reason is not None:
             self._reject(reason)
@@ -242,6 +285,7 @@ class _Compilation:
         if not fp:
             return "fingerprint_failed"
         pools = apply_blocklist(chapter_text_for(seg.start, self.chapters), self.comp.pools, self.blocklist)
+        blocked = "kids" in self.comp.pools and "kids" not in pools
         meta = {"source": self.comp.video_id, "duration_s": round(seg.end - seg.start, 3),
                 "height": info.height}
         match = find_match(fp, self.catalog)
@@ -258,6 +302,9 @@ class _Compilation:
                 return "encode_failed"
             meta["local_path"] = str(dest)
         ad_id, new = record_segment(self.catalog, fp, meta, pools, self.comp.upload_date)
+        ad = self.catalog.ads[ad_id]
+        ad.kids_blocked = ad.kids_blocked or blocked
+        enforce_kids_block(ad)
         if new:
             self.report.added.append(ad_id)
             self.row["new_ads"] += 1
@@ -305,6 +352,10 @@ def run(opts: RunOptions, ctx: RunContext, tools: Tools) -> Report:
         _dry_run(catalog, pending, ctx, cfg)
         return report
 
+    pruned = prune_rejected(ctx.media)
+    if pruned:
+        log(f"pruned {pruned} reject cut(s) older than {REJECTED_KEEP_DAYS} days")
+
     for i, comp in enumerate(pending, 1):
         log(f"[{i}/{len(pending)}] {comp.video_id} {comp.title}")
         job = _Compilation(comp, catalog, ctx, tools, blocklist, report)
@@ -326,10 +377,13 @@ def run(opts: RunOptions, ctx: RunContext, tools: Tools) -> Report:
     report.pool_hours = pool_hours(catalog, active)
     save_catalog(catalog, cat_path)
 
+    will_sync = opts.sync and sync_configured(cfg)
+    check_uptime = opts.deliver or will_sync
     reachable = True
-    if opts.deliver:
+    if check_uptime:
         report.uptime_before = _uptime(tools, report)
         reachable = report.uptime_before is not None
+    if opts.deliver:
         if reachable:
             try:
                 plan = tools.deliver(catalog, active, cfg["unraid_root"])
@@ -357,7 +411,7 @@ def run(opts: RunOptions, ctx: RunContext, tools: Tools) -> Report:
             report.failures.append(f"sync: {describe(e)}")
             report.sync = {"status": "failed"}
 
-    if opts.deliver and reachable:
+    if check_uptime and reachable:
         report.uptime_after = _uptime(tools, report)
 
     path = write_report(report, ctx.state / "reports")

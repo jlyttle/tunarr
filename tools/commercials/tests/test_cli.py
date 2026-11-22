@@ -38,7 +38,7 @@ class Fakes:
     """Records every side effect the runner asks for."""
 
     def __init__(self, comps, fail_download=(), chapters=None, info=None, no_audio=(), probe_fail=(),
-                 scores=None):
+                 scores=None, info_extra=None, fail_cut=()):
         self.comps = comps
         self.fail_download = set(fail_download)
         self.chapters = chapters or {}
@@ -46,6 +46,8 @@ class Fakes:
         self.no_audio = set(no_audio)
         self.probe_fail = set(probe_fail)
         self.scores = scores or {}
+        self.info_extra = info_extra or {}
+        self.fail_cut = set(fail_cut)
         self.downloads, self.cuts, self.encodes, self.volume_calls = [], [], [], []
         self.deliveries, self.syncs, self.uptimes = [], [], []
 
@@ -69,11 +71,15 @@ class Fakes:
         mkv = dest / f"{video_id}.mkv"
         mkv.write_bytes(b"video")
         chapters = self.chapters.get(video_id, [])
-        (dest / f"{video_id}.info.json").write_text(json.dumps({"id": video_id, "chapters": chapters}))
+        info = {"id": video_id, "chapters": chapters, **self.info_extra.get(video_id, {})}
+        (dest / f"{video_id}.info.json").write_text(json.dumps(info))
         return mkv
 
     def cut(self, src, seg, dest):
         self.cuts.append((src.stem, seg.start, Path(dest)))
+        if (src.stem, round(seg.start, 1)) in self.fail_cut:
+            Path(dest).write_bytes(b"partial")
+            raise subprocess.CalledProcessError(1, ["ffmpeg"])
         Path(dest).parent.mkdir(parents=True, exist_ok=True)
         Path(dest).write_bytes(f"{src.stem}-{seg.start}".encode())
 
@@ -299,9 +305,139 @@ def test_sync_runs_when_configured(tmp_path):
 
 def test_no_deliver_skips_uptime_and_delivery(tmp_path):
     fakes = Fakes([comp("v1")])
-    _, report = run_with(tmp_path, fakes, configured=True, deliver=False)
+    _, report = run_with(tmp_path, fakes, deliver=False)  # sync on but not configured
     assert fakes.deliveries == [] and fakes.uptimes == []
     assert report.uptime_before is None
+
+
+def test_uptime_checked_when_only_sync_runs(tmp_path):
+    fakes = Fakes([comp("v1")])
+    _, report = run_with(tmp_path, fakes, configured=True, deliver=False)
+    assert fakes.deliveries == []
+    assert len(fakes.syncs) == 1
+    assert report.uptime_before == "up 1" and report.uptime_after == "up 2"
+
+
+def test_cli_sync_redacts_token(monkeypatch):
+    from commercials import cli
+    from commercials import tunarr_sync as ts
+    from commercials.catalog import Catalog
+
+    monkeypatch.setattr(cli, "fetch_plex_token", lambda: "SECRETTOKEN")
+
+    def refresh(url):
+        raise RuntimeError(f"cannot open {url}")
+
+    monkeypatch.setattr(ts, "plex_refresh", refresh)
+    cfg = {"unraid_root": "/mnt/user/plex/Videos/Modern Commercials", "plex": {"section_key": "9"},
+           "tunarr": {"base_url": "http://x/api", "media_source_id": "M", "library_id": "L"},
+           "filler_list_ids": {"kids": "K", "general": "G"}}
+    with pytest.raises(RuntimeError) as e:
+        cli._sync(cfg, Catalog(), {"kids": set(), "general": set()})
+    assert "SECRETTOKEN" not in str(e.value)
+    assert "<redacted>" in str(e.value)
+
+
+KIDS_TITLES = {"block": "Light Beer commercial", "clean": "Toy commercial"}
+
+
+def kids_chapters(kind):
+    t = KIDS_TITLES[kind]
+    return [{"start_time": 0, "end_time": 10, "title": t}, {"start_time": 10, "end_time": 30, "title": t},
+            {"start_time": 30, "end_time": 40.2, "title": t}]
+
+
+def _sticky_run(tmp_path, first, second):
+    comps = [comp(first, "Vol. 1 (Nickelodeon)", pools=("kids",), day=21),
+             comp(second, "Vol. 2 (Nickelodeon)", pools=("kids",), day=20)]
+    chapters = {v: kids_chapters(v) for v in (first, second)}
+    fakes = Fakes(comps, chapters=chapters)
+    # both compilations carry the same three ads
+    fakes.fingerprint = lambda p: fp_of(Path(p).read_text().replace("block", "X").replace("clean", "X"))
+    c, report = run_with(tmp_path, fakes, deliver=False, sync=False)
+    assert [r["video_id"] for r in report.compilations] == [first, second]
+    return load_catalog(c.state / "catalog.json")
+
+
+def test_kids_block_sticky_block_then_clean(tmp_path):
+    cat = _sticky_run(tmp_path, "block", "clean")
+    assert len(cat.ads) == 3
+    for a in cat.ads.values():
+        assert a.pools == {"general"} and a.kids_blocked
+        assert sorted(a.sources) == ["block", "clean"]
+
+
+def test_kids_block_sticky_clean_then_block(tmp_path):
+    cat = _sticky_run(tmp_path, "clean", "block")
+    assert len(cat.ads) == 3
+    for a in cat.ads.values():
+        assert a.pools == {"general"} and a.kids_blocked
+
+
+def test_chapters_dropped_when_duration_mismatch(tmp_path):
+    chapters = kids_chapters("clean")
+    fakes = Fakes([comp("k1", "Vol. 2 (Nickelodeon)", pools=("kids",), day=21), comp("g1", day=20)],
+                  chapters={"k1": chapters, "g1": chapters},
+                  info_extra={"k1": {"duration": 45}, "g1": {"duration": 45}})
+    _, report = run_with(tmp_path, fakes, deliver=False, sync=False)
+    assert report.chapters_unreliable == ["k1", "g1"]
+    assert report.rejected_by_reason == {"no_chapters": 3}  # kids: no chapters to trust
+    assert report.pool_hours["general"] == pytest.approx(40 / 3600, abs=0.001)
+
+
+def test_chapters_dropped_when_sponsorblock_removed(tmp_path):
+    fakes = Fakes([comp("k1", "Vol. 2 (Nickelodeon)", pools=("kids",))],
+                  chapters={"k1": kids_chapters("clean")},
+                  info_extra={"k1": {"duration": 40, "sponsorblock_chapters": [
+                      {"start_time": 1, "end_time": 3, "category": "sponsor"}]}})
+    _, report = run_with(tmp_path, fakes, deliver=False, sync=False)
+    assert report.chapters_unreliable == ["k1"]
+    assert report.rejected_by_reason == {"no_chapters": 3}
+
+
+def test_chapters_kept_when_duration_matches(tmp_path):
+    fakes = Fakes([comp("k1", "Vol. 2 (Nickelodeon)", pools=("kids",))],
+                  chapters={"k1": kids_chapters("clean")}, info_extra={"k1": {"duration": 40}})
+    _, report = run_with(tmp_path, fakes, deliver=False, sync=False)
+    assert report.chapters_unreliable == []
+    assert report.rejected_by_reason == {}
+
+
+def test_source_mkv_removed_after_split(tmp_path):
+    fakes = Fakes([comp("v1")])
+    c, _ = run_with(tmp_path, fakes, deliver=False, sync=False)
+    dl = c.media / "downloads"
+    assert not (dl / "v1.mkv").exists()
+    assert (dl / "v1.info.json").exists()
+
+
+def test_rejected_pruned_after_14_days(tmp_path):
+    import os
+    import time
+
+    c = ctx(tmp_path)
+    d = c.media / "rejected" / "nonstandard_length"
+    d.mkdir(parents=True)
+    old, fresh = d / "old.mkv", d / "fresh.mkv"
+    old.write_bytes(b"x")
+    fresh.write_bytes(b"x")
+    now = time.time()
+    os.utime(old, (now - 15 * 86400, now - 15 * 86400))
+    os.utime(fresh, (now - 13 * 86400, now - 13 * 86400))
+    run(RunOptions(dry_run=True), c, Fakes([]).tools())
+    assert old.exists()  # dry run deletes nothing
+    run(RunOptions(deliver=False, sync=False), c, Fakes([]).tools())
+    assert not old.exists() and fresh.exists()
+
+
+def test_cut_failure_is_a_rejection(tmp_path):
+    fakes = Fakes([comp("v1")], fail_cut={("v1", 10.1)})
+    c, report = run_with(tmp_path, fakes, deliver=False, sync=False)
+    assert report.failures == []
+    assert report.rejected_by_reason == {"cut_failed": 1}
+    assert report.compilations[0]["status"] == "split"
+    assert len(report.added) == 2
+    assert not (c.media / "cuts" / "v1-10.100.mkv").exists()
 
 
 def test_sync_error_is_a_failure_not_a_crash(tmp_path):

@@ -31,3 +31,11 @@ def apply_blocklist(ad_title_text: str, pools: set[str], blocklist: list[str]) -
         return set(pools)
     out = pools - {"kids"}
     return out or {"general"}
+
+
+def enforce_kids_block(ad) -> None:
+    """Once an ad is kids_blocked, it never sits in the kids pool (it falls back to general)."""
+    if ad.kids_blocked and "kids" in ad.pools:
+        ad.pools.discard("kids")
+        if not ad.pools:
+            ad.pools.add("general")
