@@ -4881,6 +4881,31 @@ describe('detected breaks', () => {
     const breaksOf = (lineup: LineupItem[]) =>
       lineup.filter((i) => i.fillerConfig?.origin === 'midroll');
 
+    test('slot-end flex after a detected mid-roll slot carries the slot mid filler list ids', async () => {
+      const lineup = await scheduleSlot(
+        [numberedEpisode(1)],
+        30,
+        new Map([['ep1', [300_000, 900_000]]]),
+        { midFillerListId: 'mid-list-1' },
+      );
+
+      const tail = lineup[lineup.length - 1];
+      expect(tail).toMatchObject({ type: 'flex', duration: 120_000 });
+      expect(tail.fillerConfig?.fillerListIds).toEqual(['mid-list-1']);
+    });
+
+    test('slot-end flex without mid lists has no fillerListIds', async () => {
+      const lineup = await scheduleSlot(
+        [numberedEpisode(1)],
+        30,
+        new Map([['ep1', [300_000, 900_000]]]),
+      );
+
+      const tail = lineup[lineup.length - 1];
+      expect(tail).toMatchObject({ type: 'flex', duration: 120_000 });
+      expect(tail.fillerConfig).toBeUndefined();
+    });
+
     test('sizes each break from the slot spare time', async () => {
       const lineup = await scheduleSlot(
         [numberedEpisode(1)],

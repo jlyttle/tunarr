@@ -10,6 +10,7 @@ import type {
   TimeSlotSchedule,
   TimeSlotScheduleResult,
 } from '@tunarr/types/api';
+import type { OfflineFillerConfig } from '@tunarr/types/schemas';
 import duration from 'dayjs/plugin/duration.js';
 import relativeTime from 'dayjs/plugin/relativeTime.js';
 import tz from 'dayjs/plugin/timezone.js';
@@ -17,6 +18,7 @@ import utc from 'dayjs/plugin/utc.js';
 import {
   first,
   forEach,
+  isEqual,
   isNull,
   last,
   map,
@@ -84,6 +86,7 @@ function pushOrExtendFlex(
   lineup: CondensedChannelProgram[],
   flexDurationMs: number,
   guide: GuideFields,
+  fillerConfig?: OfflineFillerConfig,
 ): number {
   if (flexDurationMs <= 0) {
     return 0;
@@ -94,6 +97,7 @@ function pushOrExtendFlex(
     lastLineupItem &&
     isFlexProgram(lastLineupItem) &&
     lastLineupItem.fillerConfig?.origin !== 'midroll' &&
+    isEqual(lastLineupItem.fillerConfig, fillerConfig) &&
     lastLineupItem.guideTitle === guide.guideTitle &&
     lastLineupItem.guideDescription === guide.guideDescription
   ) {
@@ -101,6 +105,7 @@ function pushOrExtendFlex(
     const newItem: FlexProgram = {
       type: 'flex',
       duration: newDuration,
+      ...(fillerConfig ? { fillerConfig } : {}),
       ...guide,
     };
     lineup[lineup.length - 1] = newItem;
@@ -110,6 +115,7 @@ function pushOrExtendFlex(
   const newItem: FlexProgram = {
     type: 'flex',
     duration: flexDurationMs,
+    ...(fillerConfig ? { fillerConfig } : {}),
     ...guide,
   };
 
@@ -211,8 +217,17 @@ export async function scheduleTimeSlots(
 
   let timeCursor = t0;
 
-  const pushFlex = (flexDurationMs: number, guide: GuideFields = {}) => {
-    const inc = pushOrExtendFlex(channelPrograms, flexDurationMs, guide);
+  const pushFlex = (
+    flexDurationMs: number,
+    guide: GuideFields = {},
+    fillerConfig?: OfflineFillerConfig,
+  ) => {
+    const inc = pushOrExtendFlex(
+      channelPrograms,
+      flexDurationMs,
+      guide,
+      fillerConfig,
+    );
     timeCursor = timeCursor.add(inc);
   };
 
@@ -494,6 +509,16 @@ export async function scheduleTimeSlots(
       }
     }
 
+    // With split slot flex the leftover flex is the tail share of the break
+    // budget, so it plays from the same lists as the slot's mid-roll breaks
+    // instead of falling back to every list on the channel.
+    const slotMidFillerListIds = currSlot.getMidFillerListIds();
+    const slotEndFillerConfig: OfflineFillerConfig | undefined =
+      currSlot.midRollConfig?.splitSlotFlex !== undefined &&
+      slotMidFillerListIds.length > 0
+        ? { fillerListIds: slotMidFillerListIds }
+        : undefined;
+
     forEach(finalPrograms, ({ program, padMs, filler }) => {
       pushProgram(filler.head, guide);
       pushProgram(filler.pre, guide);
@@ -517,10 +542,10 @@ export async function scheduleTimeSlots(
           } satisfies FillerProgram;
           pushProgram(filler, guide);
         } else {
-          pushFlex(padMs, guide);
+          pushFlex(padMs, guide, slotEndFillerConfig);
         }
       } else {
-        pushFlex(padMs, guide);
+        pushFlex(padMs, guide, slotEndFillerConfig);
       }
     });
   }

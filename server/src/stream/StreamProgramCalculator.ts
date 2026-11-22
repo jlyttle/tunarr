@@ -448,17 +448,12 @@ export class StreamProgramCalculator {
       //offline case
       //look for a random filler to play
       const fillerConfig = program.fillerConfig;
-      let fillerPrograms = await this.fillerDB.getFillersFromChannel(
-        channel.uuid,
-      );
-
-      // Filter by allowed filler lists if configured
-      if (fillerConfig?.fillerListIds?.length) {
-        const allowedIds = new Set(fillerConfig.fillerListIds);
-        fillerPrograms = fillerPrograms.filter((f) =>
-          allowedIds.has(f.fillerShowUuid),
-        );
-      }
+      const fillerPrograms = fillerConfig?.fillerListIds?.length
+        ? await this.fillerDB.getFillersForListIds(
+            channel.uuid,
+            fillerConfig.fillerListIds,
+          )
+        : await this.fillerDB.getFillersFromChannel(channel.uuid);
 
       let filler: Nullable<ProgramOrmWithExternalIds> = null;
       let fillerListId: Nullable<string> = null;

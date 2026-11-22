@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tunarr.commercials</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/jon/.local/share/tunarr-commercials/app/tools/commercials/launchd/run-daily.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/jon/.local/share/tunarr-commercials/app/tools/commercials</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/jon/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>4</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>Nice</key>
+  <integer>10</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/jon/Library/Logs/tunarr-commercials.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/jon/Library/Logs/tunarr-commercials.log</string>
+</dict>
+</plist>

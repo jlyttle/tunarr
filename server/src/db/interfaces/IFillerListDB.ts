@@ -45,6 +45,17 @@ export interface IFillerListDB {
   getFillersFromChannel(
     channelId: string,
   ): Promise<ChannelFillerShowWithContent[]>;
+
+  /**
+   * Loads the given filler lists with their content, whether or not they are
+   * attached to the channel. Lists attached to the channel keep their weight
+   * and cooldown; unattached lists get weight 100 and cooldown 0. Unknown ids
+   * are skipped.
+   */
+  getFillersForListIds(
+    channelId: string,
+    listIds: string[],
+  ): Promise<ChannelFillerShowWithContent[]>;
 }
 
 export type FillerShowWithContent = FillerShowOrm & {
