@@ -35,7 +35,7 @@ One ffmpeg pass (`detect_args`) runs `blackdetect=d=0.03:pix_th=0.10` and `silen
 
 ### Single-chapter rule and promo filter
 
-Per-network compilations (pools including `kids`) carry one chapter per spot, so `require_single_chapter` rejects accepted segments whose start and end are not both within 0.6 s of the same chapter's span (`not_single_chapter`, or `no_chapters` when the video has none). This catches unbranded show content and merged pods that the branded-card filter (`promo_filter.py`) cannot. The pipeline applies it only to compilations whose pools include `kids`; general compilations skip it. The promo filter then scores each surviving segment against hand-picked network references (`config/network_refs/`).
+Per-network compilations (pools including `kids`) carry one chapter per spot, so `require_single_chapter` rejects accepted segments whose start and end are not both within 1.5 s of the same chapter's span (`not_single_chapter`, or `no_chapters` when the video has none). This catches unbranded show content and merged pods that the branded-card filter (`promo_filter.py`) cannot. The pipeline applies it only to compilations whose pools include `kids`; general compilations skip it. The promo filter then scores each surviving segment against hand-picked network references (`config/network_refs/`).
 
 ### Tuning (2026-11-22)
 

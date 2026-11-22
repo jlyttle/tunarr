@@ -159,3 +159,9 @@ def test_no_chapters_rejects_all():
 def test_already_rejected_untouched():
     seg = Segment(20.0, 50.0, None, "nonstandard_length")
     assert require_single_chapter([seg], CH, 200.0) == [seg]
+
+
+def test_whole_second_chapter_rounding_kept():
+    # yt-dlp chapter times are whole seconds; the real cut is 0.99 s after the chapter start.
+    segs = [Segment(71.99, 86.97, 15, None)]
+    assert require_single_chapter(segs, [0.0, 71.0, 87.0], 200.0) == segs

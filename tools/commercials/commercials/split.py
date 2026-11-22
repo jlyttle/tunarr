@@ -111,7 +111,7 @@ def cut_args(src: str | Path, seg: Segment, dest: str | Path) -> list[str]:
 
 
 def require_single_chapter(
-    segs: list[Segment], chapter_starts: list[float], duration_s: float, tol_s: float = 0.6
+    segs: list[Segment], chapter_starts: list[float], duration_s: float, tol_s: float = 1.5
 ) -> list[Segment]:
     """Reject accepted segments that do not coincide with exactly one chapter.
 
