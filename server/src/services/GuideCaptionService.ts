@@ -3,10 +3,12 @@ import { inArray } from 'drizzle-orm';
 import { inject, injectable } from 'inversify';
 import { chunk, head, uniq } from 'lodash-es';
 import type { ProgramStreamLineupItem } from '../db/derived_types/StreamLineup.ts';
+import type { IChannelDB } from '../db/interfaces/IChannelDB.ts';
 import type { ChannelOrm } from '../db/schema/Channel.ts';
 import type { DrizzleDBAccess } from '../db/schema/index.ts';
 import { Program } from '../db/schema/Program.ts';
 import type { ProgramSubtitles } from '../db/schema/ProgramSubtitles.ts';
+import type { ChannelSubtitlePreferences } from '../db/schema/SubtitlePreferences.ts';
 import {
   buildCelContext,
   evaluateStreamSelectionProfile,
@@ -20,7 +22,10 @@ import {
   toStoredSubtitleStreamDetails,
 } from '../stream/ProgramStreamDetailsFetcher.ts';
 import { resolveSubtitleDelivery } from '../stream/subtitles/SubtitleDeliveryPolicy.ts';
-import type { SubtitleStreamDetails } from '../stream/types.ts';
+import type {
+  AudioStreamDetails,
+  SubtitleStreamDetails,
+} from '../stream/types.ts';
 import { isImageBasedSubtitle } from '../stream/util.ts';
 import { KEYS } from '../types/inject.ts';
 import { isNonEmptyArray, isNonEmptyString } from '../util/index.ts';
@@ -43,6 +48,17 @@ type StoredProgram = Awaited<
   ReturnType<GuideCaptionService['loadPrograms']>
 >[number];
 
+type ProgramStreams = {
+  program: StoredProgram;
+  lineupItem: ProgramStreamLineupItem;
+  audioStreams: AudioStreamDetails[];
+  subtitleStreams: SubtitleStreamDetails[];
+};
+
+type SubtitlePicker = (
+  streams: ProgramStreams,
+) => Promise<SubtitleStreamDetails | null>;
+
 @injectable()
 export class GuideCaptionService {
   constructor(
@@ -51,6 +67,7 @@ export class GuideCaptionService {
     private profileResolver: StreamSelectionProfileResolver,
     @inject(CelEvaluationService) private celService: CelEvaluationService,
     @inject(FeatureFlagService) private featureFlags: FeatureFlagService,
+    @inject(KEYS.ChannelDB) private channelDB: IChannelDB,
   ) {}
 
   async captionedProgramIds(
@@ -62,8 +79,10 @@ export class GuideCaptionService {
       return captioned;
     }
 
+    const pickSubtitle = await this.subtitlePickerFor(channel);
     for (const program of await this.loadPrograms(programIds)) {
-      if (await this.isCaptioned(channel, program)) {
+      const streams = toProgramStreams(program);
+      if (streams && isDeliveredAsHls(channel, await pickSubtitle(streams))) {
         captioned.add(program.uuid);
       }
     }
@@ -75,8 +94,20 @@ export class GuideCaptionService {
       !!channel.subtitlesEnabled &&
       channel.subtitleDeliveryMethod === 'hls' &&
       CaptionedStreamModes.has(channel.streamMode) &&
-      this.featureFlags.get('webvttSidecarEnabled')
+      (isPassthrough(channel) || this.featureFlags.get('webvttSidecarEnabled'))
     );
+  }
+
+  private async subtitlePickerFor(
+    channel: ChannelOrm,
+  ): Promise<SubtitlePicker> {
+    if (!isPassthrough(channel)) {
+      return (streams) => this.pickBySelectionProfile(channel, streams);
+    }
+    const preferences = await this.channelDB.getChannelSubtitlePreferences(
+      channel.uuid,
+    );
+    return (streams) => pickPassthroughSubtitle(preferences, streams);
   }
 
   private loadPrograms(programIds: string[]) {
@@ -94,29 +125,13 @@ export class GuideCaptionService {
     );
   }
 
-  private async isCaptioned(
+  private async pickBySelectionProfile(
     channel: ChannelOrm,
-    program: StoredProgram,
-  ): Promise<boolean> {
-    const lineupItem = toLineupItem(program);
-    const version = head(program.versions);
-    if (!lineupItem || !version) {
-      return false;
-    }
-
-    const streamsByKind = mediaStreamsByKind(version.mediaStreams);
-    const audioStreams = (streamsByKind['audio'] ?? []).map(
-      toAudioStreamDetails,
-    );
+    { program, lineupItem, audioStreams, subtitleStreams }: ProgramStreams,
+  ): Promise<SubtitleStreamDetails | null> {
     if (!isNonEmptyArray(audioStreams)) {
-      return false;
+      return null;
     }
-    const subtitleStreams = [
-      ...(streamsByKind['subtitles'] ?? []).map(
-        toEmbeddedSubtitleStreamDetails,
-      ),
-      ...storedSubtitleStreams(program.subtitles),
-    ];
 
     const profile = await this.profileResolver.resolve({
       channelId: channel.uuid,
@@ -137,9 +152,49 @@ export class GuideCaptionService {
       lineupItem,
       resolveExtractedText,
     );
-
-    return isDeliveredAsHls(channel, subtitleStream);
+    return subtitleStream;
   }
+}
+
+function isPassthrough(channel: ChannelOrm): boolean {
+  return channel.streamMode === 'hls_direct_v2';
+}
+
+async function pickPassthroughSubtitle(
+  preferences: ChannelSubtitlePreferences[],
+  { lineupItem, subtitleStreams }: ProgramStreams,
+): Promise<SubtitleStreamDetails | null> {
+  if (!isNonEmptyArray(subtitleStreams)) {
+    return null;
+  }
+  const picked = await SubtitleStreamPicker.pickSubtitles(
+    preferences,
+    lineupItem,
+    subtitleStreams,
+    { preferTextBased: true },
+  );
+  return picked ?? null;
+}
+
+function toProgramStreams(program: StoredProgram): ProgramStreams | undefined {
+  const lineupItem = toLineupItem(program);
+  const version = head(program.versions);
+  if (!lineupItem || !version) {
+    return;
+  }
+
+  const streamsByKind = mediaStreamsByKind(version.mediaStreams);
+  return {
+    program,
+    lineupItem,
+    audioStreams: (streamsByKind['audio'] ?? []).map(toAudioStreamDetails),
+    subtitleStreams: [
+      ...(streamsByKind['subtitles'] ?? []).map(
+        toEmbeddedSubtitleStreamDetails,
+      ),
+      ...storedSubtitleStreams(program.subtitles),
+    ],
+  };
 }
 
 function toLineupItem(

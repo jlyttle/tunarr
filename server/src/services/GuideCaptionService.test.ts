@@ -1,5 +1,6 @@
 import type { FeatureFlags, FfmpegSettings } from '@tunarr/types';
 import { tag } from '@tunarr/types';
+import { eq } from 'drizzle-orm';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import tmp from 'tmp-promise';
@@ -20,6 +21,7 @@ import type { NewProgramSubtitles } from '../db/schema/ProgramSubtitles.ts';
 import { ProgramSubtitles } from '../db/schema/ProgramSubtitles.ts';
 import type { ChannelSubtitlePreferences } from '../db/schema/SubtitlePreferences.ts';
 import { ProgramVersion } from '../db/schema/ProgramVersion.ts';
+import { StreamSelectionProfile } from '../db/schema/StreamSelectionProfile.ts';
 import { globalOptions, setGlobalOptionsUnchecked } from '../globals.ts';
 import { copyPreMigratedDb } from '../testing/testDbFactory.ts';
 import { getSubtitleCacheFilePath } from '../util/subtitles.ts';
@@ -75,7 +77,10 @@ type SeededProgram = {
 
 function makeService(
   drizzle: DrizzleDBAccess,
-  { webvttSidecarEnabled = true }: { webvttSidecarEnabled?: boolean } = {},
+  {
+    webvttSidecarEnabled = true,
+    allowImageBased = true,
+  }: { webvttSidecarEnabled?: boolean; allowImageBased?: boolean } = {},
 ) {
   const settingsDB = {
     ffmpegSettings: () => ({}) as FfmpegSettings,
@@ -89,7 +94,7 @@ function makeService(
           channelId: 'channel-1',
           languageCode: 'eng',
           priority: 0,
-          allowImageBased: true,
+          allowImageBased,
           allowExternal: true,
           filterType: 'any',
         } as ChannelSubtitlePreferences,
@@ -101,6 +106,7 @@ function makeService(
     new StreamSelectionProfileResolver(drizzle, settingsDB, channelDB),
     new CelEvaluationService(),
     new FeatureFlagService(settingsDB),
+    channelDB,
   );
 }
 
@@ -254,6 +260,35 @@ async function seedExtractedSrtProgram(
   return program;
 }
 
+function preferImageTracks(drizzle: DrizzleDBAccess, program: SeededProgram) {
+  const profileId = v4();
+  drizzle
+    .insert(StreamSelectionProfile)
+    .values({
+      uuid: profileId,
+      name: 'Prefer image tracks',
+      rules: [
+        {
+          condition: 'true',
+          audioAction: { type: 'default' },
+          subtitleAction: {
+            type: 'by_language',
+            languages: ['eng'],
+            filterType: 'any',
+            allowImageBased: true,
+            allowExternal: true,
+          },
+        },
+      ],
+    })
+    .run();
+  drizzle
+    .update(Program)
+    .set({ streamSelectionProfileId: profileId })
+    .where(eq(Program.uuid, program.uuid))
+    .run();
+}
+
 describe('GuideCaptionService', () => {
   test('captions a programme whose selected track is embedded srt and extracted', async ({
     drizzle,
@@ -404,5 +439,45 @@ describe('GuideCaptionService', () => {
     );
 
     expect(result.size).toBe(0);
+  });
+
+  test('hls_direct_v2 captions a text track the selection profile passes over for an image track', async ({
+    drizzle,
+    cacheFolder: _,
+  }) => {
+    const program = seedProgram(drizzle);
+    insertAudio(drizzle, program);
+    insertEmbeddedSubtitle(drizzle, program, 2, 'hdmv_pgs_subtitle');
+    insertEmbeddedSubtitle(drizzle, program, 3, 'srt');
+    preferImageTracks(drizzle, program);
+    const service = makeService(drizzle, { allowImageBased: false });
+
+    const passthrough = await service.captionedProgramIds(
+      makeChannel({ streamMode: 'hls_direct_v2' }),
+      [program.uuid],
+    );
+    const transcoded = await service.captionedProgramIds(makeChannel(), [
+      program.uuid,
+    ]);
+
+    expect([...passthrough]).toEqual([program.uuid]);
+    expect(transcoded.size).toBe(0);
+  });
+
+  test('hls_direct_v2 captions even when the WebVTT sidecar feature flag is off', async ({
+    drizzle,
+    cacheFolder: _,
+  }) => {
+    const program = seedProgram(drizzle);
+    insertAudio(drizzle, program);
+    insertEmbeddedSubtitle(drizzle, program, 2, 'srt');
+
+    const result = await makeService(drizzle, {
+      webvttSidecarEnabled: false,
+    }).captionedProgramIds(makeChannel({ streamMode: 'hls_direct_v2' }), [
+      program.uuid,
+    ]);
+
+    expect([...result]).toEqual([program.uuid]);
   });
 });
