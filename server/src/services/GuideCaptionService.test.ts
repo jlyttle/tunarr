@@ -79,16 +79,18 @@ function makeService(
   drizzle: DrizzleDBAccess,
   {
     webvttSidecarEnabled = true,
+    enableSubtitleExtraction = false,
     allowImageBased = true,
     onSubtitlePreferences = () => {},
   }: {
     webvttSidecarEnabled?: boolean;
+    enableSubtitleExtraction?: boolean;
     allowImageBased?: boolean;
     onSubtitlePreferences?: () => void;
   } = {},
 ) {
   const settingsDB = {
-    ffmpegSettings: () => ({}) as FfmpegSettings,
+    ffmpegSettings: () => ({ enableSubtitleExtraction }) as FfmpegSettings,
     featureFlags: () => ({ webvttSidecarEnabled }) as FeatureFlags,
   } as unknown as ISettingsDB;
   const channelDB = {
@@ -114,6 +116,7 @@ function makeService(
     new CelEvaluationService(),
     new FeatureFlagService(settingsDB),
     channelDB,
+    settingsDB,
   );
 }
 
@@ -403,7 +406,7 @@ describe('GuideCaptionService', () => {
     expect(result.size).toBe(0);
   });
 
-  test('skips an embedded text track whose cache file is missing', async ({
+  test('skips an unextracted embedded text track when subtitle extraction is off', async ({
     drizzle,
     cacheFolder: _,
   }) => {
@@ -415,6 +418,36 @@ describe('GuideCaptionService', () => {
       makeChannel(),
       [program.uuid],
     );
+
+    expect(result.size).toBe(0);
+  });
+
+  test('captions an unextracted embedded text track when subtitle extraction is on', async ({
+    drizzle,
+    cacheFolder: _,
+  }) => {
+    const program = seedProgram(drizzle);
+    insertAudio(drizzle, program);
+    insertEmbeddedSubtitle(drizzle, program, 2, 'srt');
+
+    const result = await makeService(drizzle, {
+      enableSubtitleExtraction: true,
+    }).captionedProgramIds(makeChannel(), [program.uuid]);
+
+    expect([...result]).toEqual([program.uuid]);
+  });
+
+  test('still skips image-only tracks when subtitle extraction is on', async ({
+    drizzle,
+    cacheFolder: _,
+  }) => {
+    const program = seedProgram(drizzle);
+    insertAudio(drizzle, program);
+    insertEmbeddedSubtitle(drizzle, program, 2, 'hdmv_pgs_subtitle');
+
+    const result = await makeService(drizzle, {
+      enableSubtitleExtraction: true,
+    }).captionedProgramIds(makeChannel(), [program.uuid]);
 
     expect(result.size).toBe(0);
   });

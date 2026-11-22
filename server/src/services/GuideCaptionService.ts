@@ -5,6 +5,7 @@ import { inject, injectable } from 'inversify';
 import { chunk, head, uniq } from 'lodash-es';
 import type { ProgramStreamLineupItem } from '../db/derived_types/StreamLineup.ts';
 import type { IChannelDB } from '../db/interfaces/IChannelDB.ts';
+import type { ISettingsDB } from '../db/interfaces/ISettingsDB.ts';
 import type { ChannelOrm } from '../db/schema/Channel.ts';
 import type { DrizzleDBAccess } from '../db/schema/index.ts';
 import { Program } from '../db/schema/Program.ts';
@@ -48,6 +49,11 @@ const ProgramsPerYield = 20;
 const resolveExtractedText: TextSubtitleResolver = (lineupItem, stream) =>
   SubtitleStreamPicker.getSubtitleDetailsWithExtractedPath(lineupItem, stream);
 
+// SubtitleExtractorTask extracts every embedded text track an hour before it
+// airs, so the guide counts the track as the stream will see it then.
+const resolveScheduledExtraction: TextSubtitleResolver = (_, stream) =>
+  Promise.resolve(stream);
+
 type StoredProgram = Awaited<
   ReturnType<GuideCaptionService['loadPrograms']>
 >[number];
@@ -72,6 +78,7 @@ export class GuideCaptionService {
     @inject(CelEvaluationService) private celService: CelEvaluationService,
     @inject(FeatureFlagService) private featureFlags: FeatureFlagService,
     @inject(KEYS.ChannelDB) private channelDB: IChannelDB,
+    @inject(KEYS.SettingsDB) private settingsDB: ISettingsDB,
   ) {}
 
   async captionedProgramIds(
@@ -113,8 +120,17 @@ export class GuideCaptionService {
       const channelProfile = await this.profileResolver.resolveChannelProfile(
         channel.uuid,
       );
+      const resolveText = this.settingsDB.ffmpegSettings()
+        .enableSubtitleExtraction
+        ? resolveScheduledExtraction
+        : resolveExtractedText;
       return (streams) =>
-        this.pickBySelectionProfile(channel, channelProfile, streams);
+        this.pickBySelectionProfile(
+          channel,
+          channelProfile,
+          resolveText,
+          streams,
+        );
     }
     const preferences = await this.channelDB.getChannelSubtitlePreferences(
       channel.uuid,
@@ -140,6 +156,7 @@ export class GuideCaptionService {
   private async pickBySelectionProfile(
     channel: ChannelOrm,
     channelProfile: StreamSelectionProfile,
+    resolveText: TextSubtitleResolver,
     { program, lineupItem, audioStreams, subtitleStreams }: ProgramStreams,
   ): Promise<SubtitleStreamDetails | null> {
     if (!isNonEmptyArray(audioStreams)) {
@@ -165,7 +182,7 @@ export class GuideCaptionService {
       this.celService,
       celContext,
       lineupItem,
-      resolveExtractedText,
+      resolveText,
     );
     return subtitleStream;
   }
