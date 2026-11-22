@@ -1,4 +1,7 @@
+import subprocess
 from datetime import date
+
+import pytest
 
 from commercials.catalog import Ad, Catalog
 from commercials.deliver import (
@@ -9,7 +12,7 @@ from commercials.deliver import (
     remote_path,
 )
 
-ROOT = "/mnt/user/data/Videos/Modern Commercials"
+ROOT = "/mnt/user/plex/Videos/Modern Commercials"
 
 
 def mk(ad_id, pools, delivered=None, status="active"):
@@ -62,9 +65,52 @@ def test_ad_leaving_pool_deleted_and_result_applied():
 
 def test_push_args_use_system_ssh():
     args = push_args("/l/a.mp4", f"{ROOT}/kids/a.mp4")
-    assert args[0] == "rsync" and "/usr/bin/ssh" in args
-    assert args[-1] == f"root@192.168.1.227:{ROOT}/kids/a.mp4"
-    assert "--chmod=a+rwX" in args and "-t" in args
-    assert any("umask 000; mkdir -p" in x for x in args)
+    assert args[:2] == ["/usr/bin/ssh", "root@192.168.1.227"]
+    assert args[2].startswith("umask 000; mkdir -p")
     d = delete_args([f"{ROOT}/kids/a.mp4"])
     assert d[0] == "/usr/bin/ssh" and "root@192.168.1.227" in d
+
+
+def test_push_command_survives_remote_shell(tmp_path):
+    root = f"{tmp_path}/Modern Commercials it's"
+    remote = f"{root}/kids/a.mp4"
+    script = push_args("ignored", remote)[2]
+    src = tmp_path / "src.bin"
+    src.write_bytes(b"hello bytes")
+    with src.open("rb") as f:
+        subprocess.run(["sh", "-c", script], stdin=f, check=True)
+    assert (tmp_path / "Modern Commercials it's" / "kids" / "a.mp4").read_bytes() == b"hello bytes"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["Modern Commercials it's", "src.bin"]
+    assert sorted(p.name for p in (tmp_path / "Modern Commercials it's" / "kids").iterdir()) == ["a.mp4"]
+
+
+def test_delete_command_survives_remote_shell(tmp_path):
+    d = tmp_path / "Modern Commercials it's"
+    d.mkdir()
+    f1, f2, keep = d / "a b.mp4", d / "c.mp4", d / "keep.mp4"
+    for f in (f1, f2, keep):
+        f.write_bytes(b"x")
+    subprocess.run(["sh", "-c", delete_args([str(f1), str(f2)])[2]], check=True)
+    assert sorted(p.name for p in d.iterdir()) == ["keep.mp4"]
+
+
+def test_deliver_failed_push_stays_pending(tmp_path, monkeypatch, capsys):
+    from commercials import deliver as dmod
+
+    a, b = mk("a", ["kids"]), mk("b", ["kids"])
+    for ad in (a, b):
+        p = tmp_path / f"{ad.ad_id}.mp4"
+        p.write_bytes(b"x")
+        ad.local_path = str(p)
+    c = cat(a, b)
+
+    def fake_run(args, **kw):
+        bad = "b.mp4" in args[2]
+        return subprocess.CompletedProcess(args, 1 if bad else 0, b"", b"boom" if bad else b"")
+
+    monkeypatch.setattr(dmod.subprocess, "run", fake_run)
+    dmod.deliver(c, {"kids": {"a", "b"}, "general": set()}, ROOT)
+    assert a.delivered == {"kids": f"{ROOT}/kids/a.mp4"}
+    assert b.delivered == {}
+    err = capsys.readouterr().err
+    assert "b" in err and "boom" in err
