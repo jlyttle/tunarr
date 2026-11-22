@@ -35,7 +35,7 @@ One ffmpeg pass (`detect_args`) runs `blackdetect=d=0.03:pix_th=0.10` and `silen
 
 ### Single-chapter rule and promo filter
 
-`config/networks.json` lists the networks a title can name (Nickelodeon, Nick Jr, Nicktoons, Nick at Nite, Cartoon Network, Boomerang, the Disney channels, Comedy Central, FX, FXX, Adult Swim, MTV, TBS, TNT, USA Network, Syfy, Food Network, HGTV, ESPN, the broadcast networks and others), each with a slug and case-insensitive title patterns. A compilation whose title names a network is **per-network**:
+`config/networks.json` lists the networks a title can name (Nickelodeon, Nick Jr, Nicktoons, Nick at Nite, TeenNick, Cartoon Network, Boomerang, the Disney channels, Comedy Central, FX, FXX, Adult Swim, MTV, TBS, TNT, USA Network, Syfy, Food Network, HGTV, ESPN, the broadcast networks and others), each with a slug and case-insensitive title patterns. A compilation whose title names a network is **per-network**:
 
 - It is processed only when `config/network_refs/<slug>.json` exists for every network it names. Otherwise it is marked `skipped` (reason `no_network_refs`, listed once in the report) and the report's `needs_network_refs` counts what is waiting per network. It is not downloaded, and it returns to `new` as soon as the references exist. Seed them with `commercials add-ref <network> <clip>`, where `<network>` is a slug or name from `networks.json` (other names are refused, so the file always lands where the gate looks).
 - `require_single_chapter` (tolerance `tol_s=1.5` s, widened from 0.5 s because chapter times are whole seconds rounded from the uploader's timestamps) rejects accepted segments whose start and end are not both within 1.5 s of the same chapter's span (`not_single_chapter`, or `no_chapters` when the video has none). Per-network compilations carry one chapter per spot, so this catches unbranded show content and merged pods that the branded-card filter (`promo_filter.py`) cannot.
@@ -44,7 +44,7 @@ Generic uploads (no network in the title, such as "2026 Commercials Vol. 239") s
 
 Every compilation with chapters also rejects a segment as `promo_chapter_text` when its chapter text (`chapter_text_for`: the chapter and its neighbours) contains promo, bumper, coming up, up next, next on or station id, or names any network in `networks.json`. The promo filter then scores each surviving segment against the hand-picked network references (`config/network_refs/`). `add-ref` stores the clip's end-card hashes and, per corner, only hashes that are stable across the sampled frames (the same hash within Hamming distance 6 in at least 3 frames), so a corner showing changing picture content adds no bug reference. Reference files written before this rule may still hold unstable corner hashes.
 
-The kids title pattern in `config/sources.json` excludes titles naming Nick at Nite, Adult Swim or `[as]`, so those compilations go to `general`.
+The kids title pattern in `config/sources.json` matches `nick` only as a whole word (plus Nickelodeon, Nicktoons, Nick Jr, Cartoon Network, Disney, kids) and excludes titles naming Nick at Nite (any spelling: Nick-at-Nite, Nick at Night, Nick@Nite, NickAtNite), Adult Swim (AdultSwim, `[as]`) or TeenNick, so those compilations go to `general`. As a second guard, `discover.pools_for_title` drops `kids` for any title naming a network marked `never_kids` in `config/networks.json` (nick-at-nite, adult-swim, teennick), whatever the patterns say.
 
 ### Tuning (2026-11-22)
 

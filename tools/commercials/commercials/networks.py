@@ -18,6 +18,7 @@ class Network:
     slug: str
     name: str
     patterns: tuple[re.Pattern, ...]
+    never_kids: bool = False  # a title naming it never maps to the kids pool
 
     def named_in(self, text: str) -> bool:
         return any(p.search(text) for p in self.patterns)
@@ -25,7 +26,8 @@ class Network:
 
 def load_networks(path: Path) -> list[Network]:
     raw = json.loads(Path(path).read_text())
-    return [Network(n["slug"], n["name"], tuple(re.compile(p, re.I) for p in n["patterns"]))
+    return [Network(n["slug"], n["name"], tuple(re.compile(p, re.I) for p in n["patterns"]),
+                    bool(n.get("never_kids", False)))
             for n in raw["networks"]]
 
 

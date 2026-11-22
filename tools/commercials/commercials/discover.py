@@ -2,11 +2,12 @@ import json
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 
 from commercials.catalog import Catalog, Compilation
+from commercials.networks import Network, load_networks
 
 
 @dataclass
@@ -14,20 +15,31 @@ class Sources:
     channels: list[str]
     patterns: list[tuple[re.Pattern, str]]
     default_pool: str
+    networks: list[Network] = field(default_factory=list)
 
 
 def load_sources(path: Path) -> Sources:
-    raw = json.loads(Path(path).read_text())
+    """sources.json, plus the networks.json beside it (for the never-kids guard)."""
+    path = Path(path)
+    raw = json.loads(path.read_text())
     return Sources(
         channels=list(raw["channels"]),
         patterns=[(re.compile(p), pool) for p, pool in raw["patterns"]],
         default_pool=raw["default_pool"],
+        networks=load_networks(path.parent / "networks.json"),
     )
 
 
 def pools_for_title(title: str, s: Sources) -> set[str]:
-    pools = {pool for pattern, pool in s.patterns if pattern.search(title)}
-    return pools or {s.default_pool}
+    """Pools whose title pattern matches, else the default pool.
+
+    A title naming a `never_kids` network (Nick at Nite, Adult Swim, TeenNick) never maps
+    to kids, whatever the patterns say.
+    """
+    pools = {pool for pattern, pool in s.patterns if pattern.search(title)} or {s.default_pool}
+    if any(n.never_kids and n.named_in(title) for n in s.networks):
+        pools = (pools - {"kids"}) or {"general"}
+    return pools
 
 
 def _parse_date(raw: str) -> date:

@@ -33,6 +33,13 @@ def test_config_lists_the_ruled_networks(nets):
     ("Nick Jr. Commercials 2026", ["nick-jr"]),
     ("Nicktoons Commercial Break", ["nicktoons"]),
     ("Nick at Nite Commercials", ["nick-at-nite"]),
+    ("Nick-at-Nite Commercials", ["nick-at-nite"]),
+    ("Nick at Night Commercials", ["nick-at-nite"]),
+    ("Nick@Nite Commercials", ["nick-at-nite"]),
+    ("NickAtNite Commercials", ["nick-at-nite"]),
+    ("TeenNick Commercials", ["teennick"]),
+    ("Teen Nick Commercials", ["teennick"]),
+    ("AdultSwim Commercials", ["adult-swim"]),
     ("Disney XD Commercials Vol. 4", ["disney-xd"]),
     ("Disney Junior Commercials", ["disney-junior"]),
     ("Disney Jr. Commercials", ["disney-junior"]),
@@ -68,3 +75,7 @@ def test_promo_chapter_text_hits(nets, text):
                                   "promotional price on cereal"])
 def test_promo_chapter_text_clean(nets, text):
     assert not promo_chapter_text(text, nets)
+
+
+def test_never_kids_networks(nets):
+    assert {n.slug for n in nets if n.never_kids} == {"nick-at-nite", "adult-swim", "teennick"}

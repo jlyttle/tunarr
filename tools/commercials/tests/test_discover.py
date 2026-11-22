@@ -1,6 +1,9 @@
+import re
 import subprocess
 from datetime import date
 from pathlib import Path
+
+import pytest
 
 from commercials import discover as discover_mod
 from commercials.catalog import Catalog, Compilation
@@ -79,3 +82,40 @@ def test_adult_and_late_night_blocks_are_not_kids():
     assert pools_for_title("[as] Commercial Break Vol. 3", s) == {"general"}
     assert pools_for_title("Cartoon Network Commercials Vol. 3", s) == {"kids"}
     assert pools_for_title("Disney XD Commercials", s) == {"kids"}
+
+
+NOT_KIDS = ["Nick-at-Nite Commercials 2026", "Nick at Night Commercials", "Nick@Nite Commercials",
+            "NickAtNite Commercials", "TeenNick Commercials 2026", "AdultSwim Commercials",
+            "Adult Swim on Cartoon Network Commercials", "[as] Commercials (Cartoon Network)",
+            "Nick at Nite Commercials"]
+
+
+@pytest.mark.parametrize("title", NOT_KIDS)
+def test_adult_nick_and_adult_swim_spellings_never_map_to_kids(title):
+    assert pools_for_title(title, load_sources(SOURCES)) == {"general"}
+
+
+@pytest.mark.parametrize("title", ["Nickelodeon Commercials 2026", "Nick Jr. Commercials",
+                                   "Nick Commercials (November 2026)", "Nicktoons Commercial Break"])
+def test_kids_networks_map_to_kids(title):
+    assert pools_for_title(title, load_sources(SOURCES)) == {"kids"}
+
+
+@pytest.mark.parametrize("title", NOT_KIDS)
+def test_never_kids_networks_guard_overrides_a_loose_kids_pattern(title):
+    s = load_sources(SOURCES)
+    s.patterns = [(re.compile(r"(?i)nick|adult|cartoon|\[as\]"), "kids")]
+    assert pools_for_title(title, s) == {"general"}
+
+
+def test_never_kids_guard_keeps_other_pools():
+    s = load_sources(SOURCES)
+    s.patterns = [(re.compile(r"(?i)nick"), "kids"), (re.compile(r"(?i)nick"), "general")]
+    assert pools_for_title("TeenNick Commercials", s) == {"general"}
+
+
+def test_never_kids_guard_with_kids_default_pool_falls_back_to_general():
+    s = load_sources(SOURCES)
+    s.patterns, s.default_pool = [], "kids"
+    assert pools_for_title("Adult Swim Commercials", s) == {"general"}
+    assert pools_for_title("Toy Commercials", s) == {"kids"}

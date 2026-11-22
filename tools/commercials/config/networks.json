@@ -1,10 +1,11 @@
 {
-  "_comment": "Networks a compilation title or chapter title can name. slug must equal the add-ref file name (network_refs/<slug>.json). Patterns are case-insensitive regexes.",
+  "_comment": "Networks a compilation title or chapter title can name. slug must equal the add-ref file name (network_refs/<slug>.json). Patterns are case-insensitive regexes. never_kids: a title naming this network never maps to the kids pool (discover.pools_for_title).",
   "networks": [
-    {"name": "Nickelodeon", "slug": "nickelodeon", "patterns": ["\\bnickelodeon\\b", "\\bnick\\b(?!\\s*(?:jr\\b|junior\\b|at\\s+nite\\b))"]},
+    {"name": "Nickelodeon", "slug": "nickelodeon", "patterns": ["\\bnickelodeon\\b", "(?<!\\bteen[\\s-])\\bnick\\b(?!\\W*(?:jr|junior|at\\W*ni(?:te|ght)|@\\W*ni(?:te|ght))\\b)"]},
     {"name": "Nick Jr", "slug": "nick-jr", "patterns": ["\\bnick\\s*(?:jr|junior)\\b"]},
     {"name": "Nicktoons", "slug": "nicktoons", "patterns": ["\\bnicktoons\\b"]},
-    {"name": "Nick at Nite", "slug": "nick-at-nite", "patterns": ["\\bnick\\s+at\\s+nite\\b"]},
+    {"name": "Nick at Nite", "slug": "nick-at-nite", "never_kids": true, "patterns": ["\\bnick\\W*(?:at|@)\\W*ni(?:te|ght)\\b"]},
+    {"name": "TeenNick", "slug": "teennick", "never_kids": true, "patterns": ["\\bteen\\W*nick\\b"]},
     {"name": "Cartoon Network", "slug": "cartoon-network", "patterns": ["\\bcartoon\\s+network\\b", "\\bcn\\b"]},
     {"name": "Boomerang", "slug": "boomerang", "patterns": ["\\bboomerang\\b"]},
     {"name": "Disney Channel", "slug": "disney-channel", "patterns": ["\\bdisney\\s+channel\\b", "\\bdisney\\b(?!\\s*(?:xd\\b|jr\\b|junior\\b|channel\\b|\\+|plus\\b))"]},
@@ -15,7 +16,7 @@
     {"name": "Comedy Central", "slug": "comedy-central", "patterns": ["\\bcomedy\\s+central\\b"]},
     {"name": "FX", "slug": "fx", "patterns": ["\\bfx\\b"]},
     {"name": "FXX", "slug": "fxx", "patterns": ["\\bfxx\\b"]},
-    {"name": "Adult Swim", "slug": "adult-swim", "patterns": ["\\badult\\s+swim\\b", "\\[as\\]"]},
+    {"name": "Adult Swim", "slug": "adult-swim", "never_kids": true, "patterns": ["\\badult\\W*swim\\b", "\\[as\\]"]},
     {"name": "MTV", "slug": "mtv", "patterns": ["\\bmtv\\d?\\b"]},
     {"name": "VH1", "slug": "vh1", "patterns": ["\\bvh1\\b"]},
     {"name": "CMT", "slug": "cmt", "patterns": ["\\bcmt\\b"]},
