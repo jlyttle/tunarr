@@ -33,6 +33,10 @@ Sample: `g1XxVSvCJpI` (Disney XD, 8m17s, AV1 1920x1080 + Opus), frames at 20%, 5
 
 One ffmpeg pass (`detect_args`) runs `blackdetect=d=0.03:pix_th=0.10` and `silencedetect=n=-50dB:d=0.03`. A cut point is the midpoint of a black interval that overlaps a silence interval by at least 0.02 s; black alone or silence alone is never a boundary. A segment whose length is not within 0.5 s of 5, 6, 10, 15, 20, 30, 45, 60, 90 or 120 s is rejected as `nonstandard_length`. Cuts re-encode (`cut_args`) to an intermediate MKV (x264 crf 16, PCM audio).
 
+### Single-chapter rule and promo filter
+
+Per-network compilations (pools including `kids`) carry one chapter per spot, so `require_single_chapter` rejects accepted segments whose start and end are not both within 0.6 s of the same chapter's span (`not_single_chapter`, or `no_chapters` when the video has none). This catches unbranded show content and merged pods that the branded-card filter (`promo_filter.py`) cannot. The pipeline applies it only to compilations whose pools include `kids`; general compilations skip it. The promo filter then scores each surviving segment against hand-picked network references (`config/network_refs/`).
+
 ### Tuning (2026-11-22)
 
 Thresholds: black `d=0.03:pix_th=0.10`, silence `n=-50dB:d=0.03`, minimum black/silence overlap 0.02 s (the brief's 0.04 s can never fire on a one-frame cut: 0.033 s at 30 fps).

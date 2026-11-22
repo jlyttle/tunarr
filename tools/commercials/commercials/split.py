@@ -1,5 +1,5 @@
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 SPOT_LENGTHS = (5, 6, 10, 15, 20, 30, 45, 60, 90, 120)
@@ -108,3 +108,27 @@ def cut_args(src: str | Path, seg: Segment, dest: str | Path) -> list[str]:
         "-c:v", "libx264", "-crf", "16", "-c:a", "pcm_s16le",
         str(dest),
     ]
+
+
+def require_single_chapter(
+    segs: list[Segment], chapter_starts: list[float], duration_s: float, tol_s: float = 0.6
+) -> list[Segment]:
+    """Reject accepted segments that do not coincide with exactly one chapter.
+
+    Per-network compilations carry one chapter per spot, so a segment that spans or sits
+    inside a chapter is unbranded show content or a merge. `chapter_starts` is expected
+    to include 0 as the first start.
+    """
+    starts = sorted(chapter_starts)
+    spans = list(zip(starts, [*starts[1:], duration_s]))
+    out = []
+    for seg in segs:
+        if seg.reject_reason is not None:
+            out.append(seg)
+        elif not spans:
+            out.append(replace(seg, reject_reason="no_chapters"))
+        elif any(abs(seg.start - c0) <= tol_s and abs(seg.end - c1) <= tol_s for c0, c1 in spans):
+            out.append(seg)
+        else:
+            out.append(replace(seg, reject_reason="not_single_chapter"))
+    return out

@@ -11,6 +11,7 @@ from commercials.split import (
     parse_blackdetect,
     parse_chapters,
     parse_silencedetect,
+    require_single_chapter,
     segments,
     snap_length,
 )
@@ -130,3 +131,31 @@ def test_split_synthetic_compilation(make_clip):
     segs = segments(boundaries(parse_blackdetect(res.stderr), parse_silencedetect(res.stderr), dur))
     assert [s.spot_s for s in segs] == [15, 30]
     assert all(s.reject_reason is None for s in segs)
+
+
+CH = [0.0, 30.0, 60.0, 176.0]
+
+
+def test_single_chapter_kept():
+    segs = [Segment(30.1, 59.9, 30, None)]
+    assert require_single_chapter(segs, CH, 200.0) == segs
+
+
+def test_segment_spanning_two_chapters_rejected():
+    out = require_single_chapter([Segment(20.0, 50.0, 30, None)], CH, 200.0)
+    assert out[0].reject_reason == "not_single_chapter"
+
+
+def test_segment_inside_longer_chapter_rejected():
+    out = require_single_chapter([Segment(70.0, 130.0, 60, None)], CH, 200.0)
+    assert out[0].reject_reason == "not_single_chapter"
+
+
+def test_no_chapters_rejects_all():
+    out = require_single_chapter([Segment(0.0, 30.0, 30, None)], [], 200.0)
+    assert out[0].reject_reason == "no_chapters"
+
+
+def test_already_rejected_untouched():
+    seg = Segment(20.0, 50.0, None, "nonstandard_length")
+    assert require_single_chapter([seg], CH, 200.0) == [seg]
