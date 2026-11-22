@@ -5,6 +5,8 @@ import { inject, injectable } from 'inversify';
 import { groupBy, head, isEmpty, mapValues, orderBy } from 'lodash-es';
 import { match } from 'ts-pattern';
 import type { IProgramDB } from '../db/interfaces/IProgramDB.ts';
+import type { ProgramMediaStream } from '../db/schema/ProgramMediaStream.ts';
+import type { ProgramSubtitles } from '../db/schema/ProgramSubtitles.ts';
 import { ArtworkService } from '../services/ArtworkService.ts';
 import type { ArtworkResult } from '../services/ArtworkService.ts';
 import { KEYS } from '../types/inject.ts';
@@ -28,6 +30,56 @@ import type {
 } from './types.ts';
 import { FileStreamSource, HttpStreamSource } from './types.ts';
 import { extractIsAnamorphic } from './util.ts';
+
+export function mediaStreamsByKind(mediaStreams: ProgramMediaStream[]) {
+  return mapValues(
+    groupBy(mediaStreams, (stream) => stream.streamKind),
+    (streams) => orderBy(streams, (stream) => stream.index, 'asc'),
+  );
+}
+
+export function toAudioStreamDetails(
+  audioStream: ProgramMediaStream,
+): AudioStreamDetails {
+  return {
+    channels: nullToUndefined(audioStream.channels),
+    codec: audioStream.codec,
+    default: audioStream.default,
+    forced: audioStream.forced,
+    index: audioStream.index,
+    languageCodeISO6392: nullToUndefined(audioStream.language),
+    profile: nullToUndefined(audioStream.profile),
+    title: nullToUndefined(audioStream.title),
+  };
+}
+
+export function toEmbeddedSubtitleStreamDetails(
+  subtitle: ProgramMediaStream,
+): SubtitleStreamDetails {
+  return {
+    codec: subtitle.codec,
+    default: subtitle.default,
+    forced: subtitle.forced,
+    sdh: false, // TODO:
+    type: 'embedded',
+    index: subtitle.index,
+    languageCodeISO6392: nullToUndefined(subtitle.language),
+  };
+}
+
+export function toStoredSubtitleStreamDetails(
+  subtitle: ProgramSubtitles,
+  path: string,
+): SubtitleStreamDetails {
+  return {
+    ...subtitle,
+    index: nullToUndefined(subtitle.streamIndex),
+    type: subtitle.subtitleType === 'embedded' ? 'embedded' : 'external',
+    languageCodeISO6392: subtitle.language,
+    sdh: subtitle.sdh,
+    path,
+  };
+}
 
 @injectable()
 export class ProgramStreamDetailsFetcher {
@@ -61,10 +113,7 @@ export class ProgramStreamDetailsFetcher {
       );
     }
 
-    const streamsByType = mapValues(
-      groupBy(firstVersion.mediaStreams ?? [], (stream) => stream.streamKind),
-      (streams) => orderBy(streams, (stream) => stream.index, 'asc'),
-    );
+    const streamsByType = mediaStreamsByKind(firstVersion.mediaStreams ?? []);
 
     const displayAspectRatio =
       firstVersion.displayAspectRatio ??
@@ -99,19 +148,7 @@ export class ProgramStreamDetailsFetcher {
       ) ?? [];
 
     const audioStreamDetails =
-      streamsByType['audio']?.map(
-        (audioStream) =>
-          ({
-            channels: nullToUndefined(audioStream.channels),
-            codec: audioStream.codec,
-            default: audioStream.default,
-            forced: audioStream.forced,
-            index: audioStream.index,
-            languageCodeISO6392: nullToUndefined(audioStream.language),
-            profile: nullToUndefined(audioStream.profile),
-            title: nullToUndefined(audioStream.title),
-          }) satisfies AudioStreamDetails,
-      ) ?? [];
+      streamsByType['audio']?.map(toAudioStreamDetails) ?? [];
 
     // NOTE: 'external_subtitles' media streams are deliberately not included
     // here. They carry no path (program_media_stream has no such column) and
@@ -120,18 +157,7 @@ export class ProgramStreamDetailsFetcher {
     // row on program_subtitles, which does have a path, and those are handled
     // below.
     const subtitleStreamDetails: SubtitleStreamDetails[] =
-      streamsByType['subtitles']?.map(
-        (subtitle) =>
-          ({
-            codec: subtitle.codec,
-            default: subtitle.default,
-            forced: subtitle.forced,
-            sdh: false, // TODO:
-            type: 'embedded',
-            index: subtitle.index,
-            languageCodeISO6392: nullToUndefined(subtitle.language),
-          }) satisfies SubtitleStreamDetails,
-      ) ?? [];
+      streamsByType['subtitles']?.map(toEmbeddedSubtitleStreamDetails) ?? [];
 
     const usableSubtitles = await Promise.all(
       (program.subtitles ?? []).map(async (subtitle) => {
@@ -191,15 +217,7 @@ export class ProgramStreamDetailsFetcher {
     subtitleStreamDetails.push(
       ...seq.collect(usableSubtitles, (usable) => {
         if (!usable) return null;
-        const { subtitle, path } = usable;
-        return {
-          ...subtitle,
-          index: nullToUndefined(subtitle.streamIndex),
-          type: subtitle.subtitleType === 'embedded' ? 'embedded' : 'external',
-          languageCodeISO6392: subtitle.language,
-          sdh: subtitle.sdh,
-          path,
-        } satisfies SubtitleStreamDetails;
+        return toStoredSubtitleStreamDetails(usable.subtitle, usable.path);
       }),
     );
 
