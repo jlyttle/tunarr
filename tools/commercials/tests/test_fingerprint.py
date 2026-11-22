@@ -51,3 +51,28 @@ def test_ad_in_two_pools_once():
     record_segment(cat, fp, _meta("a"), {"kids"}, date(2026, 1, 1))
     ad_id, _ = record_segment(cat, fp, _meta("b"), {"general"}, date(2026, 1, 2))
     assert len(cat.ads) == 1 and cat.ads[ad_id].pools == {"kids", "general"}
+
+
+def test_better_copy_replaces_local_path():
+    cat = Catalog()
+    fp = _fp(5)
+    ad_id, _ = record_segment(cat, fp, {**_meta("a"), "height": 360}, {"general"}, date(2026, 1, 1))
+    cat.ads[ad_id].delivered = {"general": "/r/x.mp4"}
+    record_segment(cat, fp, {**_meta("b"), "local_path": "better.mkv", "duration_s": 30.1, "height": 720}, {"general"}, date(2026, 1, 2))
+    ad = cat.ads[ad_id]
+    assert (ad.local_path, ad.height, ad.duration_s, ad.delivered) == ("better.mkv", 720, 30.1, {})
+
+
+def test_worse_copy_keeps_existing():
+    cat = Catalog()
+    fp = _fp(6)
+    ad_id, _ = record_segment(cat, fp, {**_meta("a"), "height": 720}, {"general"}, date(2026, 1, 1))
+    cat.ads[ad_id].delivered = {"general": "/r/x.mp4"}
+    record_segment(cat, fp, {**_meta("b"), "local_path": "worse.mkv", "height": 360}, {"general"}, date(2026, 1, 2))
+    ad = cat.ads[ad_id]
+    assert (ad.local_path, ad.height, ad.delivered) == ("x.mkv", 720, {"general": "/r/x.mp4"})
+
+
+def test_short_fingerprint_never_matches():
+    a = _fp(1, 10)
+    assert similarity(a, a) == 0.0

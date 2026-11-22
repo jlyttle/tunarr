@@ -28,3 +28,8 @@ def test_chapter_text_includes_neighbours():
 
 def test_chapter_text_empty_without_chapters():
     assert chapter_text_for(10.0, []) == ""
+
+
+def test_blocklist_word_boundaries():
+    assert apply_blocklist("swine flu", {"kids"}, ["wine"]) == {"kids"}
+    assert apply_blocklist("root beer", {"kids"}, ["beer"]) == {"general"}

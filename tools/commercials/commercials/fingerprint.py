@@ -7,6 +7,7 @@ from pathlib import Path
 from commercials.catalog import Ad, Catalog
 
 MAX_OFFSET = 5
+MIN_OVERLAP = 30
 
 
 def fpcalc_args(path: str | Path) -> list[str]:
@@ -36,7 +37,7 @@ def similarity(a: list[int], b: list[int]) -> float:
     for off in range(-MAX_OFFSET, MAX_OFFSET + 1):
         x, y = (a[off:], b) if off >= 0 else (a, b[-off:])
         n = min(len(x), len(y))
-        if n == 0:
+        if n < MIN_OVERLAP:
             continue
         diff = sum(((p ^ q) & 0xFFFFFFFF).bit_count() for p, q in zip(x[:n], y[:n]))
         best = max(best, 1.0 - diff / (32 * n))
@@ -55,7 +56,7 @@ def find_match(fp: list[int], catalog: Catalog, threshold: float = 0.85) -> str 
 def record_segment(
     catalog: Catalog, fp: list[int], seg_meta: dict, pools: set[str], seen: date
 ) -> tuple[str, bool]:
-    """seg_meta: source (str), duration_s (float), local_path (str)."""
+    """seg_meta: source (str), duration_s (float), local_path (str), height (int)."""
     ad_id = find_match(fp, catalog)
     if ad_id is not None:
         ad = catalog.ads[ad_id]
@@ -63,11 +64,19 @@ def record_segment(
         if seg_meta["source"] not in ad.sources:
             ad.sources.append(seg_meta["source"])
         ad.pools |= pools
+        height = int(seg_meta.get("height", 0))
+        if height > ad.height:
+            ad.local_path = seg_meta["local_path"]
+            ad.duration_s = seg_meta["duration_s"]
+            ad.height = height
+            ad.delivered = {}
         return ad_id, False
     encoded = encode(fp)
     ad_id = hashlib.sha1(encoded.encode()).hexdigest()[:12]
     catalog.ads[ad_id] = Ad(
-        ad_id, encoded, seg_meta["duration_s"], set(pools), seen, seen,
-        [seg_meta["source"]], seg_meta["local_path"], {}, "active",
+        ad_id=ad_id, fingerprint=encoded, duration_s=seg_meta["duration_s"], pools=set(pools),
+        first_seen=seen, last_seen=seen, sources=[seg_meta["source"]],
+        local_path=seg_meta["local_path"], delivered={}, status="active",
+        height=int(seg_meta.get("height", 0)),
     )
     return ad_id, True

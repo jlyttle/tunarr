@@ -30,6 +30,7 @@ class Ad:
     local_path: str
     delivered: dict[str, str]  # pool name -> remote path
     status: str
+    height: int = 0
 
 
 @dataclass
@@ -71,6 +72,7 @@ def _ad_to_json(a: Ad) -> dict:
         "local_path": a.local_path,
         "delivered": dict(sorted(a.delivered.items())),
         "status": a.status,
+        "height": a.height,
     }
 
 
@@ -78,7 +80,7 @@ def _ad_from_json(d: dict) -> Ad:
     return Ad(
         d["ad_id"], d["fingerprint"], d["duration_s"], set(d["pools"]),
         date.fromisoformat(d["first_seen"]), date.fromisoformat(d["last_seen"]),
-        list(d["sources"]), d["local_path"], dict(d.get("delivered", {})), d["status"],
+        list(d["sources"]), d["local_path"], dict(d.get("delivered", {})), d["status"], int(d.get("height", 0)),
     )
 
 

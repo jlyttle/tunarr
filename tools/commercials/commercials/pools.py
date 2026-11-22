@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 
@@ -26,7 +27,7 @@ def chapter_text_for(seg_start: float, chapters: list[dict], tol_s: float = 1.5)
 
 def apply_blocklist(ad_title_text: str, pools: set[str], blocklist: list[str]) -> set[str]:
     text = ad_title_text.lower()
-    if not text or "kids" not in pools or not any(k in text for k in blocklist):
+    if not text or "kids" not in pools or not any(re.search(rf"\b{re.escape(k)}\b", text) for k in blocklist):
         return set(pools)
     out = pools - {"kids"}
     return out or {"general"}
