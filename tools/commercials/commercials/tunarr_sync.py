@@ -1,4 +1,5 @@
 import json
+import posixpath
 import time
 import urllib.parse
 import urllib.request
@@ -79,12 +80,18 @@ def programs_for_pool(
     """
     marker = f"/{MC_FOLDER}/{pool}/"
     out = []
+    seen: set[str] = set()
     for p in programs:
         paths = _paths(p)
+        ad_id = None
         if paths:
-            if any(marker in path for path in paths):
-                out.append(p)
+            hit = next((x for x in paths if marker in x), None)
+            if hit is not None:
+                ad_id = posixpath.splitext(posixpath.basename(hit))[0]
         elif ad_ids is not None and p.get("title") in ad_ids:
+            ad_id = p["title"]
+        if ad_id is not None and ad_id not in seen:
+            seen.add(ad_id)
             out.append(p)
     return out
 
@@ -96,15 +103,20 @@ def sync_pool(client, list_id: str | None, pool: str, expected_count: int,
     matched = programs_for_pool(client.library_programs(library_id), pool, ad_ids)
     if len(matched) < expected_count:
         return SyncResult(updated=False, reason="tunarr_behind")
+    if not matched:
+        return SyncResult(updated=False, reason="empty")
     client.put_filler(list_id, matched)
     return SyncResult(updated=True, reason=None)
 
 
 def sync_with_retry(client, list_id: str | None, pool: str, expected_count: int,
-                    sleep: Callable[[float], None] = time.sleep, **kw) -> SyncResult:
+                    sleep: Callable[[float], None] = time.sleep,
+                    ad_ids: set[str] | None = None,
+                    library_id: str | None = None) -> SyncResult:
     result = SyncResult(updated=False, reason="tunarr_behind")
     for attempt in range(RETRIES):
-        result = sync_pool(client, list_id, pool, expected_count, **kw)
+        result = sync_pool(client, list_id, pool, expected_count,
+                           ad_ids=ad_ids, library_id=library_id)
         if result.reason != "tunarr_behind":
             return result
         if attempt < RETRIES - 1:
@@ -116,11 +128,17 @@ def plex_server(media_sources: list[dict], media_source_id: str) -> tuple[str, s
     """(uri, token) of a Plex media source from `GET /media-sources`."""
     for m in media_sources:
         if m.get("id") == media_source_id:
-            return m["uri"], m.get("accessToken")
+            token = m.get("accessToken")
+            if not token:
+                raise ValueError(
+                    f"media source {media_source_id} has no accessToken; "
+                    "Tunarr's API does not expose it, supply it another way")
+            return m["uri"], token
     raise KeyError(f"media source {media_source_id} not found")
 
 
 def plex_refresh_url(uri: str, token: str, section_key: str, folder: str) -> str:
+    """Partial-refresh URL. It carries the Plex token: never log or print it."""
     q = urllib.parse.urlencode({"path": folder, "X-Plex-Token": token})
     return f"{uri.rstrip('/')}/library/sections/{section_key}/refresh?{q}"
 
