@@ -35,18 +35,22 @@ One ffmpeg pass (`detect_args`) runs `blackdetect=d=0.03:pix_th=0.10` and `silen
 
 ### Tuning (2026-11-22)
 
-Thresholds: black `d=0.03:pix_th=0.10`, silence `n=-50dB:d=0.03` (unchanged from the starting values). The only change is the minimum black/silence overlap, 0.04 s to 0.02 s. Real cuts are often a single black frame (0.033 s at 30 fps) over a 0.03 s silence, so a 0.04 s minimum can never fire (Disney XD: 1 of 8 segments accepted at 0.04, 7 of 13 at 0.02; 0.01 gave the same result as 0.02).
+Thresholds: black `d=0.03:pix_th=0.10`, silence `n=-50dB:d=0.03`, minimum black/silence overlap 0.02 s (the brief's 0.04 s can never fire on a one-frame cut: 0.033 s at 30 fps).
 
-Chapters come from `yt-dlp --dump-json` (the MKV has none embedded) and were used only to evaluate, not to split. Chapter times are rounded to whole seconds, so a boundary counts as matching within 1.5 s.
+Boundaries are gap intervals, not midpoints. A segment runs from one gap's end to the next gap's start, so a 0.8 s black gap no longer inflates a 30 s spot. A gap is a black-and-silent overlap, or, when `chapters` is given (`parse_chapters` of the yt-dlp info JSON), the nearest black or silent interval within 0.5 s of a chapter time. Chapters with nothing nearby are ignored.
 
-| Compilation | Segments | Accepted | Rejected | Rejection rate | Accepted with both ends on a chapter boundary |
-| --- | --- | --- | --- | --- | --- |
-| `g1XxVSvCJpI` Disney XD, 497 s, 16 chapters | 13 | 7 | 6 | 46% | 5 (3 are exactly one chapter; 2 span two chapters) |
-| `casEKKNFTrM` Comedy Central, 317 s, 14 chapters | 7 | 5 | 2 | 29% | 4 (1 is exactly one chapter; 3 span two or more) |
+Chapters come from `yt-dlp --dump-json` (the MKV has none embedded). Agreement counts a segment whose both ends lie within 1.5 s of a chapter boundary (chapter times are whole seconds, so exact matches are rare); "exactly one chapter" excludes segments that span an interior chapter boundary (a merged pod).
+
+| Compilation | Chapters used | Segments | Accepted | Rejected | Rejection rate | Both ends on chapter boundary | Exactly one chapter | Merged pods |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `g1XxVSvCJpI` Disney XD, 497 s, 16 chapters | no | 13 | 9 | 4 | 31% | 5 | 3 | 2 |
+| `g1XxVSvCJpI` | yes | 16 | 11 | 5 | 31% | 6 | 5 | 1 |
+| `casEKKNFTrM` Comedy Central, 317 s, 14 chapters | no | 7 | 5 | 2 | 29% | 4 | 1 | 3 |
+| `casEKKNFTrM` | yes | 14 | 12 | 2 | 14% | 11 | 10 | 1 |
 
 Findings:
 
-- The 116 s credits chapter in the Disney XD video falls in the rejected 154 s segment (318.6 s to 473.1 s), as required.
-- Recall is the weak point. Several real cuts have no black frame (Comedy Central at 83, 143, 248 s: silence only) or no silence (173 s: black only), so adjacent spots merge. A merge is accepted when the sum is a standard length (30+15+15 = 60 s, 30+30 = 60 s, and a 90 s run). The output is then a short pod, not a single spot. Merges with other sums are rejected, which is the safe direction. Requiring both signals is kept per the design ("when unsure, reject"); a later stage (fingerprint dedupe or a max-length-per-pool rule) can cull pods.
-- A long black gap (more than about 0.5 s) puts the midpoint up to half the gap away from the true cut, so a real 30 s spot can measure 30.7 s and be rejected (Disney XD 227.3 s to 258.0 s).
-- A leading intro or trailing bumper shows up as a short rejected segment.
+- The 116 s credits chapter in the Disney XD video is rejected (it is part of a 94.8 s nonstandard segment).
+- Gap edges measure spots to within 0.1 s (a 30 s spot behind a 1 s black gap now reads 30.00 s, where midpoints read 30.7 s and rejected it).
+- Merged pods left: Disney XD 117 s to 147 s (15+15 accepted as 30); Comedy Central 248 s to 293 s (45 s, probably 15+30). Both chapter times (131 s, 262 s) were about 1 s from the nearest gap, outside the 0.5 s window; chapter times appear to be rounded from the uploader's description timestamps.
+- Without chapters, spots that lack either a black frame or silence still merge, and merges that sum to a standard length are accepted. Chapters fix this only where the chapter time is within 0.5 s of some black or silent interval.

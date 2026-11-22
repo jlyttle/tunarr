@@ -9,6 +9,7 @@ from commercials.split import (
     cut_args,
     detect_args,
     parse_blackdetect,
+    parse_chapters,
     parse_silencedetect,
     segments,
     snap_length,
@@ -44,35 +45,70 @@ def test_snap_length():
 
 
 def test_boundaries_need_black_and_silence():
-    assert boundaries([(10.0, 10.5)], [], 40.0) == [0.0, 40.0]
-    assert boundaries([], [(10.0, 10.5)], 40.0) == [0.0, 40.0]
-    assert boundaries([(10.0, 10.5)], [(30.0, 30.5)], 40.0) == [0.0, 40.0]
+    z = [(0.0, 0.0), (40.0, 40.0)]
+    assert boundaries([(10.0, 10.5)], [], 40.0) == z
+    assert boundaries([], [(10.0, 10.5)], 40.0) == z
+    assert boundaries([(10.0, 10.5)], [(30.0, 30.5)], 40.0) == z
 
 
-def test_boundaries_midpoint_of_overlap():
-    assert boundaries([(10.0, 10.6)], [(10.2, 11.0)], 40.0) == [0.0, pytest.approx(10.4), 40.0]
+def test_boundaries_gap_is_overlap():
+    assert boundaries([(10.0, 10.6)], [(10.2, 11.0)], 40.0) == [(0.0, 0.0), (10.2, 10.6), (40.0, 40.0)]
 
 
 def test_boundaries_min_overlap():
-    assert boundaries([(10.0, 10.5)], [(10.49, 11.0)], 40.0) == [0.0, 40.0]
+    assert boundaries([(10.0, 10.5)], [(10.49, 11.0)], 40.0)[1:-1] == []
 
 
 def test_boundaries_single_frame_black():
     # Real compilation cuts are often one black frame (0.033 s at 30 fps) over a 0.03 s silence.
-    assert boundaries([(86.967, 87.0)], [(86.9688, 87.0)], 200.0) == [0.0, pytest.approx(86.9835, abs=0.01), 200.0]
+    assert len(boundaries([(86.967, 87.0)], [(86.9688, 87.0)], 200.0)) == 3
 
 
 def test_boundaries_clip_edges_are_not_duplicated():
-    assert boundaries([(0.0, 0.5)], [(0.0, 0.5)], 40.0) == [0.0, 40.0]
+    assert boundaries([(0.0, 0.5)], [(0.0, 0.5)], 40.0) == [(0.0, 0.0), (40.0, 40.0)]
 
 
 def test_merged_ads_rejected():
-    ok = segments([0, 30, 75])
+    ok = segments([(0, 0), (30, 30), (75, 75)])
     assert [(s.spot_s, s.reject_reason) for s in ok] == [(30, None), (45, None)]
-    assert segments([0, 30, 90.2])[1] == Segment(30, 90.2, 60, None)
-    merged = segments([0, 30, 107])[1]
+    assert segments([(0, 0), (30, 30), (90.2, 90.2)])[1] == Segment(30, 90.2, 60, None)
+    merged = segments([(0, 0), (30, 30), (107, 107)])[1]
     assert merged.spot_s is None
     assert merged.reject_reason == "nonstandard_length"
+
+
+def test_gap_edges_not_midpoint():
+    # 30 s spot, 0.8 s black+silent gap, 30 s spot.
+    gaps = boundaries([(30.0, 30.8)], [(30.0, 30.8)], 60.8)
+    segs = segments(gaps)
+    assert [s.spot_s for s in segs] == [30, 30]
+    assert all(abs((s.end - s.start) - 30.0) < 0.05 for s in segs)
+
+
+def test_parse_chapters():
+    info = {"chapters": [{"start_time": 0, "title": "a"}, {"start_time": 41.0}, {"start_time": 11}]}
+    assert parse_chapters(info) == [11.0, 41.0]
+    assert parse_chapters({}) == []
+    assert parse_chapters({"chapters": None}) == []
+
+
+def test_chapter_boundary_needs_nearby_gap():
+    near = boundaries([], [(30.2, 30.5)], 60.0, chapters=[30.0])
+    assert near == [(0.0, 0.0), (30.2, 30.5), (60.0, 60.0)]
+    assert boundaries([], [(31.0, 31.3)], 60.0, chapters=[30.0]) == [(0.0, 0.0), (60.0, 60.0)]
+    assert boundaries([], [], 60.0, chapters=[30.0]) == [(0.0, 0.0), (60.0, 60.0)]
+
+
+def test_chapters_split_merged_pod():
+    # Without chapters only the 60 s mark is a gap, so the pod stays one 60 s segment.
+    assert [s.spot_s for s in segments(boundaries([(30.05, 30.15)], [(0.0, 0.0)], 60.0))] == [60]
+    gaps = boundaries([(30.05, 30.15)], [(0.0, 0.0)], 60.0, chapters=[30.0])
+    assert [s.spot_s for s in segments(gaps)] == [30, 30]
+
+
+def test_chapter_does_not_duplicate_existing_gap():
+    gaps = boundaries([(30.0, 30.3)], [(30.0, 30.3)], 60.0, chapters=[30.1])
+    assert len(gaps) == 3
 
 
 def test_args():

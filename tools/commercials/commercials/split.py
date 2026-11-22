@@ -28,21 +28,46 @@ def parse_silencedetect(stderr: str) -> list[tuple[float, float]]:
     return out
 
 
+Gap = tuple[float, float]
+CHAPTER_WINDOW_S = 0.5
+
+
+def parse_chapters(info_json: dict) -> list[float]:
+    """Chapter start times from a yt-dlp info dict, excluding the start of the video."""
+    starts = [float(c["start_time"]) for c in info_json.get("chapters") or []]
+    return sorted(s for s in starts if s > 0)
+
+
 def boundaries(
     black: list[tuple[float, float]],
     silence: list[tuple[float, float]],
     duration_s: float,
     min_overlap_s: float = 0.02,
-) -> list[float]:
-    """Midpoints of black-and-silent overlaps, bracketed by 0 and the duration."""
-    mids: list[float] = []
+    chapters: list[float] | None = None,
+) -> list[Gap]:
+    """Gap intervals (start, end) between spots, bracketed by (0, 0) and (duration, duration).
+
+    A gap is a black-and-silent overlap, or, for a chapter time, the nearest black or
+    silent interval within CHAPTER_WINDOW_S of it (chapters with none nearby are ignored).
+    """
+    gaps: list[Gap] = []
     for b0, b1 in black:
         for s0, s1 in silence:
             lo, hi = max(b0, s0), min(b1, s1)
             if hi - lo >= min_overlap_s:
-                mids.append((lo + hi) / 2)
-    inner = sorted(m for m in mids if EDGE_S < m < duration_s - EDGE_S)
-    return [0.0, *inner, duration_s]
+                gaps.append((lo, hi))
+    for c in chapters or []:
+        if any(g0 - CHAPTER_WINDOW_S <= c <= g1 + CHAPTER_WINDOW_S for g0, g1 in gaps):
+            continue
+        near = [
+            (lo, hi)
+            for lo, hi in (*black, *silence)
+            if hi >= c - CHAPTER_WINDOW_S and lo <= c + CHAPTER_WINDOW_S
+        ]
+        if near:
+            gaps.append(min(near, key=lambda g: 0.0 if g[0] <= c <= g[1] else min(abs(g[0] - c), abs(g[1] - c))))
+    inner = sorted(g for g in gaps if g[1] > EDGE_S and g[0] < duration_s - EDGE_S)
+    return [(0.0, 0.0), *inner, (duration_s, duration_s)]
 
 
 def snap_length(d: float) -> int | None:
@@ -58,9 +83,10 @@ class Segment:
     reject_reason: str | None
 
 
-def segments(bounds: list[float]) -> list[Segment]:
+def segments(gaps: list[Gap]) -> list[Segment]:
+    """Each segment runs from one gap's end to the next gap's start."""
     out = []
-    for start, end in zip(bounds, bounds[1:]):
+    for (_, start), (end, _) in zip(gaps, gaps[1:]):
         spot = snap_length(end - start)
         out.append(Segment(start, end, spot, None if spot is not None else "nonstandard_length"))
     return out
