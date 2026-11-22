@@ -37,11 +37,16 @@ VIDEO_EXTS = (".mkv", ".mp4", ".webm", ".mov", ".m4v")
 
 
 def find_video(video_id: str, dest_dir: Path) -> Path | None:
-    """`<id>.mkv`, else any finished `<id>.<video ext>` (never .part or .info.json)."""
+    """`<id>.mkv`, else any finished `<id>.<video ext>`.
+
+    Only a file named exactly `<id>.<ext>` counts: never `.part`, `.info.json`, or the
+    per-format leftovers (`<id>.f<format>.<ext>`) an interrupted merge leaves behind.
+    """
     mkv = dest_dir / f"{video_id}.mkv"
     if mkv.exists():
         return mkv
-    found = sorted(p for p in dest_dir.glob(f"{video_id}.*") if p.suffix in VIDEO_EXTS and p.is_file())
+    found = sorted(p for p in dest_dir.glob(f"{video_id}.*")
+                   if p.stem == video_id and p.suffix in VIDEO_EXTS and p.is_file())
     return found[0] if found else None
 
 

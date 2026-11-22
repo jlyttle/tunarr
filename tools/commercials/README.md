@@ -18,7 +18,7 @@ Neither is committed.
 
 ## Sources and downloads
 
-`config/sources.json` lists the channels, the title patterns that map a compilation to a pool, and the default pool. `discover.py` lists recent uploads with `yt-dlp --flat-playlist -j --extractor-args youtubetab:approximate_date`; flat entries that lack `upload_date` fall back to a per-video metadata fetch. `download.py` fetches up to 1080p, removes SponsorBlock segments, merges to MKV (`--merge-output-format mkv`, plus `--remux-video mkv` for single-file formats), and writes `<id>.info.json` (`--write-info-json`). If yt-dlp still leaves another container, the first finished `<id>.{mkv,mp4,webm,mov,m4v}` is used.
+`config/sources.json` lists the channels, the title patterns that map a compilation to a pool, and the default pool. `discover.py` lists recent uploads with `yt-dlp --flat-playlist -j --extractor-args youtubetab:approximate_date`; flat entries that lack `upload_date` fall back to a per-video metadata fetch. `download.py` fetches up to 1080p, removes SponsorBlock segments, merges to MKV (`--merge-output-format mkv`, plus `--remux-video mkv` for single-file formats), and writes `<id>.info.json` (`--write-info-json`). If yt-dlp still leaves another container, the first finished `<id>.{mkv,mp4,webm,mov,m4v}` is used; per-format leftovers of an interrupted merge (`<id>.f<format>.<ext>`) never count, so the download runs again.
 
 ### Watermark check (2026-11-22)
 

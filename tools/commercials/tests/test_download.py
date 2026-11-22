@@ -67,3 +67,29 @@ def test_download_without_any_video_raises(tmp_path, monkeypatch):
     monkeypatch.setattr(dl.subprocess, "run", lambda args, check: None)
     with pytest.raises(FileNotFoundError):
         dl.download("v1", tmp_path)
+
+
+def test_find_video_ignores_per_format_leftovers(tmp_path):
+    from commercials.download import find_video
+
+    # yt-dlp leaves <id>.f<format>.<ext> when a merge is interrupted; they are not the video
+    (tmp_path / "v1.f137.mp4").write_bytes(b"x")
+    (tmp_path / "v1.f251.webm").write_bytes(b"x")
+    assert find_video("v1", tmp_path) is None
+    (tmp_path / "v1.webm").write_bytes(b"x")
+    assert find_video("v1", tmp_path) == tmp_path / "v1.webm"
+
+
+def test_download_after_leftovers_runs_ytdlp(tmp_path, monkeypatch):
+    from commercials import download as dl
+
+    calls = []
+
+    def fake_run(args, check):
+        calls.append(args)
+        (tmp_path / "v1.mkv").write_bytes(b"x")
+
+    monkeypatch.setattr(dl.subprocess, "run", fake_run)
+    (tmp_path / "v1.f137.mp4").write_bytes(b"x")
+    assert dl.download("v1", tmp_path) == tmp_path / "v1.mkv"
+    assert len(calls) == 1 and "--skip-download" not in calls[0]
