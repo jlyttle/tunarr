@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-COMPILATION_STATUSES = ("new", "downloaded", "split", "failed", "skipped")
+COMPILATION_STATUSES = ("new", "downloaded", "split", "failed", "skipped", "abandoned")
 AD_STATUSES = ("active", "retired", "rejected")
 
 
@@ -16,6 +16,7 @@ class Compilation:
     upload_date: date
     pools: set[str]
     status: str
+    attempts: int = 0  # failed runs so far; abandoned after MAX_ATTEMPTS
 
 
 @dataclass
@@ -54,11 +55,13 @@ def _comp_to_json(c: Compilation) -> dict:
         "upload_date": c.upload_date.isoformat(),
         "pools": sorted(c.pools),
         "status": c.status,
+        "attempts": c.attempts,
     }
 
 
 def _comp_from_json(d: dict) -> Compilation:
-    return Compilation(d["video_id"], d["title"], date.fromisoformat(d["upload_date"]), set(d["pools"]), d["status"])
+    return Compilation(d["video_id"], d["title"], date.fromisoformat(d["upload_date"]), set(d["pools"]), d["status"],
+                       int(d.get("attempts", 0)))
 
 
 def _ad_to_json(a: Ad) -> dict:

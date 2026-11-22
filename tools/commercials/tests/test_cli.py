@@ -723,3 +723,34 @@ def test_notify_passes_text_as_an_argument(monkeypatch):
     cli.notify('2 failures; "quoted"')
     assert calls[0][0] == "/usr/bin/osascript"
     assert calls[0][-1] == '2 failures; "quoted"'  # never spliced into the script
+
+
+def test_compilation_abandoned_after_three_failures(tmp_path):
+    fakes = Fakes([comp("bad")], fail_download={"bad"})
+    c, first = run_with(tmp_path, fakes, deliver=False, sync=False)
+    assert first.compilations[0]["status"] == "failed"
+    second = run(RunOptions(deliver=False, sync=False), c, fakes.tools())
+    assert second.compilations[0]["status"] == "failed"
+    third = run(RunOptions(deliver=False, sync=False), c, fakes.tools())
+    assert third.compilations[0]["status"] == "abandoned"
+    assert any(f.startswith("bad:") for f in third.failures)
+    cat = load_catalog(c.state / "catalog.json")
+    assert cat.compilations["bad"].status == "abandoned" and cat.compilations["bad"].attempts == 3
+    fourth = run(RunOptions(deliver=False, sync=False), c, fakes.tools())
+    assert fakes.downloads == ["bad", "bad", "bad"] and fourth.compilations == []
+
+
+def test_find_match_runs_once_per_accepted_segment(tmp_path, monkeypatch):
+    from commercials import fingerprint, runner
+
+    calls = []
+    real = fingerprint.find_match
+
+    def counting(fp, catalog, *a, **kw):
+        calls.append(1)
+        return real(fp, catalog, *a, **kw)
+
+    monkeypatch.setattr(fingerprint, "find_match", counting)
+    monkeypatch.setattr(runner, "find_match", counting)
+    _, report = run_with(tmp_path, Fakes([comp("v1")]), deliver=False, sync=False)
+    assert len(report.added) == 3 and len(calls) == 3

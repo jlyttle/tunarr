@@ -36,6 +36,7 @@ from commercials.split import (
 )
 
 PENDING = ("new", "downloaded", "failed")
+MAX_ATTEMPTS = 3  # a compilation that fails this many runs is abandoned
 MIN_KEEP_S = 0.1  # rejected segments shorter than this are counted but not cut
 REJECTED_KEEP_DAYS = 14
 SPONSORBLOCK_REMOVED = {"sponsor", "intro", "outro", "selfpromo"}  # download.ytdlp_args
@@ -307,7 +308,7 @@ class _Compilation:
                 dest.unlink(missing_ok=True)
                 return "encode_failed"
             meta["local_path"] = str(dest)
-        ad_id, new = record_segment(self.catalog, fp, meta, pools, self.comp.upload_date)
+        ad_id, new = record_segment(self.catalog, fp, meta, pools, self.comp.upload_date, match=match)
         ad = self.catalog.ads[ad_id]
         ad.kids_blocked = ad.kids_blocked or blocked
         enforce_kids_block(ad)
@@ -414,8 +415,10 @@ def run(opts: RunOptions, ctx: RunContext, tools: Tools) -> Report:
         try:
             job.run()
         except Exception as e:
-            comp.status = "failed"
-            job.row["status"] = "failed"
+            comp.attempts += 1
+            comp.status = "abandoned" if comp.attempts >= MAX_ATTEMPTS else "failed"
+            job.row["status"] = comp.status
+            job.row["attempts"] = comp.attempts
             job.row["error"] = describe(e)
             report.failures.append(f"{comp.video_id}: {describe(e)}")
             log(f"  failed: {describe(e)}")

@@ -53,11 +53,18 @@ def find_match(fp: list[int], catalog: Catalog, threshold: float = 0.85) -> str 
     return best_id
 
 
+_UNSET = object()
+
+
 def record_segment(
-    catalog: Catalog, fp: list[int], seg_meta: dict, pools: set[str], seen: date
+    catalog: Catalog, fp: list[int], seg_meta: dict, pools: set[str], seen: date,
+    match: "str | None | object" = _UNSET,
 ) -> tuple[str, bool]:
-    """seg_meta: source (str), duration_s (float), local_path (str), height (int)."""
-    ad_id = find_match(fp, catalog)
+    """seg_meta: source (str), duration_s (float), local_path (str), height (int).
+
+    `match` is a `find_match(fp, catalog)` result the caller already has; omitted, it is computed.
+    """
+    ad_id = find_match(fp, catalog) if match is _UNSET else match
     if ad_id is not None:
         ad = catalog.ads[ad_id]
         ad.last_seen = max(ad.last_seen, seen)

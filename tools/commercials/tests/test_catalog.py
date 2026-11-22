@@ -92,3 +92,15 @@ def test_config_dir_env_overrides_package_config(monkeypatch: pytest.MonkeyPatch
     assert config_dir() == tmp_path / "cfg"
     monkeypatch.delenv("COMMERCIALS_CONFIG")
     assert config_dir() == Path(__file__).resolve().parent.parent / "config"
+
+
+def test_compilation_attempts_round_trip_with_default(tmp_path: Path):
+    c = Catalog()
+    c.upsert_compilation(Compilation("a", "t", date(2026, 1, 2), {"general"}, "failed", attempts=2))
+    p = tmp_path / "catalog.json"
+    save_catalog(c, p)
+    assert load_catalog(p).compilations["a"].attempts == 2
+    raw = json.loads(p.read_text())
+    del raw["compilations"]["a"]["attempts"]
+    p.write_text(json.dumps(raw))
+    assert load_catalog(p).compilations["a"].attempts == 0

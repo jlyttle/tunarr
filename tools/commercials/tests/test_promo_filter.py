@@ -9,7 +9,6 @@ from commercials.promo_filter import (
     dhash,
     frame_hashes_args,
     hamming,
-    is_network_promo,
     load_refs,
     promo_score,
     promo_verdict,
@@ -34,7 +33,7 @@ def test_endcard_match_scores_promo():
     refs = [NetworkRefs("xd", endcards=[card], bugs=[])]
     # 2 of the 3 last frames show the end card.
     score = promo_score([card, card, dhash(_grad(5))], [[], [], [], []], refs)
-    assert score >= 0.5 and is_network_promo(score)
+    assert score >= 0.5 and promo_verdict(score) == "network_promo"
 
 
 def test_bug_in_corner_scores_promo():
@@ -42,7 +41,7 @@ def test_bug_in_corner_scores_promo():
     refs = [NetworkRefs("xd", endcards=[], bugs=[("iw/4:ih/4:0:0", bug)])]
     noise = [dhash(_grad(i)) for i in range(10, 14)]
     score = promo_score([], [[bug, bug, bug, noise[0]], [], [], []], refs)
-    assert score == 0.75 and is_network_promo(score)
+    assert score == 0.75 and promo_verdict(score) == "network_promo"
     # The same hash in a different corner does not match.
     assert promo_score([], [[], [bug, bug, bug], [], []], refs) == 0.0
 
@@ -60,7 +59,6 @@ def test_uncertain_band_rejects():
     assert promo_verdict(0.3) == "uncertain_promo"
     assert promo_verdict(0.29) is None
     assert promo_verdict(0.5) == "network_promo"
-    assert not is_network_promo(0.4)
 
 
 def test_frame_hashes_args_selects_times_and_crop():
@@ -83,3 +81,27 @@ def test_add_reference_roundtrip(make_clip, tmp_path: Path):
 
     end = hashes_for_frames(clip, [4.6, 5.1, 5.6], None)
     assert promo_score(end, [[], [], [], []], refs) >= 0.5
+
+
+def test_is_network_promo_removed():
+    from commercials import promo_filter
+
+    assert not hasattr(promo_filter, "is_network_promo")  # promo_verdict is the one threshold
+
+
+def test_add_reference_keeps_only_stable_corner_hashes(tmp_path: Path, monkeypatch):
+    from commercials import promo_filter as pf
+
+    bug = dhash(_grad(3))
+    near = bug ^ 0b111  # 3 bits off: the same bug under compression noise
+    noise = [dhash(_grad(i)) for i in range(30, 40)]
+    ends = [dhash(_grad(1))]
+    bugs = [[bug, near, bug, noise[0]],  # top-left: a bug in 3 of 4 frames
+            noise[1:5],                  # top-right: just picture content
+            [bug, noise[5], noise[6], bug],  # bottom-left: only 2 frames agree
+            noise[7:10]]
+    monkeypatch.setattr(pf, "_clip_duration", lambda clip: 8.0)
+    monkeypatch.setattr(pf, "segment_hashes", lambda clip, start, end: (ends, bugs))
+    add_reference("Test Net", tmp_path / "clip.mkv", tmp_path)
+    data = json.loads((tmp_path / "test-net.json").read_text())
+    assert data["bugs"] == [["iw/4:ih/4:0:0", f"{bug:016x}"]]

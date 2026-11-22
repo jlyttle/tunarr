@@ -18,7 +18,7 @@ Neither is committed.
 
 ## Sources and downloads
 
-`config/sources.json` lists the channels, the title patterns that map a compilation to a pool, and the default pool. `discover.py` lists recent uploads with `yt-dlp --flat-playlist -j --extractor-args youtubetab:approximate_date`; flat entries that lack `upload_date` fall back to a per-video metadata fetch. `download.py` fetches up to 1080p, removes SponsorBlock segments, and merges to MKV.
+`config/sources.json` lists the channels, the title patterns that map a compilation to a pool, and the default pool. `discover.py` lists recent uploads with `yt-dlp --flat-playlist -j --extractor-args youtubetab:approximate_date`; flat entries that lack `upload_date` fall back to a per-video metadata fetch. `download.py` fetches up to 1080p, removes SponsorBlock segments, merges to MKV (`--merge-output-format mkv`, plus `--remux-video mkv` for single-file formats), and writes `<id>.info.json` (`--write-info-json`). If yt-dlp still leaves another container, the first finished `<id>.{mkv,mp4,webm,mov,m4v}` is used.
 
 ### Watermark check (2026-11-22)
 
@@ -31,18 +31,18 @@ Sample: `g1XxVSvCJpI` (Disney XD, 8m17s, AV1 1920x1080 + Opus), frames at 20%, 5
 
 ## Splitting (`split.py`)
 
-One ffmpeg pass (`detect_args`) runs `blackdetect=d=0.03:pix_th=0.10` and `silencedetect=n=-50dB:d=0.03`. A cut point is the midpoint of a black interval that overlaps a silence interval by at least 0.02 s; black alone or silence alone is never a boundary. A segment whose length is not within 0.5 s of 5, 6, 10, 15, 20, 30, 45, 60, 90 or 120 s is rejected as `nonstandard_length`. Cuts re-encode (`cut_args`) to an intermediate MKV (x264 crf 16, PCM audio).
+One ffmpeg pass (`detect_args`) runs `blackdetect=d=0.03:pix_th=0.10` and `silencedetect=n=-50dB:d=0.03`. A gap between spots is a black interval that overlaps a silence interval by at least 0.02 s (black alone or silence alone is never a gap, except near a chapter time; see Tuning). A segment runs from one gap's end to the next gap's start. A segment whose length is not within 0.5 s of 5, 6, 10, 15, 20, 30, 45, 60, 90 or 120 s is rejected as `nonstandard_length`. Cuts re-encode (`cut_args`) to an intermediate MKV (x264 crf 16, PCM audio).
 
 ### Single-chapter rule and promo filter
 
 `config/networks.json` lists the networks a title can name (Nickelodeon, Nick Jr, Nicktoons, Nick at Nite, Cartoon Network, Boomerang, the Disney channels, Comedy Central, FX, FXX, Adult Swim, MTV, TBS, TNT, USA Network, Syfy, Food Network, HGTV, ESPN, the broadcast networks and others), each with a slug and case-insensitive title patterns. A compilation whose title names a network is **per-network**:
 
 - It is processed only when `config/network_refs/<slug>.json` exists for every network it names. Otherwise it is marked `skipped` (reason `no_network_refs`, listed once in the report) and the report's `needs_network_refs` counts what is waiting per network. It is not downloaded, and it returns to `new` as soon as the references exist. Seed them with `commercials add-ref <network> <clip>`, where `<network>` is a slug or name from `networks.json` (other names are refused, so the file always lands where the gate looks).
-- `require_single_chapter` rejects accepted segments whose start and end are not both within 1.5 s of the same chapter's span (`not_single_chapter`, or `no_chapters` when the video has none). Per-network compilations carry one chapter per spot, so this catches unbranded show content and merged pods that the branded-card filter (`promo_filter.py`) cannot.
+- `require_single_chapter` (tolerance `tol_s=1.5` s, widened from 0.5 s because chapter times are whole seconds rounded from the uploader's timestamps) rejects accepted segments whose start and end are not both within 1.5 s of the same chapter's span (`not_single_chapter`, or `no_chapters` when the video has none). Per-network compilations carry one chapter per spot, so this catches unbranded show content and merged pods that the branded-card filter (`promo_filter.py`) cannot.
 
 Generic uploads (no network in the title, such as "2026 Commercials Vol. 239") skip both gates, except that a generic compilation mapped to `kids` still gets the single-chapter rule.
 
-Every compilation with chapters also rejects a segment as `promo_chapter_text` when its chapter text (`chapter_text_for`: the chapter and its neighbours) contains promo, bumper, coming up, up next, next on or station id, or names any network in `networks.json`. The promo filter then scores each surviving segment against the hand-picked network references (`config/network_refs/`).
+Every compilation with chapters also rejects a segment as `promo_chapter_text` when its chapter text (`chapter_text_for`: the chapter and its neighbours) contains promo, bumper, coming up, up next, next on or station id, or names any network in `networks.json`. The promo filter then scores each surviving segment against the hand-picked network references (`config/network_refs/`). `add-ref` stores the clip's end-card hashes and, per corner, only hashes that are stable across the sampled frames (the same hash within Hamming distance 6 in at least 3 frames), so a corner showing changing picture content adds no bug reference. Reference files written before this rule may still hold unstable corner hashes.
 
 The kids title pattern in `config/sources.json` excludes titles naming Nick at Nite, Adult Swim or `[as]`, so those compilations go to `general`.
 
@@ -52,7 +52,7 @@ Thresholds: black `d=0.03:pix_th=0.10`, silence `n=-50dB:d=0.03`, minimum black/
 
 Boundaries are gap intervals, not midpoints. A segment runs from one gap's end to the next gap's start, so a 0.8 s black gap no longer inflates a 30 s spot. A gap is a black-and-silent overlap, or, when `chapters` is given (`parse_chapters` of the yt-dlp info JSON), the nearest black or silent interval within 0.5 s of a chapter time. Chapters with nothing nearby are ignored.
 
-Chapters come from `yt-dlp --dump-json` (the MKV has none embedded). Agreement counts a segment whose both ends lie within 1.5 s of a chapter boundary (chapter times are whole seconds, so exact matches are rare); "exactly one chapter" excludes segments that span an interior chapter boundary (a merged pod).
+Chapters come from the `<id>.info.json` that `--write-info-json` writes (the MKV has none embedded); the tuning runs above read the same data from `yt-dlp --dump-json`. Agreement counts a segment whose both ends lie within 1.5 s of a chapter boundary (chapter times are whole seconds, so exact matches are rare); "exactly one chapter" excludes segments that span an interior chapter boundary (a merged pod).
 
 | Compilation | Chapters used | Segments | Accepted | Rejected | Rejection rate | Both ends on chapter boundary | Exactly one chapter | Merged pods |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -82,7 +82,7 @@ commercials add-ref <network> <clip>
 commercials status
 ```
 
-`run` discovers uploads from the last `--since-weeks` (default 8) weeks, records them in the catalog, and processes at most `--limit` (default 10) pending compilations, newest first (failed ones are retried after new ones). For each one it downloads `<id>.mkv` and `<id>.info.json` (an existing file is reused; chapters come from the info JSON), splits, applies the single-chapter rule (per-network and kids compilations), rejects promo chapter text, scores accepted segments with the promo filter, cuts, prechecks (probe first; `no_audio` rejects before any volume pass; ffprobe errors reject as `probe_failed`), fingerprints, applies the blocklist to the chapter titles, and encodes. A duplicate of a known ad at no better height is not re-encoded. Any exception marks that compilation `failed` in the report and the run continues. The catalog is saved after each compilation.
+`run` discovers uploads from the last `--since-weeks` (default 8) weeks, records them in the catalog, and processes at most `--limit` (default 10) pending compilations, newest first (failed ones are retried after new ones; after 3 failed runs a compilation is `abandoned`, reported, and never retried). For each one it downloads `<id>.mkv` and `<id>.info.json` (an existing file is reused; chapters come from the info JSON), splits, applies the single-chapter rule (per-network and kids compilations), rejects promo chapter text, scores accepted segments with the promo filter, cuts, prechecks (probe first; `no_audio` rejects before any volume pass; ffprobe errors reject as `probe_failed`), fingerprints, applies the blocklist to the chapter titles, and encodes. A duplicate of a known ad at no better height is not re-encoded. Any exception marks that compilation `failed` in the report and the run continues. The catalog is saved after each compilation.
 
 Every rejected segment is kept for tuning at `<media>/rejected/<reason>/<video_id>-<start>.mkv` and counted in the report; it never becomes an ad. Reasons: `nonstandard_length`, `not_single_chapter`, `no_chapters`, `promo_chapter_text`, `network_promo`, `uncertain_promo`, `probe_failed`, `no_audio`, `silent`, `no_video`, `vertical`, `cut_failed`, `fingerprint_failed`, `encode_failed`. Kept rejects older than 14 days are pruned at the start of each run (not in `--dry-run`). Encoded ads live in `<media>/ads/`; the source mkv is deleted once its compilation is split (its info JSON stays).
 

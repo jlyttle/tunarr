@@ -82,10 +82,6 @@ def promo_verdict(score: float, promo_threshold: float = 0.5, uncertain_floor: f
     return None
 
 
-def is_network_promo(score: float, threshold: float = 0.5) -> bool:
-    return score >= threshold
-
-
 def frame_hashes_args(
     path: str | Path, times: list[float], crop: str | None, offset: float = 0.0
 ) -> list[str]:
@@ -163,15 +159,38 @@ def load_refs(refs_dir: Path) -> list[NetworkRefs]:
     return out
 
 
-def add_reference(network: str, clip: Path, refs_dir: Path) -> None:
-    """Hash the last 1.5 s and corner crops of a hand-picked promo and merge into the network's refs file."""
-    dur = float(
+STABLE_HAMMING = 6
+STABLE_MIN_FRAMES = 3
+
+
+def stable_hashes(hashes: list[int], max_dist: int = STABLE_HAMMING,
+                  min_frames: int = STABLE_MIN_FRAMES) -> list[int]:
+    """One informative hash per corner pattern seen (within max_dist) in at least min_frames frames.
+
+    A real on-screen bug stays put; a corner that only shows changing picture content
+    gives no reference.
+    """
+    out: list[int] = []
+    for h in hashes:
+        if not _informative(h) or any(hamming(h, o) <= max_dist for o in out):
+            continue
+        if sum(1 for x in hashes if hamming(h, x) <= max_dist) >= min_frames:
+            out.append(h)
+    return out
+
+
+def _clip_duration(clip: Path) -> float:
+    return float(
         subprocess.run(
             ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(clip)],
             capture_output=True, text=True, check=True,
         ).stdout.strip()
     )
-    ends, bugs = segment_hashes(clip, 0.0, dur)
+
+
+def add_reference(network: str, clip: Path, refs_dir: Path) -> None:
+    """Hash the last 1.5 s and stable corner crops of a hand-picked promo; merge into the network's refs file."""
+    ends, bugs = segment_hashes(clip, 0.0, _clip_duration(clip))
     refs_dir.mkdir(parents=True, exist_ok=True)
     path = refs_dir / f"{_slug(network)}.json"
     existing = json.loads(path.read_text()) if path.exists() else {"network": network, "endcards": [], "bugs": []}
@@ -179,8 +198,8 @@ def add_reference(network: str, clip: Path, refs_dir: Path) -> None:
         if _informative(h) and f"{h:016x}" not in existing["endcards"]:
             existing["endcards"].append(f"{h:016x}")
     for crop, hs in zip(BUG_CROPS, bugs):
-        for h in hs[:3]:
+        for h in stable_hashes(hs):
             entry = [crop, f"{h:016x}"]
-            if _informative(h) and entry not in existing["bugs"]:
+            if entry not in existing["bugs"]:
                 existing["bugs"].append(entry)
     path.write_text(json.dumps(existing, indent=2) + "\n")
