@@ -1,3 +1,4 @@
+import { faker } from '@faker-js/faker';
 import tmp from 'tmp-promise';
 import { v4 } from 'uuid';
 import { describe, expect, test } from 'vitest';
@@ -180,5 +181,149 @@ describe('FillerDB content resolution', () => {
     } finally {
       await dir.cleanup();
     }
+  });
+});
+
+describe('FillerDB.getFillersForListIds', () => {
+  async function withFillerDb(
+    fn: (ctx: {
+      fillerDb: FillerDB;
+      sqlite: NonNullable<
+        ReturnType<typeof DBAccess.instance.getConnection>
+      >['sqlite'];
+      channelUuid: string;
+      addList: (name: string) => string;
+      addProgram: (listUuid: string, index: number) => string;
+    }) => Promise<void>,
+  ) {
+    const dir = await tmp.dir({ unsafeCleanup: true });
+    try {
+      await copyPreMigratedDb(dir.path);
+      setGlobalOptions({ database: dir.path, log_level: 'error', verbose: 0 });
+      await bootstrapTunarr();
+
+      const conn = DBAccess.instance.getConnection();
+      if (!conn) {
+        throw new Error('Expected a DB connection for the test');
+      }
+      const db = DBAccess.instance.db;
+      const drizzle = DBAccess.instance.drizzle;
+      if (!db || !drizzle) {
+        throw new Error('Expected DB handles for the test');
+      }
+
+      const channelUuid = v4();
+      conn.sqlite
+        .prepare(
+          `INSERT INTO channel (uuid, duration, guide_minimum_duration, icon, name, number, offline, start_time, transcode_config_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          channelUuid,
+          1000,
+          1000,
+          '{}',
+          'Test Channel',
+          faker.number.int({ min: 1000, max: 900000 }),
+          '{}',
+          0,
+          'test-transcode-config',
+        );
+
+      const addList = (name: string) => {
+        const uuid = v4();
+        conn.sqlite
+          .prepare(
+            'INSERT INTO filler_show (uuid, created_at, updated_at, name) VALUES (?, ?, ?, ?)',
+          )
+          .run(uuid, 0, 0, name);
+        return uuid;
+      };
+      const addProgram = (listUuid: string, index: number) => {
+        const programUuid = v4();
+        conn.sqlite
+          .prepare(
+            `INSERT INTO program (uuid, duration, external_key, external_source_id, source_type, title, type)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .run(
+            programUuid,
+            1000,
+            `key-${programUuid}`,
+            'test-source',
+            'plex',
+            'Test Program',
+            'movie',
+          );
+        conn.sqlite
+          .prepare(
+            'INSERT INTO filler_show_content (filler_show_uuid, program_uuid, "index") VALUES (?, ?, ?)',
+          )
+          .run(listUuid, programUuid, index);
+        return programUuid;
+      };
+
+      await fn({
+        fillerDb: new FillerDB(db, drizzle),
+        sqlite: conn.sqlite,
+        channelUuid,
+        addList,
+        addProgram,
+      });
+
+      await DBAccess.instance.closeConnection(`${dir.path}/db.db`);
+    } finally {
+      await dir.cleanup();
+    }
+  }
+
+  test('getFillersForListIds returns unattached list with default weight', async () => {
+    await withFillerDb(
+      async ({ fillerDb, channelUuid, addList, addProgram }) => {
+        const listUuid = addList('Unattached');
+        const programUuid = addProgram(listUuid, 0);
+
+        const result = await fillerDb.getFillersForListIds(channelUuid, [
+          listUuid,
+        ]);
+
+        expect(result).toHaveLength(1);
+        expect(result[0]?.fillerShowUuid).toBe(listUuid);
+        expect(result[0]?.weight).toBe(100);
+        expect(result[0]?.cooldown).toBe(0);
+        expect(result[0]?.fillerContent.map((p) => p.uuid)).toEqual([
+          programUuid,
+        ]);
+      },
+    );
+  });
+
+  test('getFillersForListIds keeps channel weight and cooldown when attached', async () => {
+    await withFillerDb(
+      async ({ fillerDb, sqlite, channelUuid, addList, addProgram }) => {
+        const listUuid = addList('Attached');
+        addProgram(listUuid, 0);
+        sqlite
+          .prepare(
+            'INSERT INTO channel_filler_show (channel_uuid, filler_show_uuid, cooldown, weight) VALUES (?, ?, ?, ?)',
+          )
+          .run(channelUuid, listUuid, 30, 20);
+
+        const result = await fillerDb.getFillersForListIds(channelUuid, [
+          listUuid,
+        ]);
+
+        expect(result).toHaveLength(1);
+        expect(result[0]?.weight).toBe(20);
+        expect(result[0]?.cooldown).toBe(30);
+      },
+    );
+  });
+
+  test('getFillersForListIds skips unknown ids', async () => {
+    await withFillerDb(async ({ fillerDb, channelUuid }) => {
+      const result = await fillerDb.getFillersForListIds(channelUuid, [v4()]);
+      expect(result).toEqual([]);
+    });
   });
 });

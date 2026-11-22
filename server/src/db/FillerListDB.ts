@@ -399,4 +399,55 @@ export class FillerDB implements IFillerListDB {
       } satisfies ChannelFillerShowWithContent;
     });
   }
+
+  async getFillersForListIds(
+    channelId: string,
+    listIds: string[],
+  ): Promise<ChannelFillerShowWithContent[]> {
+    const ids = uniq(listIds);
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const [lists, attachments] = await Promise.all([
+      this.drizzle.query.fillerShows.findMany({
+        where: (fields, { inArray }) => inArray(fields.uuid, ids),
+        with: {
+          fillerShowContent: {
+            with: {
+              program: {
+                with: {
+                  externalIds: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.drizzle.query.channelFillerShow.findMany({
+        where: (fields, { and, eq, inArray }) =>
+          and(
+            eq(fields.channelUuid, channelId),
+            inArray(fields.fillerShowUuid, ids),
+          ),
+      }),
+    ]);
+
+    const attachmentsByList = new Map(
+      attachments.map((a) => [a.fillerShowUuid, a]),
+    );
+
+    return lists.map((list) => {
+      const attachment = attachmentsByList.get(list.uuid);
+      const { fillerShowContent, ...fillerShow } = list;
+      return {
+        channelUuid: channelId,
+        cooldown: attachment?.cooldown ?? 0,
+        fillerContent: fillerShowContent.map(({ program }) => program),
+        fillerShow,
+        fillerShowUuid: list.uuid,
+        weight: attachment?.weight ?? 100,
+      } satisfies ChannelFillerShowWithContent;
+    });
+  }
 }

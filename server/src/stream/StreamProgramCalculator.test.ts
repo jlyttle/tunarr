@@ -3,7 +3,7 @@ import { tag } from '@tunarr/types';
 import dayjs from 'dayjs';
 import { now, sum, sumBy } from 'lodash-es';
 import { DeepPartial } from 'ts-essentials';
-import { anything, instance, mock, verify, when } from 'ts-mockito';
+import { anything, deepEqual, instance, mock, verify, when } from 'ts-mockito';
 import { test as baseTest } from 'vitest';
 import { Lineup, LineupItem } from '../db/derived_types/Lineup.ts';
 import { StreamLineupItem } from '../db/derived_types/StreamLineup.ts';
@@ -13,10 +13,15 @@ import { IProgramDB } from '../db/interfaces/IProgramDB.ts';
 import { calculateStartTimeOffsets } from '../db/lineupUtil.ts';
 import { ProgramPlayHistoryDB } from '../db/ProgramPlayHistoryDB.ts';
 import { MediaSourceId } from '../db/schema/base.ts';
-import { IFillerPicker } from '../services/interfaces/IFillerPicker.ts';
+import type { ChannelFillerShowWithContent } from '../db/schema/derivedTypes.ts';
+import {
+  FillerPickResult,
+  IFillerPicker,
+} from '../services/interfaces/IFillerPicker.ts';
 import {
   createChannelOrm,
   createFakeProgram,
+  createFakeProgramOrm,
 } from '../testing/fakes/entityCreators.ts';
 import {
   calculateStreamDuration,
@@ -805,6 +810,145 @@ describe('StreamProgramCalculator', () => {
         program: { uuid: programIdB },
       });
     });
+  });
+
+  describe('offline items with fillerListIds', () => {
+    function makeFiller(
+      channelUuid: string,
+      listId: string,
+    ): ChannelFillerShowWithContent {
+      return {
+        channelUuid,
+        fillerShowUuid: listId,
+        cooldown: 0,
+        weight: 100,
+        fillerShow: {
+          uuid: listId,
+          name: `list-${listId}`,
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        fillerContent: [createFakeProgramOrm({ duration: 60_000 })],
+      };
+    }
+
+    async function lookup() {
+      const fillerDB = mock<IFillerListDB>();
+      const channelDB = mock<IChannelDB>();
+      const programDB = mock<IProgramDB>();
+      const fillerPicker = mock<IFillerPicker>();
+      const playHistoryDB = mock<ProgramPlayHistoryDB>();
+
+      const channelId = faker.string.uuid();
+      const listA = faker.string.uuid();
+      const listB = faker.string.uuid();
+      const lineup: LineupItem[] = [
+        {
+          type: 'offline',
+          durationMs: 60_000,
+          fillerConfig: { fillerListIds: [listB] },
+        },
+        // A channel whose only item is offline is treated as permanently
+        // offline and loses its fillerConfig, so follow it with content.
+        { type: 'content', durationMs: 60_000, id: faker.string.uuid() },
+      ];
+
+      const channel = createChannelOrm({
+        uuid: channelId,
+        number: 1,
+        startTime: 0,
+        duration: 120_000,
+      });
+      when(channelDB.getChannelOrm(1)).thenReturn(Promise.resolve(channel));
+      when(channelDB.loadLineup(channelId)).thenReturn(
+        Promise.resolve({
+          version: 1,
+          items: lineup,
+          startTimeOffsets: calculateStartTimeOffsets(lineup),
+          lastUpdated: now(),
+        }),
+      );
+      // List A is attached to the channel; list B is only named by the slot.
+      when(fillerDB.getFillersFromChannel(channelId)).thenReturn(
+        Promise.resolve([makeFiller(channelId, listA)]),
+      );
+      when(
+        fillerDB.getFillersForListIds(channelId, deepEqual([listB])),
+      ).thenReturn(Promise.resolve([makeFiller(channelId, listB)]));
+      when(
+        fillerPicker.pickFiller(
+          anything(),
+          anything(),
+          anything(),
+          anything(),
+          anything(),
+        ),
+      ).thenCall(
+        (
+          _channel: unknown,
+          fillers: ChannelFillerShowWithContent[],
+        ): Promise<FillerPickResult> => {
+          const first = fillers[0];
+          return Promise.resolve({
+            filler: first?.fillerContent[0] ?? null,
+            fillerListId: first?.fillerShowUuid ?? null,
+            minimumWait: Number.MAX_SAFE_INTEGER,
+          });
+        },
+      );
+      when(programDB.getStreamProgramById(anything())).thenCall((id: string) =>
+        Promise.resolve(
+          createFakeProgram({
+            uuid: id,
+            duration: 60_000,
+            mediaSourceId: tag<MediaSourceId>('mediasource-123'),
+          }),
+        ),
+      );
+      when(channelDB.getChannelFallbackPrograms(anything())).thenReturn(
+        Promise.resolve(null),
+      );
+      when(
+        playHistoryDB.isProgramCurrentlyPlaying(
+          anything(),
+          anything(),
+          anything(),
+        ),
+      ).thenReturn(Promise.resolve(false));
+
+      const calc = new StreamProgramCalculator(
+        instance(fillerDB),
+        instance(channelDB),
+        instance(programDB),
+        instance(fillerPicker),
+        instance(playHistoryDB),
+      );
+      const out = await calc.getCurrentLineupItem({
+        allowSkip: false,
+        channelId: 1,
+        startTime: 1_000,
+      });
+      return { out: out.get(), listA, listB };
+    }
+
+    baseTest(
+      'offline item with fillerListIds plays a list not attached to the channel',
+      async ({ expect }) => {
+        const { out, listB } = await lookup();
+        expect(out.lineupItem).toMatchObject({
+          type: 'commercial',
+          fillerListId: listB,
+        });
+      },
+    );
+
+    baseTest(
+      'offline item with fillerListIds never plays an unnamed channel list',
+      async ({ expect }) => {
+        const { out, listA } = await lookup();
+        expect(out.lineupItem).not.toMatchObject({ fillerListId: listA });
+      },
+    );
   });
 
   describe('calculateStreamDuration', () => {
