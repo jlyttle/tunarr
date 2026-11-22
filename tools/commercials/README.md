@@ -64,3 +64,32 @@ Findings:
 Ads are pushed one at a time by streaming over `/usr/bin/ssh` to `root@192.168.1.227` (`cat > file.part && mv`); the remote side runs `umask 000; mkdir -p` first. Retired ads are removed with `ssh rm -f`. Layout: `<unraid_root>/<pool>/<ad_id>.mp4`; an ad in both pools is delivered to both folders. `Ad.delivered` records pool -> remote path, and only successful transfers are recorded, so a failed push stays pending.
 
 Path mapping (from `docker inspect plex`): the Plex container's `/data` is the host's `/mnt/user/plex`. The existing library `/data/Videos/Commercials` is therefore `/mnt/user/plex/Videos/Commercials`, and `unraid_root` in `config/sources.json` is the sibling `/mnt/user/plex/Videos/Modern Commercials` (Plex sees `/data/Videos/Modern Commercials`). The folder is not created until the first delivery.
+
+## Running (`cli.py`, `runner.py`)
+
+```
+commercials run [--dry-run] [--no-deliver] [--no-sync] [--limit N] [--since-weeks N]
+commercials add-ref <network> <clip>
+commercials status
+```
+
+`run` discovers uploads from the last `--since-weeks` (default 8) weeks, records them in the catalog, and processes at most `--limit` (default 10) pending compilations, newest first (failed ones are retried after new ones). For each one it downloads `<id>.mkv` and `<id>.info.json` (an existing file is reused; chapters come from the info JSON), splits, applies the single-chapter rule (kids compilations only), scores accepted segments with the promo filter, cuts, prechecks (probe first; `no_audio` rejects before any volume pass; ffprobe errors reject as `probe_failed`), fingerprints, applies the blocklist to the chapter titles, and encodes. A duplicate of a known ad at no better height is not re-encoded. Any exception marks that compilation `failed` in the report and the run continues. The catalog is saved after each compilation.
+
+Every rejected segment is kept for tuning at `<media>/rejected/<reason>/<video_id>-<start>.mkv` and counted in the report; it never becomes an ad. Reasons: `nonstandard_length`, `not_single_chapter`, `no_chapters`, `network_promo`, `uncertain_promo`, `probe_failed`, `no_audio`, `silent`, `no_video`, `vertical`, `fingerprint_failed`, `encode_failed`. Encoded ads live in `<media>/ads/`.
+
+After processing, retention picks the active ads, and delivery runs (skip with `--no-deliver`). Unraid `uptime` is recorded before delivery and after sync; if the first check fails, delivery and sync are skipped. Sync runs only when `filler_list_ids` (both pools), `plex.section_key`, `tunarr.media_source_id` and `tunarr.library_id` are all set in `config/sources.json`; otherwise the report says `not_configured`. Sync refreshes Plex (`http://192.168.1.227:32400`) for the Modern Commercials folder only, waits 60 s, scans the Tunarr library, then replaces each pool's filler list. The Plex token comes from `$COMMERCIALS_PLEX_TOKEN`, or is read at run time over ssh from the Plex container's `Preferences.xml` (found with `docker inspect plex`). It is held in memory only and is redacted from errors.
+
+`--dry-run` lists what would be processed and the delivery plan, and writes nothing.
+
+Reports go to `$COMMERCIALS_STATE/reports/<timestamp>.json` and `.md`: added and retired ads, rejections by reason, pool hours, per-compilation segment counts and promo-filter drop share, uptime, delivery and sync results, failures.
+
+### launchd
+
+`launchd/com.tunarr.commercials.plist` runs `commercials run` daily at 04:00 (nice 10, low-priority IO) from `/Users/jon/Projects/tunarr/tools/commercials/.venv`, logging to `~/Library/Logs/tunarr-commercials.log`. Install:
+
+```
+cp launchd/com.tunarr.commercials.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tunarr.commercials.plist
+```
+
+It needs the ssh key for `root@192.168.1.227` usable without a prompt, and `uv sync` run in the main checkout.
