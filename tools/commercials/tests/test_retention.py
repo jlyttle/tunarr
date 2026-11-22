@@ -18,7 +18,7 @@ def cat(*ads):
 def test_within_window_kept():
     c = cat(mk("a", 56), mk("b", 1))
     r = select_active(c, TODAY, floor_s=0)
-    assert r == {"kids": {"a", "b"}}
+    assert r == {"kids": {"a", "b"}, "general": set()}
     assert c.ads["a"].status == "active"
 
 
@@ -58,3 +58,18 @@ def test_retired_ad_reactivated():
     r = select_active(c, TODAY, floor_s=0)
     assert r["kids"] == {"a"}
     assert c.ads["a"].status == "active"
+
+
+def test_empty_and_all_rejected_pools_present():
+    assert select_active(cat(), TODAY) == {"kids": set(), "general": set()}
+    r = select_active(cat(mk("r", 1, ("kids",), status="rejected")), TODAY)
+    assert r == {"kids": set(), "general": set()}
+
+
+def test_multi_pool_ad_selected_in_one_expired_in_other():
+    both = mk("m", 60, ("kids", "general"), dur=30)
+    c = cat(both, mk("g", 1, ("general",), dur=100))
+    r = select_active(c, TODAY, floor_s=30)
+    assert "m" in r["kids"]
+    assert "m" not in r["general"]
+    assert c.ads["m"].status == "active"
