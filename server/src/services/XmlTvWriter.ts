@@ -71,6 +71,11 @@ export type MaterializedChannelPrograms = {
   programs: MaterializedGuideItem[];
 };
 
+export type CaptionedProgramsByChannel = ReadonlyMap<
+  string,
+  ReadonlySet<string>
+>;
+
 @injectable()
 @loggingDef({ category: 'scheduling' })
 export class XmlTvWriter {
@@ -81,10 +86,13 @@ export class XmlTvWriter {
 
   constructor(@inject(KEYS.SettingsDB) private settingsDB: SettingsDB) {}
 
-  async write(channels: MaterializedChannelPrograms[]) {
+  async write(
+    channels: MaterializedChannelPrograms[],
+    captioned: CaptionedProgramsByChannel = new Map(),
+  ) {
     const start = performance.now();
     return await lock.runExclusive(async () => {
-      return await this.writeInternal(channels).finally(() => {
+      return await this.writeInternal(channels, captioned).finally(() => {
         const end = performance.now();
         this.logger.debug(
           `Generated and wrote xmltv file in ${round(end - start, 3)}ms`,
@@ -93,8 +101,11 @@ export class XmlTvWriter {
     });
   }
 
-  private async writeInternal(channels: MaterializedChannelPrograms[]) {
-    const content = await this.serialize(channels);
+  private async writeInternal(
+    channels: MaterializedChannelPrograms[],
+    captioned: CaptionedProgramsByChannel,
+  ) {
+    const content = await this.serialize(channels, captioned);
 
     return await writeFile(this.settingsDB.xmlTvSettings().outputPath, content);
   }
@@ -108,7 +119,10 @@ export class XmlTvWriter {
    * hundreds of milliseconds. Each batch serializes as its own document, and
    * its programmes are spliced between the shared header and `</tv>`.
    */
-  async serialize(channels: MaterializedChannelPrograms[]): Promise<string> {
+  async serialize(
+    channels: MaterializedChannelPrograms[],
+    captioned: CaptionedProgramsByChannel = new Map(),
+  ): Promise<string> {
     const header = writeXmltv(
       this.generateXmltv(channels.map((c) => ({ ...c, programs: [] }))),
     );
@@ -119,10 +133,13 @@ export class XmlTvWriter {
     const parts = [header.slice(0, -TvClose.length)];
     for (const { channel, programs } of channels) {
       const xmlChannelId = getChannelId(channel.number);
+      const captionedIds = captioned.get(channel.uuid);
       for (const batch of chunk(programs, SerializeBatchSize)) {
         await throttle();
         const body = writeXmltv({
-          programmes: batch.map((p) => this.makeXmlTvProgram(p, xmlChannelId)),
+          programmes: batch.map((p) =>
+            this.makeXmlTvProgram(p, xmlChannelId, captionedIds),
+          ),
         });
 
         // The declaration and DOCTYPE before <tv> come and go with the content,
@@ -201,6 +218,7 @@ export class XmlTvWriter {
   private makeXmlTvProgram(
     guideItem: MaterializedGuideItem,
     xmlChannelId: string,
+    captionedIds?: ReadonlySet<string>,
   ): XmltvProgramme {
     const title = match(guideItem)
       .with(
@@ -398,6 +416,10 @@ export class XmlTvWriter {
 
       if (program.type === 'track') {
         partial.video = { present: false };
+      }
+
+      if (captionedIds?.has(program.uuid)) {
+        partial.subtitles = [{ type: 'teletext' }];
       }
 
       const rating = firstDefined(program.rating, program.show?.rating);

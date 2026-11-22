@@ -108,6 +108,8 @@ describe('TVGuideService', () => {
         {} as any, // OnDemandChannelService (not used in this path)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         {} as any, // MaterializeProgramsCommand (not used in this path)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { captionedProgramIds: vi.fn().mockResolvedValue(new Set()) } as any,
       );
 
       const guideDuration = dayjs.duration({ hours: 4 });
@@ -187,6 +189,8 @@ describe('TVGuideService', () => {
         {} as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { captionedProgramIds: vi.fn().mockResolvedValue(new Set()) } as any,
       );
 
       const guideDuration = dayjs.duration({ hours: 4 });
@@ -236,6 +240,8 @@ describe('TVGuideService', () => {
         {} as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { captionedProgramIds: vi.fn().mockResolvedValue(new Set()) } as any,
       );
     }
 
@@ -485,6 +491,8 @@ describe('TVGuideService', () => {
         {} as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { captionedProgramIds: vi.fn().mockResolvedValue(new Set()) } as any,
       );
 
       const guideDuration = dayjs.duration({ hours: 4 });
@@ -533,6 +541,8 @@ describe('TVGuideService', () => {
         {} as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { captionedProgramIds: vi.fn().mockResolvedValue(new Set()) } as any,
       );
 
       await service.buildAllChannels(dayjs.duration({ hours: 4 }), true);
@@ -589,6 +599,8 @@ describe('TVGuideService', () => {
         {} as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { captionedProgramIds: vi.fn().mockResolvedValue(new Set()) } as any,
       );
 
       await service.buildAllChannels(dayjs.duration({ hours: 4 }), true);
@@ -655,6 +667,8 @@ describe('TVGuideService', () => {
         {} as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { captionedProgramIds: vi.fn().mockResolvedValue(new Set()) } as any,
       );
 
       await service.buildAllChannels(dayjs.duration({ hours: 4 }), true);
@@ -862,6 +876,9 @@ describe('TVGuideService', () => {
         {} as ServiceDeps[6],
         {} as ServiceDeps[7],
         {} as ServiceDeps[8],
+        {
+          captionedProgramIds: vi.fn().mockResolvedValue(new Set()),
+        } as unknown as ServiceDeps[9],
       );
       // The logger is shared across instances, so drop calls from other tests
       const errorSpy = vi.spyOn(service['logger'], 'error');
@@ -984,6 +1001,8 @@ describe('TVGuideService', () => {
         {} as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { captionedProgramIds: vi.fn().mockResolvedValue(new Set()) } as any,
       );
       return { service, mockWrite };
     }
@@ -1113,6 +1132,8 @@ describe('TVGuideService', () => {
         {} as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { captionedProgramIds: vi.fn().mockResolvedValue(new Set()) } as any,
       );
 
       await service.buildAllChannels(dayjs.duration({ hours: 4 }), true);
@@ -1182,6 +1203,8 @@ describe('TVGuideService', () => {
         {} as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { captionedProgramIds: vi.fn().mockResolvedValue(new Set()) } as any,
       );
 
       await service.buildAllChannels(dayjs.duration({ hours: 4 }), true);
@@ -1201,6 +1224,89 @@ describe('TVGuideService', () => {
       for (const redirect of redirects) {
         expect([a.uuid, b.uuid]).toContain(redirect.channelId);
       }
+    });
+  });
+
+  describe('captions', () => {
+    const T0 = new Date('2024-01-01T00:00:00Z').getTime();
+    const MIN = 60_000;
+
+    type ServiceDeps = ConstructorParameters<typeof TVGuideService>;
+
+    function makeService(captionedProgramIds: ReturnType<typeof vi.fn>) {
+      const channel = makeChannelOrm({ startTime: T0 });
+      const lineups = {
+        [channel.uuid]: {
+          channel,
+          lineup: makeLineup([
+            { type: 'content', id: 'movie-1', durationMs: 30 * MIN },
+            {
+              type: 'content',
+              id: 'commercial',
+              durationMs: 30 * MIN,
+              fillerListId: v4(),
+            },
+            { type: 'offline', durationMs: 30 * MIN },
+            { type: 'content', id: 'movie-2', durationMs: 12 * 60 * MIN },
+          ]),
+        },
+      };
+      const mockWrite = vi.fn().mockResolvedValue(undefined);
+      const service = new TVGuideService(
+        { write: mockWrite } as unknown as ServiceDeps[0],
+        { push: vi.fn() } as unknown as ServiceDeps[1],
+        {
+          loadAllLineups: vi.fn().mockResolvedValue(lineups),
+          syncChannelDuration: vi.fn().mockResolvedValue(false),
+        } as unknown as ServiceDeps[2],
+        {
+          getGuideProgramsByIds: vi.fn().mockResolvedValue(
+            ['movie-1', 'commercial', 'movie-2'].map((uuid) => ({
+              uuid,
+              type: 'movie',
+              title: uuid,
+            })),
+          ),
+        } as unknown as ServiceDeps[3],
+        {} as ServiceDeps[4],
+        {
+          featureFlags: () => ({ xmltvCreditImagesEnabled: false }),
+        } as ServiceDeps[5],
+        {} as ServiceDeps[6],
+        {} as ServiceDeps[7],
+        {} as ServiceDeps[8],
+        { captionedProgramIds } as unknown as ServiceDeps[9],
+      );
+      return { service, channel, mockWrite };
+    }
+
+    const build = (service: TVGuideService) =>
+      service.buildAllChannels(dayjs.duration({ hours: 4 }), true, T0);
+
+    it('asks only about content programmes and passes the answer to the writer', async () => {
+      const captionedProgramIds = vi
+        .fn()
+        .mockResolvedValue(new Set(['movie-1']));
+      const { service, channel, mockWrite } = makeService(captionedProgramIds);
+
+      await build(service);
+
+      const [askedChannel, askedIds] = captionedProgramIds.mock.calls[0]!;
+      expect(askedChannel.uuid).toBe(channel.uuid);
+      expect([...askedIds].sort()).toEqual(['movie-1', 'movie-2']);
+      expect(mockWrite.mock.calls.at(-1)![1]).toEqual(
+        new Map([[channel.uuid, new Set(['movie-1'])]]),
+      );
+    });
+
+    it('writes the guide without marks when the caption lookup fails', async () => {
+      const captionedProgramIds = vi.fn().mockRejectedValue(new Error('boom'));
+      const { service, mockWrite } = makeService(captionedProgramIds);
+
+      await expect(build(service)).resolves.not.toThrow();
+
+      expect(mockWrite).toHaveBeenCalled();
+      expect(mockWrite.mock.calls.at(-1)![1]).toEqual(new Map());
     });
   });
 
@@ -1258,6 +1364,9 @@ describe('TVGuideService', () => {
         {} as ServiceDeps[6],
         {} as ServiceDeps[7],
         {} as ServiceDeps[8],
+        {
+          captionedProgramIds: vi.fn().mockResolvedValue(new Set()),
+        } as unknown as ServiceDeps[9],
       );
       return { service, channel, mockWrite };
     }

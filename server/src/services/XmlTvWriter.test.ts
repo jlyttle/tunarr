@@ -1348,4 +1348,80 @@ describe('XmlTvWriter', () => {
       expect(programmes[0]?.stop).toEqual(new Date(20 * hour));
     });
   });
+
+  describe('captions', () => {
+    const hour = 3_600_000;
+
+    function movieItem(program: ProgramWithRelationsOrm, index: number) {
+      return {
+        programming: { type: 'program' as const, program },
+        title: program.title,
+        start: index * hour,
+        stop: (index + 1) * hour,
+        durationMs: hour,
+      };
+    }
+
+    async function serializeWithCaptions(captionedIndexes: number[]) {
+      const channel = createChannelOrm({ number: 1, name: 'MTV' });
+      const programs = [0, 1].map((i) =>
+        makeProgram({ type: 'movie', title: `Movie ${i}` }),
+      );
+      const captioned = new Map([
+        [channel.uuid, new Set(captionedIndexes.map((i) => programs[i]!.uuid))],
+      ]);
+      const xml = await new XmlTvWriter(inMemorySettingsDB()).serialize(
+        [{ channel, programs: programs.map(movieItem) }],
+        captioned,
+      );
+      return parseXmltv(xml).programmes ?? [];
+    }
+
+    it('writes <subtitles type="teletext"/> for a captioned programme', async () => {
+      const programmes = await serializeWithCaptions([0]);
+
+      expect(programmes[0]?.subtitles).toEqual([{ type: 'teletext' }]);
+    });
+
+    it('writes no subtitles element for other programmes', async () => {
+      const programmes = await serializeWithCaptions([0]);
+
+      expect(programmes[1]?.subtitles).toBeUndefined();
+    });
+
+    it('writes no subtitles element when nothing is captioned', async () => {
+      const channel = createChannelOrm({ number: 1, name: 'MTV' });
+      const xml = await new XmlTvWriter(inMemorySettingsDB()).serialize([
+        {
+          channel,
+          programs: [movieItem(makeProgram({ type: 'movie' }), 0)],
+        },
+      ]);
+
+      expect(xml).not.toContain('<subtitles');
+    });
+
+    it('never writes subtitles for a flex item', async () => {
+      const channel = createChannelOrm({ number: 1, name: 'MTV' });
+      const xml = await new XmlTvWriter(inMemorySettingsDB()).serialize(
+        [
+          {
+            channel,
+            programs: [
+              {
+                programming: { type: 'flex' },
+                title: 'Flex',
+                start: 0,
+                stop: hour,
+                durationMs: hour,
+              },
+            ],
+          },
+        ],
+        new Map([[channel.uuid, new Set(['anything'])]]),
+      );
+
+      expect(xml).not.toContain('<subtitles');
+    });
+  });
 });

@@ -81,8 +81,10 @@ import {
 } from '../util/index.ts';
 import { loggingDef } from '../util/logging/loggingDef.ts';
 import { EventService } from './EventService.ts';
+import { GuideCaptionService } from './GuideCaptionService.ts';
 import { OnDemandChannelService } from './OnDemandChannelService.ts';
 import {
+  type CaptionedProgramsByChannel,
   type MaterializedChannelPrograms,
   XmlTvWriter,
 } from './XmlTvWriter.ts';
@@ -184,6 +186,8 @@ export class TVGuideService {
     private onDemandChannelService: OnDemandChannelService,
     @inject(MaterializeProgramsCommand)
     private materializeProgramsCommand: MaterializeProgramsCommand,
+    @inject(GuideCaptionService)
+    private guideCaptionService: GuideCaptionService,
   ) {
     this.timer = new Timer();
     this.cachedGuide = {};
@@ -1208,7 +1212,10 @@ export class TVGuideService {
       });
     }
 
-    await this.xmltv.write(materializedGuide);
+    await this.xmltv.write(
+      materializedGuide,
+      await this.loadCaptionedPrograms(materializedGuide),
+    );
 
     const now = dayjs();
     this.eventService.push({
@@ -1220,6 +1227,41 @@ export class TVGuideService {
       },
       level: 'info',
     });
+  }
+
+  /**
+   * Filler, flex and redirect items are materialized as non-program items, so
+   * only content programmes are looked up. Filler can stream under a different
+   * profile than the channel's, which the caption lookup does not model.
+   */
+  private async loadCaptionedPrograms(
+    guide: MaterializedChannelPrograms[],
+  ): Promise<CaptionedProgramsByChannel> {
+    const captioned = new Map<string, ReadonlySet<string>>();
+    try {
+      for (const { channel, programs } of guide) {
+        await throttle();
+        const programIds = uniq(
+          programs.flatMap(({ programming }) =>
+            programming.type === 'program' ? [programming.program.uuid] : [],
+          ),
+        );
+        captioned.set(
+          channel.uuid,
+          await this.guideCaptionService.captionedProgramIds(
+            channel,
+            programIds,
+          ),
+        );
+      }
+      return captioned;
+    } catch (e) {
+      this.logger.warn(
+        e,
+        'Failed to look up captioned programs; writing XMLTV without subtitles marks',
+      );
+      return new Map();
+    }
   }
 
   /**
