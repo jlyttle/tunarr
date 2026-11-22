@@ -83,8 +83,9 @@ class Tools:
     encode: Callable[[Path, Path, dict], None]
     fingerprint: Callable[[Path], list[int]]
     uptime: Callable[[], str]
-    deliver: Callable[[Catalog, dict[str, set[str]], str], DeliveryPlan]
+    deliver: Callable[[Catalog, dict[str, set[str]], str], DeliveryPlan]  # push only
     sync: Callable[[dict, Catalog, dict[str, set[str]]], dict[str, str]]
+    remove: Callable[[Catalog, list[str]], list[str]]  # delete remotes; returns the removed ones
 
 
 def log(msg: str) -> None:
@@ -352,6 +353,27 @@ def gate_network_refs(catalog: Catalog, networks: list[Network], refs_dir: Path,
             c.status = "new"
 
 
+def retired_remotes(catalog: Catalog, active: dict[str, set[str]],
+                    sync_result: dict[str, str]) -> tuple[list[str], list[str]]:
+    """(remove now, defer) for delivered files no longer active in their pool.
+
+    A file is removed only once its pool's filler list was replaced ("updated"), since
+    until then the list may still reference it. A kids-blocked ad's kids copy is removed
+    at once: a missing file in the kids list beats the ad airing there.
+    """
+    now, later = [], []
+    for ad_id in sorted(catalog.ads):
+        ad = catalog.ads[ad_id]
+        for pool, remote in sorted(ad.delivered.items()):
+            if ad_id in active.get(pool, set()):
+                continue
+            if sync_result.get(pool) == "updated" or (pool == "kids" and ad.kids_blocked):
+                now.append(remote)
+            else:
+                later.append(remote)
+    return now, later
+
+
 def _uptime(tools: Tools, report: Report) -> str | None:
     try:
         return tools.uptime()
@@ -419,9 +441,7 @@ def run(opts: RunOptions, ctx: RunContext, tools: Tools) -> Report:
                 plan = tools.deliver(catalog, active, cfg["unraid_root"])
                 pushed = sum(1 for ad_id, pool, remote in plan.push
                              if catalog.ads[ad_id].delivered.get(pool) == remote)
-                still = {r for a in catalog.ads.values() for r in a.delivered.values()}
-                report.delivery = {"pushed": pushed, "push_failed": len(plan.push) - pushed,
-                                   "deleted": sum(1 for r in plan.delete if r not in still)}
+                report.delivery = {"pushed": pushed, "push_failed": len(plan.push) - pushed}
             except Exception as e:
                 report.failures.append(f"deliver: {describe(e)}")
             save_catalog(catalog, cat_path)
@@ -440,6 +460,18 @@ def run(opts: RunOptions, ctx: RunContext, tools: Tools) -> Report:
         except Exception as e:
             report.failures.append(f"sync: {describe(e)}")
             report.sync = {"status": "failed"}
+
+    if opts.deliver and reachable:
+        now, later = retired_remotes(catalog, active, report.sync)
+        removed: list[str] = []
+        if now:
+            try:
+                removed = tools.remove(catalog, now)
+            except Exception as e:
+                report.failures.append(f"delete: {describe(e)}")
+        report.delivery["deleted"] = len(removed)
+        report.delivery["delete_deferred"] = len(later) + len(now) - len(removed)
+        save_catalog(catalog, cat_path)
 
     if check_uptime and reachable:
         report.uptime_after = _uptime(tools, report)

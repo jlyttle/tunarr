@@ -114,3 +114,38 @@ def test_deliver_failed_push_stays_pending(tmp_path, monkeypatch, capsys):
     assert b.delivered == {}
     err = capsys.readouterr().err
     assert "b" in err and "boom" in err
+
+
+def test_deliver_pushes_but_never_deletes(tmp_path, monkeypatch):
+    from commercials import deliver as dmod
+
+    old = mk("old", ["kids"], {"kids": f"{ROOT}/kids/old.mp4"}, "retired")
+    calls = []
+    monkeypatch.setattr(dmod.subprocess, "run",
+                        lambda args, **kw: calls.append(args) or subprocess.CompletedProcess(args, 0))
+    plan = dmod.deliver(cat(old), {"kids": set(), "general": set()}, ROOT)
+    assert plan.delete == [f"{ROOT}/kids/old.mp4"]
+    assert calls == []  # deletes wait until the filler lists no longer reference them
+    assert old.delivered == {"kids": f"{ROOT}/kids/old.mp4"}
+
+
+def test_remove_deletes_and_forgets_remotes(monkeypatch):
+    from commercials import deliver as dmod
+
+    a = mk("a", ["general"], {"kids": f"{ROOT}/kids/a.mp4", "general": f"{ROOT}/general/a.mp4"})
+    calls = []
+    monkeypatch.setattr(dmod.subprocess, "run",
+                        lambda args, **kw: calls.append(args) or subprocess.CompletedProcess(args, 0))
+    assert dmod.remove(cat(a), [f"{ROOT}/kids/a.mp4"]) == [f"{ROOT}/kids/a.mp4"]
+    assert len(calls) == 1 and "rm -f" in calls[0][2]
+    assert a.delivered == {"general": f"{ROOT}/general/a.mp4"}
+
+
+def test_remove_failure_keeps_remotes_pending(monkeypatch):
+    from commercials import deliver as dmod
+
+    a = mk("a", ["general"], {"kids": f"{ROOT}/kids/a.mp4"})
+    monkeypatch.setattr(dmod.subprocess, "run",
+                        lambda args, **kw: subprocess.CompletedProcess(args, 255, b"", b"down"))
+    assert dmod.remove(cat(a), [f"{ROOT}/kids/a.mp4"]) == []
+    assert a.delivered == {"kids": f"{ROOT}/kids/a.mp4"}

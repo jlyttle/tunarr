@@ -72,7 +72,11 @@ def unraid_root(config_path: Path | None = None) -> str:
 
 
 def deliver(catalog: Catalog, active: dict[str, set[str]], root: str) -> DeliveryPlan:
-    """Push pending ads one at a time, then delete retired ones. Failed transfers stay pending."""
+    """Push pending ads one at a time. Failed transfers stay pending.
+
+    Nothing is deleted here: a retired file may still be in a pool's filler list until
+    the sync replaces it, so the runner calls `remove` after a successful sync.
+    """
     plan = plan_delivery(catalog, active, root)
     pushed = []
     for ad_id, pool, remote in plan.push:
@@ -88,8 +92,18 @@ def deliver(catalog: Catalog, active: dict[str, set[str]], root: str) -> Deliver
         else:
             err = (r.stderr or b"").decode(errors="replace").strip()
             print(f"push failed for {ad_id} ({pool}): {err}", file=sys.stderr)
-    deleted: list[str] = []
-    if plan.delete and subprocess.run(delete_args(plan.delete), stderr=subprocess.PIPE).returncode == 0:
-        deleted = list(plan.delete)
-    apply_delivery_result(catalog, pushed, deleted)
+    apply_delivery_result(catalog, pushed, [])
     return plan
+
+
+def remove(catalog: Catalog, remotes: list[str]) -> list[str]:
+    """Delete remote files in one ssh call. Returns the removed ones (none on failure)."""
+    if not remotes:
+        return []
+    r = subprocess.run(delete_args(remotes), stderr=subprocess.PIPE)
+    if r.returncode != 0:
+        err = (r.stderr or b"").decode(errors="replace").strip()
+        print(f"delete failed: {err}", file=sys.stderr)
+        return []
+    apply_delivery_result(catalog, [], list(remotes))
+    return list(remotes)

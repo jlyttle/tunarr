@@ -111,6 +111,7 @@ def real_tools(cfg_dir: Path) -> Tools:
         uptime=_uptime,
         deliver=deliver_mod.deliver,
         sync=_sync,
+        remove=deliver_mod.remove,
     )
 
 

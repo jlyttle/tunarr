@@ -49,7 +49,7 @@ class Fakes:
         self.info_extra = info_extra or {}
         self.fail_cut = set(fail_cut)
         self.downloads, self.cuts, self.encodes, self.volume_calls = [], [], [], []
-        self.deliveries, self.syncs, self.uptimes = [], [], []
+        self.deliveries, self.syncs, self.uptimes, self.removes = [], [], [], []
 
     def tools(self) -> Tools:
         return Tools(
@@ -57,7 +57,7 @@ class Fakes:
             detect=lambda p: detect_stderr(GAPS), cut=self.cut, promo_score=self.promo_score,
             probe=self.probe, mean_volume=self.mean_volume, loudness=self.loudness,
             encode=self.encode, fingerprint=self.fingerprint, uptime=self.uptime,
-            deliver=self.deliver, sync=self.sync,
+            deliver=self.deliver, sync=self.sync, remove=self.remove,
         )
 
     def discover(self, sources, catalog, since):
@@ -123,6 +123,14 @@ class Fakes:
                 catalog.ads[ad_id].delivered[pool] = remote
                 plan.push.append((ad_id, pool, remote))
         return plan
+
+    def remove(self, catalog, remotes):
+        self.removes.append(list(remotes))
+        gone = set(remotes)
+        for ad in catalog.ads.values():
+            for pool in [p for p, r in ad.delivered.items() if r in gone]:
+                del ad.delivered[pool]
+        return list(remotes)
 
     def sync(self, cfg, catalog, active):
         self.syncs.append(sorted(active))
@@ -592,3 +600,81 @@ def test_add_ref_refuses_unknown_network(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(cli, "config_dir", lambda: ROOT / "config")
     assert cli.main(["add-ref", "Nick", str(tmp_path / "c.mkv")]) == 2
     assert "nickelodeon" in capsys.readouterr().err
+
+
+RET_ROOT = "/mnt/user/plex/Videos/Modern Commercials"
+
+
+def _seed_retired(c, kids_blocked=False, pools=("general",), delivered_pool="general"):
+    """A catalog with one ad no longer active in `delivered_pool` but still on Unraid there."""
+    from commercials.catalog import Ad, Catalog
+
+    remote = f"{RET_ROOT}/{delivered_pool}/old.mp4"
+    status = "active" if delivered_pool not in pools else "rejected"
+    ad = Ad("old", "1,2,3", 30.0, set(pools), date(2026, 11, 1), date(2026, 11, 1), ["x"],
+            "/x/old.mp4", {delivered_pool: remote}, status, kids_blocked=kids_blocked)
+    save_catalog(Catalog(ads={"old": ad}), c.state / "catalog.json")
+    return remote
+
+
+def test_failed_sync_leaves_retired_files_in_place(tmp_path):
+    c = ctx(tmp_path, configured=True)
+    remote = _seed_retired(c)
+    fakes = Fakes([comp("v1")])
+
+    def boom(cfg, catalog, active):
+        raise RuntimeError("tunarr down")
+
+    fakes.sync = boom
+    report = run(RunOptions(), c, fakes.tools())
+    assert fakes.removes == []
+    assert load_catalog(c.state / "catalog.json").ads["old"].delivered == {"general": remote}
+    assert report.delivery["deleted"] == 0 and report.delivery["delete_deferred"] == 1
+
+
+def test_deletes_run_after_a_successful_sync(tmp_path):
+    c = ctx(tmp_path, configured=True)
+    remote = _seed_retired(c)
+    fakes = Fakes([comp("v1")])
+    order = []
+    fakes.sync = lambda cfg, catalog, active: order.append("sync") or {"kids": "updated", "general": "updated"}
+    plain_remove = fakes.remove
+    fakes.remove = lambda catalog, remotes: order.append("remove") or plain_remove(catalog, remotes)
+    report = run(RunOptions(), c, fakes.tools())
+    assert order == ["sync", "remove"]
+    assert fakes.removes == [[remote]]
+    assert load_catalog(c.state / "catalog.json").ads["old"].delivered == {}
+    assert report.delivery["deleted"] == 1 and report.delivery["delete_deferred"] == 0
+
+
+def test_unconfigured_sync_defers_deletes(tmp_path):
+    c = ctx(tmp_path, configured=False)
+    remote = _seed_retired(c)
+    report = run(RunOptions(), c, Fakes([comp("v1")]).tools())
+    assert load_catalog(c.state / "catalog.json").ads["old"].delivered == {"general": remote}
+    assert report.delivery["delete_deferred"] == 1
+
+
+def test_pool_whose_list_was_not_updated_keeps_its_files(tmp_path):
+    c = ctx(tmp_path, configured=True)
+    remote = _seed_retired(c)
+    fakes = Fakes([comp("v1")])
+    fakes.sync = lambda cfg, catalog, active: {"kids": "updated", "general": "tunarr_behind"}
+    report = run(RunOptions(), c, fakes.tools())
+    assert fakes.removes == []
+    assert report.delivery["delete_deferred"] == 1
+    assert load_catalog(c.state / "catalog.json").ads["old"].delivered == {"general": remote}
+
+
+def test_kids_blocked_file_leaves_kids_folder_even_when_sync_fails(tmp_path):
+    # a beer ad must not stay playable from the kids list: a missing file beats it airing
+    c = ctx(tmp_path, configured=True)
+    remote = _seed_retired(c, kids_blocked=True, pools=("general",), delivered_pool="kids")
+    fakes = Fakes([comp("v1")])
+
+    def boom(cfg, catalog, active):
+        raise RuntimeError("tunarr down")
+
+    fakes.sync = boom
+    run(RunOptions(), c, fakes.tools())
+    assert fakes.removes == [[remote]]
