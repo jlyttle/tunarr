@@ -20,3 +20,4 @@ packages = ["commercials"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["integration: needs ffmpeg and renders lavfi clips"]
