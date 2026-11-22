@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-COMPILATION_STATUSES = ("new", "downloaded", "split", "failed")
+COMPILATION_STATUSES = ("new", "downloaded", "split", "failed", "skipped")
 AD_STATUSES = ("active", "retired", "rejected")
 
 

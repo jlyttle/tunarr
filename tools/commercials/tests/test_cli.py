@@ -129,13 +129,16 @@ class Fakes:
         return {"kids": "updated", "general": "updated"}
 
 
-def comp(vid, title="Vol. 1 (Comedy Central)", pools=("general",), day=20):
+def comp(vid, title="2026 Commercials Vol. 1", pools=("general",), day=20):
     return Compilation(vid, title, date(2026, 11, day), set(pools), "new")
 
 
-def config_dir(tmp_path, configured=False):
+def config_dir(tmp_path, configured=False, refs=("nickelodeon",)):
     d = tmp_path / "config"
     (d / "network_refs").mkdir(parents=True)
+    for slug in refs:
+        (d / "network_refs" / f"{slug}.json").write_text("{}")
+    (d / "networks.json").write_text((ROOT / "config" / "networks.json").read_text())
     src = json.loads((ROOT / "config" / "sources.json").read_text())
     if configured:
         src["filler_list_ids"] = {"kids": "LK", "general": "LG"}
@@ -147,13 +150,13 @@ def config_dir(tmp_path, configured=False):
     return d
 
 
-def ctx(tmp_path, configured=False):
+def ctx(tmp_path, configured=False, refs=("nickelodeon",)):
     return RunContext(media=tmp_path / "media", state=tmp_path / "state",
-                      config_dir=config_dir(tmp_path, configured), today=TODAY)
+                      config_dir=config_dir(tmp_path, configured, refs), today=TODAY)
 
 
-def run_with(tmp_path, fakes, configured=False, **opts):
-    c = ctx(tmp_path, configured)
+def run_with(tmp_path, fakes, configured=False, refs=("nickelodeon",), **opts):
+    c = ctx(tmp_path, configured, refs)
     report = run(RunOptions(**opts), c, fakes.tools())
     return c, report
 
@@ -247,8 +250,8 @@ def test_nonstandard_segment_rejected(tmp_path):
     assert (c.media / "rejected" / "nonstandard_length" / "v1-10.100.mkv").exists()
 
 
-def test_single_chapter_rule_only_for_kids(tmp_path):
-    # no chapters at all: kids compilations reject everything, general ones don't care
+def test_single_chapter_rule_skips_generic_general(tmp_path):
+    # no chapters at all: kids compilations reject everything, generic general ones don't care
     fakes = Fakes([comp("k1", "Vol. 2 (Nickelodeon)", pools=("kids",)), comp("g1")])
     _, report = run_with(tmp_path, fakes, deliver=False, sync=False)
     assert report.rejected_by_reason == {"no_chapters": 3}
@@ -485,3 +488,107 @@ def test_launchd_plist():
     assert p["StartCalendarInterval"] == {"Hour": 4, "Minute": 0}
     assert p["StandardOutPath"].endswith("Library/Logs/tunarr-commercials.log")
     assert p["StandardErrorPath"] == p["StandardOutPath"]
+
+
+def test_per_network_compilation_without_refs_is_skipped(tmp_path):
+    fakes = Fakes([comp("cc1", "Vol. 1 (Comedy Central)")])
+    c, report = run_with(tmp_path, fakes, deliver=False, sync=False)
+    assert fakes.downloads == []
+    assert report.compilations == [{"video_id": "cc1", "title": "Vol. 1 (Comedy Central)",
+                                    "pools": ["general"], "status": "skipped",
+                                    "reason": "no_network_refs", "networks": ["comedy-central"]}]
+    assert report.needs_network_refs == {"comedy-central": 1}
+    assert load_catalog(c.state / "catalog.json").compilations["cc1"].status == "skipped"
+
+
+def test_skipped_compilation_not_retried_until_refs_appear(tmp_path):
+    fakes = Fakes([comp("cc1", "Vol. 1 (Comedy Central)")])
+    c, _ = run_with(tmp_path, fakes, deliver=False, sync=False)
+    again = run(RunOptions(deliver=False, sync=False), c, fakes.tools())
+    assert fakes.downloads == []
+    assert again.compilations == []  # reported once, when it was skipped
+    assert again.needs_network_refs == {"comedy-central": 1}
+    (c.config_dir / "network_refs" / "comedy-central.json").write_text("{}")
+    third = run(RunOptions(deliver=False, sync=False), c, fakes.tools())
+    assert fakes.downloads == ["cc1"]
+    assert third.compilations[0]["status"] == "split"
+    assert third.needs_network_refs == {}
+
+
+def test_kids_compilation_naming_two_networks_needs_refs_for_both(tmp_path):
+    fakes = Fakes([comp("k1", "Nick and Disney XD Commercials", pools=("kids",))])
+    _, report = run_with(tmp_path, fakes, deliver=False, sync=False, refs=("nickelodeon",))
+    assert fakes.downloads == []
+    assert report.compilations[0]["networks"] == ["disney-xd", "nickelodeon"]
+
+
+def test_single_chapter_rule_applies_to_per_network_general(tmp_path):
+    fakes = Fakes([comp("cc1", "Vol. 1 (Comedy Central)", day=21), comp("g1")])
+    _, report = run_with(tmp_path, fakes, deliver=False, sync=False, refs=("comedy-central",))
+    assert report.rejected_by_reason == {"no_chapters": 3}
+    assert report.pool_hours["general"] == pytest.approx(40 / 3600, abs=0.001)
+
+
+def test_single_chapter_rule_applies_to_generic_kids(tmp_path):
+    fakes = Fakes([comp("k1", "Kids Commercials Vol. 9", pools=("kids",))])
+    _, report = run_with(tmp_path, fakes, deliver=False, sync=False)
+    assert report.rejected_by_reason == {"no_chapters": 3}
+
+
+def test_promo_chapter_text_rejects(tmp_path):
+    chapters = [
+        {"start_time": 0, "end_time": 10, "title": "Toy commercial"},
+        {"start_time": 10, "end_time": 30, "title": "Cereal commercial"},
+        {"start_time": 30, "end_time": 40.2, "title": "SpongeBob promo"},
+    ]
+    fakes = Fakes([comp("k1", "Vol. 2 (Nickelodeon)", pools=("kids",))], chapters={"k1": chapters})
+    c, report = run_with(tmp_path, fakes, deliver=False, sync=False)
+    # titles lag a chapter, so the segment before the promo chapter is rejected too
+    assert report.rejected_by_reason == {"promo_chapter_text": 2}
+    assert len(report.added) == 1
+    assert (c.media / "rejected" / "promo_chapter_text" / "k1-30.200.mkv").exists()
+
+
+def test_network_name_in_chapter_text_rejects_generic_too(tmp_path):
+    chapters = [
+        {"start_time": 0, "end_time": 10, "title": "Toy commercial"},
+        {"start_time": 10, "end_time": 30, "title": "Cereal commercial"},
+        {"start_time": 30, "end_time": 40.2, "title": "Comedy Central"},
+    ]
+    fakes = Fakes([comp("g1")], chapters={"g1": chapters})
+    _, report = run_with(tmp_path, fakes, deliver=False, sync=False)
+    assert report.rejected_by_reason == {"promo_chapter_text": 2}
+
+
+def test_blocklist_hit_on_general_sighting_blocks_kids(tmp_path):
+    beer = [{"start_time": 0, "end_time": 10, "title": "Light Beer commercial"},
+            {"start_time": 10, "end_time": 30, "title": "Light Beer commercial"},
+            {"start_time": 30, "end_time": 40.2, "title": "Light Beer commercial"}]
+    comps = [comp("g1", day=21), comp("k1", "Vol. 2 (Nickelodeon)", pools=("kids",), day=20)]
+    fakes = Fakes(comps, chapters={"g1": beer, "k1": kids_chapters("clean")})
+    fakes.fingerprint = lambda p: fp_of(Path(p).read_text().replace("g1", "X").replace("k1", "X"))
+    c, report = run_with(tmp_path, fakes, deliver=False, sync=False)
+    cat = load_catalog(c.state / "catalog.json")
+    assert len(cat.ads) == 3
+    for a in cat.ads.values():
+        assert a.kids_blocked and a.pools == {"general"}
+
+
+def test_add_ref_resolves_network_to_its_config_slug(monkeypatch, tmp_path):
+    from commercials import cli
+
+    calls = []
+    monkeypatch.setattr(cli.promo, "add_reference", lambda net, clip, d: calls.append((net, d.name)))
+    monkeypatch.setattr(cli, "config_dir", lambda: ROOT / "config")
+    assert cli.main(["add-ref", "nickelodeon", str(tmp_path / "c.mkv")]) == 0
+    assert cli.main(["add-ref", "Disney XD", str(tmp_path / "c.mkv")]) == 0
+    assert calls == [("Nickelodeon", "network_refs"), ("Disney XD", "network_refs")]
+
+
+def test_add_ref_refuses_unknown_network(monkeypatch, tmp_path, capsys):
+    from commercials import cli
+
+    monkeypatch.setattr(cli.promo, "add_reference", lambda *a: pytest.fail("not expected"))
+    monkeypatch.setattr(cli, "config_dir", lambda: ROOT / "config")
+    assert cli.main(["add-ref", "Nick", str(tmp_path / "c.mkv")]) == 2
+    assert "nickelodeon" in capsys.readouterr().err

@@ -1,6 +1,6 @@
 {
   "channels": ["https://www.youtube.com/@commercialbreak/videos"],
-  "patterns": [["(?i)nick|nickelodeon|cartoon network|disney|kids", "kids"]],
+  "patterns": [["(?i)^(?!.*(?:nick\\s+at\\s+nite|adult\\s+swim|\\[as\\])).*(?:nick|nickelodeon|cartoon network|disney|kids)", "kids"]],
   "default_pool": "general",
   "unraid_root": "/mnt/user/plex/Videos/Modern Commercials",
   "filler_list_ids": {"kids": null, "general": null},

@@ -15,7 +15,8 @@ from commercials import split
 from commercials import tunarr_sync as ts
 from commercials.catalog import Catalog, load_catalog
 from commercials.deliver import HOST, SSH
-from commercials.paths import media_root, state_root
+from commercials.networks import find_network, load_networks
+from commercials.paths import config_dir, media_root, state_root
 from commercials.report import latest_report, markdown
 from commercials.retention import POOLS
 from commercials.runner import (
@@ -29,7 +30,6 @@ from commercials.runner import (
     run,
 )
 
-CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 PLEX_HOST_ROOT = "/mnt/user/plex"  # the Plex container sees it as /data
 PLEX_CONTAINER_ROOT = "/data"
 PLEX_SETTLE_S = 60  # let Plex index the refreshed folder before Tunarr scans it
@@ -87,13 +87,13 @@ def _sync(cfg: dict, catalog: Catalog, active: dict[str, set[str]]) -> dict[str,
         raise RuntimeError(redact(describe(e), token)) from None
 
 
-def real_tools(config_dir: Path) -> Tools:
+def real_tools(cfg_dir: Path) -> Tools:
     refs: list[promo.NetworkRefs] | None = None
 
     def promo_score(path: Path, start: float, end: float) -> float:
         nonlocal refs
         if refs is None:
-            refs = promo.load_refs(config_dir / "network_refs")
+            refs = promo.load_refs(cfg_dir / "network_refs")
         return promo.score_segment(path, start, end, refs)
 
     return Tools(
@@ -115,18 +115,26 @@ def real_tools(config_dir: Path) -> Tools:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    ctx = RunContext(media=media_root(), state=state_root(), config_dir=CONFIG_DIR, today=date.today())
+    cfg_dir = config_dir()
+    ctx = RunContext(media=media_root(), state=state_root(), config_dir=cfg_dir, today=date.today())
     opts = RunOptions(dry_run=args.dry_run, deliver=not args.no_deliver, sync=not args.no_sync,
                       limit=args.limit, since_weeks=args.since_weeks)
-    report = run(opts, ctx, real_tools(CONFIG_DIR))
+    report = run(opts, ctx, real_tools(cfg_dir))
     if not opts.dry_run:
         print(markdown(report))
     return 1 if report.failures else 0
 
 
 def cmd_add_ref(args: argparse.Namespace) -> int:
-    promo.add_reference(args.network, Path(args.clip), CONFIG_DIR / "network_refs")
-    print(f"added {args.clip} to {args.network} references")
+    cfg_dir = config_dir()
+    networks = load_networks(cfg_dir / "networks.json")
+    net = find_network(args.network, networks)
+    if net is None:
+        print(f"unknown network {args.network!r}; use a slug or name from config/networks.json: "
+              + ", ".join(n.slug for n in networks), file=sys.stderr)
+        return 2
+    promo.add_reference(net.name, Path(args.clip), cfg_dir / "network_refs")
+    print(f"added {args.clip} to {net.name} references ({net.slug})")
     return 0
 
 

@@ -33,3 +33,17 @@ def test_chapter_text_empty_without_chapters():
 def test_blocklist_word_boundaries():
     assert apply_blocklist("swine flu", {"kids"}, ["wine"]) == {"kids"}
     assert apply_blocklist("root beer", {"kids"}, ["beer"]) == {"general"}
+
+
+def test_blocklist_matches_plurals():
+    assert apply_blocklist("craft beers", {"kids"}, ["beer"]) == {"general"}
+    assert apply_blocklist("online casinos", {"kids"}, ["casino"]) == {"general"}
+
+
+def test_blocklist_hit_ignores_pools():
+    from commercials.pools import blocklist_hit
+
+    assert blocklist_hit("Light Beer commercial", ["beer"])
+    assert blocklist_hit("two beers", ["beer"])
+    assert not blocklist_hit("root canal", ["beer"])
+    assert not blocklist_hit("", ["beer"])

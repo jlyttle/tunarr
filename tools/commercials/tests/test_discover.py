@@ -70,3 +70,12 @@ def test_discover_skips_entry_when_fallback_fails(monkeypatch):
     out = discover_mod.discover(s, catalog, date(2026, 10, 1))
     assert [c.video_id for c in out] == ["dated"]
     assert "nodate" not in catalog.compilations
+
+
+def test_adult_and_late_night_blocks_are_not_kids():
+    s = load_sources(SOURCES)
+    assert pools_for_title("Nick at Nite Commercials (2026)", s) == {"general"}
+    assert pools_for_title("Adult Swim on Cartoon Network Commercials", s) == {"general"}
+    assert pools_for_title("[as] Commercial Break Vol. 3", s) == {"general"}
+    assert pools_for_title("Cartoon Network Commercials Vol. 3", s) == {"kids"}
+    assert pools_for_title("Disney XD Commercials", s) == {"kids"}

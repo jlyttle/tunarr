@@ -20,7 +20,8 @@ from commercials.discover import Sources, load_sources
 from commercials.download import info_path
 from commercials.encode import StreamInfo, precheck
 from commercials.fingerprint import find_match, record_segment
-from commercials.pools import apply_blocklist, chapter_text_for, enforce_kids_block, load_blocklist
+from commercials.networks import Network, load_networks, missing_refs, networks_in, promo_chapter_text
+from commercials.pools import apply_blocklist, blocklist_hit, chapter_text_for, enforce_kids_block, load_blocklist
 from commercials.promo_filter import promo_verdict
 from commercials.report import Report, write_report
 from commercials.retention import POOLS, select_active
@@ -189,9 +190,10 @@ class _Compilation:
     """Processes one downloaded compilation into ads and rejects."""
 
     def __init__(self, comp: Compilation, catalog: Catalog, ctx: RunContext, tools: Tools,
-                 blocklist: list[str], report: Report):
+                 blocklist: list[str], report: Report, networks: list[Network]):
         self.comp, self.catalog, self.ctx, self.tools = comp, catalog, ctx, tools
-        self.blocklist, self.report = blocklist, report
+        self.blocklist, self.report, self.networks = blocklist, report, networks
+        self.per_network = bool(networks_in(comp.title, networks))
         self.row = {"video_id": comp.video_id, "title": comp.title, "pools": sorted(comp.pools),
                     "status": comp.status, "segments": 0, "accepted": 0, "new_ads": 0,
                     "promo_scored": 0, "promo_dropped": 0}
@@ -211,7 +213,7 @@ class _Compilation:
         stderr = t.detect(mkv)
         segs = segments(boundaries(parse_blackdetect(stderr), parse_silencedetect(stderr), dur,
                                    chapters=chapter_times))
-        if "kids" in c.pools:
+        if self.per_network or "kids" in c.pools:
             segs = require_single_chapter(segs, [0.0, *chapter_times] if self.chapters else [], dur)
         self.row["segments"] = len(segs)
         for seg in segs:
@@ -233,6 +235,8 @@ class _Compilation:
 
     def _segment(self, mkv: Path, seg: Segment) -> None:
         reason = seg.reject_reason
+        if reason is None and promo_chapter_text(chapter_text_for(seg.start, self.chapters), self.networks):
+            reason = "promo_chapter_text"
         if reason is None:
             self.row["promo_scored"] += 1
             reason = promo_verdict(self.tools.promo_score(mkv, seg.start, seg.end))
@@ -284,8 +288,9 @@ class _Compilation:
             return "fingerprint_failed"
         if not fp:
             return "fingerprint_failed"
-        pools = apply_blocklist(chapter_text_for(seg.start, self.chapters), self.comp.pools, self.blocklist)
-        blocked = "kids" in self.comp.pools and "kids" not in pools
+        text = chapter_text_for(seg.start, self.chapters)
+        pools = apply_blocklist(text, self.comp.pools, self.blocklist)
+        blocked = blocklist_hit(text, self.blocklist)  # any sighting, kids or general
         meta = {"source": self.comp.video_id, "duration_s": round(seg.end - seg.start, 3),
                 "height": info.height}
         match = find_match(fp, self.catalog)
@@ -324,6 +329,29 @@ def _dry_run(catalog: Catalog, pending: list[Compilation], ctx: RunContext, cfg:
         log(f"  delivery: {len(plan.push)} push, {len(plan.delete)} delete")
 
 
+def gate_network_refs(catalog: Catalog, networks: list[Network], refs_dir: Path, report: Report) -> None:
+    """Skip per-network compilations until every network they name has promo references.
+
+    A compilation is reported once, when it is first skipped; it returns to `new` as
+    soon as the references exist. `report.needs_network_refs` counts the waiting ones.
+    """
+    for c in sorted(catalog.compilations.values(), key=lambda c: c.video_id):
+        if c.status not in (*PENDING, "skipped"):
+            continue
+        named = networks_in(c.title, networks)
+        missing = missing_refs(named, refs_dir)
+        if missing:
+            for slug in missing:
+                report.needs_network_refs[slug] = report.needs_network_refs.get(slug, 0) + 1
+            if c.status != "skipped":
+                c.status = "skipped"
+                report.compilations.append({"video_id": c.video_id, "title": c.title,
+                                            "pools": sorted(c.pools), "status": "skipped",
+                                            "reason": "no_network_refs", "networks": named})
+        elif c.status == "skipped":
+            c.status = "new"
+
+
 def _uptime(tools: Tools, report: Report) -> str | None:
     try:
         return tools.uptime()
@@ -337,6 +365,7 @@ def run(opts: RunOptions, ctx: RunContext, tools: Tools) -> Report:
     cfg = json.loads(sources_path.read_text())
     sources = load_sources(sources_path)
     blocklist = load_blocklist(ctx.config_dir / "blocklist.json")
+    networks = load_networks(ctx.config_dir / "networks.json")
     cat_path = ctx.state / "catalog.json"
     catalog = load_catalog(cat_path)
     report = Report(added=[], retired=[], rejected_by_reason={}, pool_hours={}, failures=[])
@@ -346,6 +375,7 @@ def run(opts: RunOptions, ctx: RunContext, tools: Tools) -> Report:
             catalog.upsert_compilation(c)
     except Exception as e:
         report.failures.append(f"discover: {describe(e)}")
+    gate_network_refs(catalog, networks, ctx.config_dir / "network_refs", report)
     pending = pending_compilations(catalog, opts.limit)
 
     if opts.dry_run:
@@ -358,7 +388,7 @@ def run(opts: RunOptions, ctx: RunContext, tools: Tools) -> Report:
 
     for i, comp in enumerate(pending, 1):
         log(f"[{i}/{len(pending)}] {comp.video_id} {comp.title}")
-        job = _Compilation(comp, catalog, ctx, tools, blocklist, report)
+        job = _Compilation(comp, catalog, ctx, tools, blocklist, report, networks)
         try:
             job.run()
         except Exception as e:

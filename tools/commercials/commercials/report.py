@@ -20,6 +20,8 @@ class Report:
     sync: dict[str, str] = field(default_factory=dict)
     # video ids whose info.json chapters did not match the downloaded file (treated as no chapters)
     chapters_unreliable: list[str] = field(default_factory=list)
+    # network slug -> compilations skipped until network_refs/<slug>.json exists
+    needs_network_refs: dict[str, int] = field(default_factory=dict)
 
     @classmethod
     def from_json(cls, d: dict) -> "Report":
@@ -64,6 +66,9 @@ def markdown(r: Report) -> str:
                        f"{c.get('segments', 0)} | {c.get('accepted', 0)} | {share} |")
     else:
         out.append("None processed.")
+    if r.needs_network_refs:
+        out += ["", "Skipped until network references exist (`commercials add-ref`): "
+                + ", ".join(f"{k} ({v})" for k, v in sorted(r.needs_network_refs.items()))]
     if r.chapters_unreliable:
         out += ["", f"Chapters unreliable (ignored): {', '.join(r.chapters_unreliable)}"]
     out += [

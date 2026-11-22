@@ -8,3 +8,10 @@ def media_root() -> Path:
 
 def state_root() -> Path:
     return Path(os.environ.get("COMMERCIALS_STATE") or "~/.local/share/tunarr-commercials").expanduser()
+
+
+PACKAGE_CONFIG = Path(__file__).resolve().parent.parent / "config"
+
+
+def config_dir() -> Path:
+    return PACKAGE_CONFIG
