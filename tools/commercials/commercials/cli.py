@@ -79,8 +79,8 @@ def _sync(cfg: dict, catalog: Catalog, active: dict[str, set[str]]) -> dict[str,
         out = {}
         for pool in POOLS:
             delivered = {i for i in active.get(pool, set()) if pool in catalog.ads[i].delivered}
-            r = ts.sync_with_retry(client, cfg["filler_list_ids"].get(pool), pool, len(delivered),
-                                   ad_ids=delivered, library_id=tunarr["library_id"])
+            r = ts.sync_with_retry(client, cfg["filler_list_ids"].get(pool), pool, delivered,
+                                   library_id=tunarr["library_id"])
             out[pool] = "updated" if r.updated else (r.reason or "not_updated")
         return out
     except Exception as e:

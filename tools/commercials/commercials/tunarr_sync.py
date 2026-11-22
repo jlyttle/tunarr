@@ -69,54 +69,64 @@ def _paths(item: dict) -> list[str]:
     return [loc["path"] for loc in media.get("locations", []) if "path" in loc]
 
 
-def programs_for_pool(
-    programs: list[dict], pool: str, ad_ids: set[str] | None = None
-) -> list[dict]:
-    """Programs whose file sits in `<Modern Commercials>/<pool>/`.
+def _ad_id(item: dict, pool: str) -> str | None:
+    """The ad id of a search result: its file stem under `<Modern Commercials>/<pool>/`.
 
     Tunarr search results for an Unraid Plex source may omit the file path
-    (`mediaItem` is optional); the title is then the file stem, i.e. the ad id,
-    so `ad_ids` (the ids delivered to this pool) is used instead.
+    (`mediaItem` is optional); the title is then the file stem, i.e. the ad id.
+    A path outside the pool folder gives None.
     """
+    paths = _paths(item)
+    if not paths:
+        return item.get("title")
     marker = f"/{MC_FOLDER}/{pool}/"
+    hit = next((x for x in paths if marker in x), None)
+    return None if hit is None else posixpath.splitext(posixpath.basename(hit))[0]
+
+
+def programs_for_pool(programs: list[dict], pool: str, ad_ids: set[str]) -> list[dict]:
+    """One search result per ad in `ad_ids` (the ads delivered to this pool).
+
+    Anything else is dropped: retired or kids-blocked ads whose programs Tunarr still
+    lists, other folders, and programs Tunarr marked `missing` (it keeps vanished files
+    with that state instead of removing them).
+    """
     out = []
     seen: set[str] = set()
     for p in programs:
-        paths = _paths(p)
-        ad_id = None
-        if paths:
-            hit = next((x for x in paths if marker in x), None)
-            if hit is not None:
-                ad_id = posixpath.splitext(posixpath.basename(hit))[0]
-        elif ad_ids is not None and p.get("title") in ad_ids:
-            ad_id = p["title"]
-        if ad_id is not None and ad_id not in seen:
+        if p.get("state") == "missing":
+            continue
+        ad_id = _ad_id(p, pool)
+        if ad_id is not None and ad_id in ad_ids and ad_id not in seen:
             seen.add(ad_id)
             out.append(p)
     return out
 
 
-def sync_pool(client, list_id: str | None, pool: str, expected_count: int,
-              ad_ids: set[str] | None = None, library_id: str | None = None) -> SyncResult:
+def sync_pool(client, list_id: str | None, pool: str, ad_ids: set[str],
+              library_id: str | None = None) -> SyncResult:
+    """Replace the pool's filler list, but only once Tunarr lists every ad in `ad_ids`.
+
+    `scan_library` only queues a scan, so the first search may still see the old
+    library; until the matched id set equals `ad_ids` the result is `tunarr_behind`.
+    """
     if list_id is None or library_id is None:
         return SyncResult(updated=False, reason="not_configured")
-    matched = programs_for_pool(client.library_programs(library_id), pool, ad_ids)
-    if len(matched) < expected_count:
-        return SyncResult(updated=False, reason="tunarr_behind")
-    if not matched:
+    if not ad_ids:
         return SyncResult(updated=False, reason="empty")
+    matched = programs_for_pool(client.library_programs(library_id), pool, ad_ids)
+    if {_ad_id(p, pool) for p in matched} != ad_ids:
+        return SyncResult(updated=False, reason="tunarr_behind")
     client.put_filler(list_id, matched)
     return SyncResult(updated=True, reason=None)
 
 
-def sync_with_retry(client, list_id: str | None, pool: str, expected_count: int,
+def sync_with_retry(client, list_id: str | None, pool: str, ad_ids: set[str],
                     sleep: Callable[[float], None] = time.sleep,
-                    ad_ids: set[str] | None = None,
                     library_id: str | None = None) -> SyncResult:
     result = SyncResult(updated=False, reason="tunarr_behind")
     for attempt in range(RETRIES):
-        result = sync_pool(client, list_id, pool, expected_count,
-                           ad_ids=ad_ids, library_id=library_id)
+        result = sync_pool(client, list_id, pool, ad_ids, library_id=library_id)
         if result.reason != "tunarr_behind":
             return result
         if attempt < RETRIES - 1:
