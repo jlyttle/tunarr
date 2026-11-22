@@ -1,0 +1,22 @@
+[project]
+name = "commercials"
+version = "0.1.0"
+description = "Download YouTube commercial compilations, split them into ads, and sync them into Tunarr filler lists"
+requires-python = ">=3.12"
+dependencies = ["numpy", "yt-dlp"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+commercials = "commercials.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["commercials"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
