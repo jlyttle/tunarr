@@ -61,6 +61,6 @@ Findings:
 
 ## Delivery (`deliver.py`)
 
-Ads are pushed one at a time with `rsync -e /usr/bin/ssh` to `root@192.168.1.227`; the remote side runs `umask 000; mkdir -p` first. Retired ads are removed with `ssh rm -f`. Layout: `<unraid_root>/<pool>/<ad_id>.mp4`; an ad in both pools is delivered to both folders. `Ad.delivered` records pool -> remote path, and only successful transfers are recorded, so a failed push stays pending.
+Ads are pushed one at a time by streaming over `/usr/bin/ssh` to `root@192.168.1.227` (`cat > file.part && mv`); the remote side runs `umask 000; mkdir -p` first. Retired ads are removed with `ssh rm -f`. Layout: `<unraid_root>/<pool>/<ad_id>.mp4`; an ad in both pools is delivered to both folders. `Ad.delivered` records pool -> remote path, and only successful transfers are recorded, so a failed push stays pending.
 
 Path mapping (from `docker inspect plex`): the Plex container's `/data` is the host's `/mnt/user/plex`. The existing library `/data/Videos/Commercials` is therefore `/mnt/user/plex/Videos/Commercials`, and `unraid_root` in `config/sources.json` is the sibling `/mnt/user/plex/Videos/Modern Commercials` (Plex sees `/data/Videos/Modern Commercials`). The folder is not created until the first delivery.
