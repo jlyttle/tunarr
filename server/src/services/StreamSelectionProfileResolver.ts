@@ -60,12 +60,18 @@ export class StreamSelectionProfileResolver {
       }
     }
 
+    return this.resolveChannelProfile(ctx.channelId);
+  }
+
+  async resolveChannelProfile(
+    channelId: string,
+  ): Promise<StreamSelectionProfile> {
     // 3. Check channel-level profile
-    const profile = await this.getProfileForChannel(ctx.channelId);
+    const profile = await this.getProfileForChannel(channelId);
     if (profile) {
       this.logger.debug(
         'Resolved stream selection profile from channel %s: %s',
-        ctx.channelId,
+        channelId,
         profile.name,
       );
       return profile;
@@ -74,9 +80,9 @@ export class StreamSelectionProfileResolver {
     // 4. Legacy fallback
     this.logger.debug(
       'No stream selection profile found for channel %s, using legacy fallback',
-      ctx.channelId,
+      channelId,
     );
-    return this.buildLegacyProfile(ctx.channelId);
+    return this.buildLegacyProfile(channelId);
   }
 
   private async getProfileForProgram(

@@ -1,4 +1,5 @@
 import type { ChannelStreamMode } from '@tunarr/types';
+import type { StreamSelectionProfile } from '@tunarr/types/schemas';
 import { inArray } from 'drizzle-orm';
 import { inject, injectable } from 'inversify';
 import { chunk, head, uniq } from 'lodash-es';
@@ -29,6 +30,7 @@ import type {
 import { isImageBasedSubtitle } from '../stream/util.ts';
 import { KEYS } from '../types/inject.ts';
 import { isNonEmptyArray, isNonEmptyString } from '../util/index.ts';
+import throttle from '../util/throttle.ts';
 import { throttledAccumulate } from '../util/seq.ts';
 import { CelEvaluationService } from './CelEvaluationService.ts';
 import { FeatureFlagService } from './FeatureFlagService.ts';
@@ -40,6 +42,8 @@ const CaptionedStreamModes: ReadonlySet<ChannelStreamMode> = new Set([
 ]);
 
 const ProgramBatchSize = 500;
+
+const ProgramsPerYield = 20;
 
 const resolveExtractedText: TextSubtitleResolver = (lineupItem, stream) =>
   SubtitleStreamPicker.getSubtitleDetailsWithExtractedPath(lineupItem, stream);
@@ -80,7 +84,11 @@ export class GuideCaptionService {
     }
 
     const pickSubtitle = await this.subtitlePickerFor(channel);
-    for (const program of await this.loadPrograms(programIds)) {
+    const programs = await this.loadPrograms(programIds);
+    for (const [index, program] of programs.entries()) {
+      if (index > 0 && index % ProgramsPerYield === 0) {
+        await throttle();
+      }
       const streams = toProgramStreams(program);
       if (streams && isDeliveredAsHls(channel, await pickSubtitle(streams))) {
         captioned.add(program.uuid);
@@ -102,7 +110,11 @@ export class GuideCaptionService {
     channel: ChannelOrm,
   ): Promise<SubtitlePicker> {
     if (!isPassthrough(channel)) {
-      return (streams) => this.pickBySelectionProfile(channel, streams);
+      const channelProfile = await this.profileResolver.resolveChannelProfile(
+        channel.uuid,
+      );
+      return (streams) =>
+        this.pickBySelectionProfile(channel, channelProfile, streams);
     }
     const preferences = await this.channelDB.getChannelSubtitlePreferences(
       channel.uuid,
@@ -127,16 +139,19 @@ export class GuideCaptionService {
 
   private async pickBySelectionProfile(
     channel: ChannelOrm,
+    channelProfile: StreamSelectionProfile,
     { program, lineupItem, audioStreams, subtitleStreams }: ProgramStreams,
   ): Promise<SubtitleStreamDetails | null> {
     if (!isNonEmptyArray(audioStreams)) {
       return null;
     }
 
-    const profile = await this.profileResolver.resolve({
-      channelId: channel.uuid,
-      programId: program.uuid,
-    });
+    const profile = program.streamSelectionProfileId
+      ? await this.profileResolver.resolve({
+          channelId: channel.uuid,
+          programId: program.uuid,
+        })
+      : channelProfile;
     const celContext = buildCelContext(
       audioStreams,
       subtitleStreams,

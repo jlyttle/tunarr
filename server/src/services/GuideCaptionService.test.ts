@@ -80,15 +80,21 @@ function makeService(
   {
     webvttSidecarEnabled = true,
     allowImageBased = true,
-  }: { webvttSidecarEnabled?: boolean; allowImageBased?: boolean } = {},
+    onSubtitlePreferences = () => {},
+  }: {
+    webvttSidecarEnabled?: boolean;
+    allowImageBased?: boolean;
+    onSubtitlePreferences?: () => void;
+  } = {},
 ) {
   const settingsDB = {
     ffmpegSettings: () => ({}) as FfmpegSettings,
     featureFlags: () => ({ webvttSidecarEnabled }) as FeatureFlags,
   } as unknown as ISettingsDB;
   const channelDB = {
-    getChannelSubtitlePreferences: () =>
-      Promise.resolve([
+    getChannelSubtitlePreferences: () => {
+      onSubtitlePreferences();
+      return Promise.resolve([
         {
           uuid: v4(),
           channelId: 'channel-1',
@@ -98,7 +104,8 @@ function makeService(
           allowExternal: true,
           filterType: 'any',
         } as ChannelSubtitlePreferences,
-      ]),
+      ]);
+    },
   } as unknown as IChannelDB;
 
   return new GuideCaptionService(
@@ -302,6 +309,27 @@ describe('GuideCaptionService', () => {
     );
 
     expect([...result]).toEqual([program.uuid]);
+  });
+
+  test('reads the channel subtitle preferences once per call, not per programme', async ({
+    drizzle,
+    cacheFolder,
+  }) => {
+    const first = await seedExtractedSrtProgram(drizzle, cacheFolder);
+    const second = await seedExtractedSrtProgram(drizzle, cacheFolder);
+    const third = await seedExtractedSrtProgram(drizzle, cacheFolder);
+    let lookups = 0;
+
+    const result = await makeService(drizzle, {
+      onSubtitlePreferences: () => lookups++,
+    }).captionedProgramIds(makeChannel(), [
+      first.uuid,
+      second.uuid,
+      third.uuid,
+    ]);
+
+    expect(result.size).toBe(3);
+    expect(lookups).toBe(1);
   });
 
   test('skips image-only tracks', async ({ drizzle, cacheFolder: _ }) => {
