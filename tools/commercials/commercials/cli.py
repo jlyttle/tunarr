@@ -1,7 +1,6 @@
 import argparse
 import subprocess
 import sys
-import time
 from datetime import date
 from pathlib import Path
 
@@ -19,20 +18,7 @@ from commercials.networks import find_network, load_networks
 from commercials.paths import config_dir, media_root, state_root
 from commercials.report import latest_report, markdown, notification
 from commercials.retention import POOLS
-from commercials.runner import (
-    PLEX_URL,
-    RunContext,
-    RunOptions,
-    Tools,
-    describe,
-    fetch_plex_token,
-    redact,
-    run,
-)
-
-PLEX_HOST_ROOT = "/mnt/user/plex"  # the Plex container sees it as /data
-PLEX_CONTAINER_ROOT = "/data"
-PLEX_SETTLE_S = 60  # let Plex index the refreshed folder before Tunarr scans it
+from commercials.runner import RunContext, RunOptions, Tools, run
 
 
 def _ffmpeg(args: list[str]) -> str:
@@ -58,33 +44,13 @@ def _uptime() -> str:
                           capture_output=True, text=True, check=True, timeout=60).stdout.strip()
 
 
-def plex_folder(unraid_root: str) -> str:
-    """The Plex-side path of a host folder under /mnt/user/plex."""
-    if not unraid_root.startswith(PLEX_HOST_ROOT + "/"):
-        raise ValueError(f"unraid_root {unraid_root!r} is not under {PLEX_HOST_ROOT}")
-    return PLEX_CONTAINER_ROOT + unraid_root[len(PLEX_HOST_ROOT):]
-
-
 def _sync(cfg: dict, catalog: Catalog, active: dict[str, set[str]]) -> dict[str, str]:
-    """Plex partial refresh, Tunarr library scan, then replace each pool's filler list."""
-    token = fetch_plex_token()
-    try:
-        plex = cfg["plex"]
-        tunarr = cfg["tunarr"]
-        ts.plex_refresh(ts.plex_refresh_url(PLEX_URL, token, str(plex["section_key"]),
-                                             plex_folder(cfg["unraid_root"])))
-        time.sleep(PLEX_SETTLE_S)
-        client = ts.TunarrClient(tunarr["base_url"])
-        client.scan_library(tunarr["media_source_id"], tunarr["library_id"])
-        out = {}
-        for pool in POOLS:
-            delivered = {i for i in active.get(pool, set()) if pool in catalog.ads[i].delivered}
-            r = ts.sync_with_retry(client, cfg["filler_list_ids"].get(pool), pool, delivered,
-                                   library_id=tunarr["library_id"])
-            out[pool] = "updated" if r.updated else (r.reason or "not_updated")
-        return out
-    except Exception as e:
-        raise RuntimeError(redact(describe(e), token)) from None
+    """Scan each pool's library in the Tunarr local source, then replace its filler list."""
+    tunarr = cfg["tunarr"]
+    delivered = {pool: {i for i in active.get(pool, set()) if pool in catalog.ads[i].delivered}
+                 for pool in POOLS}
+    return ts.sync_pools(ts.TunarrClient(tunarr["base_url"]), tunarr, cfg["filler_list_ids"],
+                         delivered, pools=POOLS)
 
 
 def real_tools(cfg_dir: Path) -> Tools:
@@ -180,7 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     r = sub.add_parser("run", help="discover, split, encode, deliver and sync")
     r.add_argument("--dry-run", action="store_true", help="show what would happen; write nothing")
     r.add_argument("--no-deliver", action="store_true", help="skip Unraid delivery and uptime checks")
-    r.add_argument("--no-sync", action="store_true", help="skip the Plex and Tunarr sync")
+    r.add_argument("--no-sync", action="store_true", help="skip the Tunarr filler-list sync")
     r.add_argument("--limit", type=int, default=10, help="max compilations processed this run")
     r.add_argument("--since-weeks", type=int, default=8, help="only discover uploads this recent")
     r.set_defaults(func=cmd_run)

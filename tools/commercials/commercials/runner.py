@@ -4,8 +4,6 @@ All side effects go through `Tools`, so tests can swap in fakes. `cli.real_tools
 the real ffmpeg / yt-dlp / ssh / HTTP implementations.
 """
 import json
-import os
-import re
 import shutil
 import subprocess
 import time
@@ -15,7 +13,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from commercials.catalog import Catalog, Compilation, load_catalog, save_catalog
-from commercials.deliver import HOST, SSH, DeliveryPlan, plan_delivery
+from commercials.deliver import DeliveryPlan, plan_delivery
 from commercials.discover import Sources, load_sources
 from commercials.download import info_path
 from commercials.encode import StreamInfo, precheck
@@ -41,17 +39,6 @@ MIN_KEEP_S = 0.1  # rejected segments shorter than this are counted but not cut
 REJECTED_KEEP_DAYS = 14
 SPONSORBLOCK_REMOVED = {"sponsor", "intro", "outro", "selfpromo"}  # download.ytdlp_args
 CHAPTER_DURATION_TOL_S = 0.5
-
-PLEX_URL = "http://192.168.1.227:32400"
-PLEX_TOKEN_ENV = "COMMERCIALS_PLEX_TOKEN"
-_TOKEN = re.compile(r'PlexOnlineToken="([^"]+)"')
-PLEX_TOKEN_CMD = (
-    "dir=$(docker inspect plex --format "
-    "'{{range .Mounts}}{{if eq .Destination \"/config\"}}{{.Source}}{{end}}{{end}}') && "
-    "grep -o 'PlexOnlineToken=\"[^\"]*\"' "
-    "\"$dir/Library/Application Support/Plex Media Server/Preferences.xml\""
-)
-
 
 @dataclass
 class RunOptions:
@@ -97,47 +84,14 @@ def describe(e: BaseException) -> str:
     return f"{type(e).__name__}: {e}"
 
 
-def redact(msg: str, secret: str | None) -> str:
-    return msg.replace(secret, "<redacted>") if secret else msg
-
-
-def parse_plex_token(text: str) -> str:
-    m = _TOKEN.search(text)
-    if m is None:
-        raise ValueError("no PlexOnlineToken in Plex Preferences.xml")
-    return m.group(1)
-
-
-def _ssh_stdout(cmd: str) -> str:
-    return subprocess.run(
-        [SSH, "-o", "ConnectTimeout=15", HOST, cmd],
-        capture_output=True, text=True, check=True, timeout=60,
-    ).stdout
-
-
-def fetch_plex_token(run_ssh: Callable[[str], str] = _ssh_stdout) -> str:
-    """Plex token from $COMMERCIALS_PLEX_TOKEN, else the Plex container's Preferences.xml.
-
-    Kept in memory only: never log, print or store it.
-    """
-    env = os.environ.get(PLEX_TOKEN_ENV)
-    if env:
-        return env
-    try:
-        out = run_ssh(PLEX_TOKEN_CMD)
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"could not read the Plex token over ssh (exit {e.returncode})") from None
-    return parse_plex_token(out)
-
-
 def sync_configured(cfg: dict) -> bool:
     lists = cfg.get("filler_list_ids") or {}
     tunarr = cfg.get("tunarr") or {}
+    libraries = tunarr.get("libraries") or {}
     return (
         all(lists.get(p) for p in POOLS)
-        and bool((cfg.get("plex") or {}).get("section_key"))
         and bool(tunarr.get("media_source_id"))
-        and bool(tunarr.get("library_id"))
+        and all(libraries.get(p) for p in POOLS)
     )
 
 

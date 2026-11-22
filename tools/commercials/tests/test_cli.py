@@ -10,7 +10,7 @@ import pytest
 from commercials.catalog import Compilation, load_catalog, save_catalog
 from commercials.deliver import DeliveryPlan
 from commercials.encode import StreamInfo
-from commercials.runner import RunContext, RunOptions, Tools, fetch_plex_token, parse_plex_token, run
+from commercials.runner import RunContext, RunOptions, Tools, run, sync_configured
 
 TODAY = date(2026, 11, 22)
 ROOT = Path(__file__).resolve().parent.parent
@@ -150,9 +150,8 @@ def config_dir(tmp_path, configured=False, refs=("nickelodeon",)):
     src = json.loads((ROOT / "config" / "sources.json").read_text())
     if configured:
         src["filler_list_ids"] = {"kids": "LK", "general": "LG"}
-        src["plex"]["section_key"] = "99"
         src["tunarr"]["media_source_id"] = "MS"
-        src["tunarr"]["library_id"] = "LIB"
+        src["tunarr"]["libraries"] = {"kids": "LIBK", "general": "LIBG"}
     (d / "sources.json").write_text(json.dumps(src))
     (d / "blocklist.json").write_text(json.dumps({"keywords": ["beer"]}))
     return d
@@ -329,24 +328,63 @@ def test_uptime_checked_when_only_sync_runs(tmp_path):
     assert report.uptime_before == "up 1" and report.uptime_after == "up 2"
 
 
-def test_cli_sync_redacts_token(monkeypatch):
+def test_cli_sync_uses_the_local_source_libraries(monkeypatch):
     from commercials import cli
     from commercials import tunarr_sync as ts
-    from commercials.catalog import Catalog
+    from commercials.catalog import Ad, Catalog
 
-    monkeypatch.setattr(cli, "fetch_plex_token", lambda: "SECRETTOKEN")
+    calls = []
 
-    def refresh(url):
-        raise RuntimeError(f"cannot open {url}")
+    class Client:
+        def __init__(self, base_url):
+            calls.append(("client", base_url))
 
-    monkeypatch.setattr(ts, "plex_refresh", refresh)
-    cfg = {"unraid_root": "/mnt/user/plex/Videos/Modern Commercials", "plex": {"section_key": "9"},
-           "tunarr": {"base_url": "http://x/api", "media_source_id": "M", "library_id": "L"},
+        def scan_library(self, media_source_id, library_id):
+            calls.append(("scan", media_source_id, library_id))
+
+        def library_programs(self, library_id):
+            calls.append(("search", library_id))
+            return [{"uuid": "u1", "title": "a1", "duration": 1,
+                     "mediaItem": {"locations": [{"path": f"/data/x/{library_id}/a1.mp4"}]}}]
+
+        def put_filler(self, list_id, programs):
+            calls.append(("put", list_id, [p["uuid"] for p in programs]))
+
+    monkeypatch.setattr(ts, "TunarrClient", Client)
+    catalog = Catalog()
+    catalog.ads["a1"] = Ad("a1", "fp", 30.0, {"kids", "general"}, date(2026, 11, 1), date(2026, 11, 1),
+                           ["v1"], "/l/a1.mp4",
+                           {"kids": "/r/kids/a1.mp4", "general": "/r/general/a1.mp4"}, "active")
+    cfg = {"tunarr": {"base_url": "http://x/api", "media_source_id": "M",
+                      "libraries": {"kids": "LK", "general": "LG"}},
            "filler_list_ids": {"kids": "K", "general": "G"}}
-    with pytest.raises(RuntimeError) as e:
-        cli._sync(cfg, Catalog(), {"kids": set(), "general": set()})
-    assert "SECRETTOKEN" not in str(e.value)
-    assert "<redacted>" in str(e.value)
+    out = cli._sync(cfg, catalog, {"kids": {"a1"}, "general": {"a1"}})
+    assert out == {"general": "updated", "kids": "updated"}
+    assert ("scan", "M", "LK") in calls and ("scan", "M", "LG") in calls
+    assert ("put", "K", ["u1"]) in calls and ("put", "G", ["u1"]) in calls
+    assert not any("plex" in str(c).lower() for c in calls)
+
+
+@pytest.mark.parametrize("change", [
+    {"filler_list_ids": {"kids": "K", "general": None}},
+    {"tunarr": {"base_url": "b", "media_source_id": None, "libraries": {"kids": "LK", "general": "LG"}}},
+    {"tunarr": {"base_url": "b", "media_source_id": "M", "libraries": {"kids": "LK", "general": None}}},
+    {"tunarr": {"base_url": "b", "media_source_id": "M"}},
+])
+def test_sync_configured_needs_source_both_libraries_and_both_lists(change):
+    cfg = {"filler_list_ids": {"kids": "K", "general": "G"},
+           "tunarr": {"base_url": "b", "media_source_id": "M", "libraries": {"kids": "LK", "general": "LG"}}}
+    assert sync_configured(cfg)
+    assert not sync_configured({**cfg, **change})
+
+
+def test_shipped_sources_config_has_no_plex_and_is_not_configured():
+    src = json.loads((ROOT / "config" / "sources.json").read_text())
+    assert "plex" not in src
+    assert src["tunarr"]["libraries"] == {"kids": None, "general": None}
+    assert src["tunarr"]["container_root"] == "/data/Videos/Modern Commercials"
+    assert src["unraid_root"] == "/mnt/user/plex/Videos/Modern Commercials"
+    assert not sync_configured(src)
 
 
 KIDS_TITLES = {"block": "Light Beer commercial", "clean": "Toy commercial"}
@@ -461,31 +499,6 @@ def test_sync_error_is_a_failure_not_a_crash(tmp_path):
     _, report = run_with(tmp_path, fakes, configured=True)
     assert any("sync" in f and "tunarr down" in f for f in report.failures)
     assert report.uptime_after == "up 2"
-
-
-def test_parse_plex_token():
-    xml = '<?xml version="1.0"?>\n<Preferences OldestPreviousVersion="1" PlexOnlineToken="abcXYZ123" />'
-    assert parse_plex_token(xml) == "abcXYZ123"
-    with pytest.raises(ValueError) as e:
-        parse_plex_token("<Preferences />")
-    assert "PlexOnlineToken" in str(e.value)
-
-
-def test_fetch_plex_token_prefers_env(monkeypatch):
-    monkeypatch.setenv("COMMERCIALS_PLEX_TOKEN", "envtok")
-    assert fetch_plex_token(run_ssh=lambda cmd: pytest.fail("ssh not expected")) == "envtok"
-
-
-def test_fetch_plex_token_over_ssh(monkeypatch):
-    monkeypatch.delenv("COMMERCIALS_PLEX_TOKEN", raising=False)
-    seen = []
-
-    def fake_ssh(cmd):
-        seen.append(cmd)
-        return '<Preferences PlexOnlineToken="sshtok"/>'
-
-    assert fetch_plex_token(run_ssh=fake_ssh) == "sshtok"
-    assert "docker inspect plex" in seen[0] and "Preferences.xml" in seen[0]
 
 
 def test_launchd_plist():
@@ -687,7 +700,9 @@ def test_run_daily_wrapper_upgrades_ytdlp_then_runs():
     script = ROOT / "launchd" / "run-daily.sh"
     text = script.read_text()
     assert script.stat().st_mode & 0o111
-    assert text.index("uv sync --upgrade-package yt-dlp") < text.index("commercials run")
+    assert text.index("uv pip install") < text.index("commercials run")
+    assert "-U yt-dlp" in text
+    assert "uv sync" not in text  # an upgrade must not rewrite the tracked uv.lock
     subprocess.run(["sh", "-n", str(script)], check=True)
 
 

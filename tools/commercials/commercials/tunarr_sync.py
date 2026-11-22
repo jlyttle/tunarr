@@ -1,12 +1,15 @@
+"""Replace each pool's Tunarr filler list with the ads delivered to that pool.
+
+Tunarr reads the delivered files through one local media source with one library per
+pool folder (`<container_root>/kids`, `<container_root>/general`), so pool == library.
+"""
 import json
 import posixpath
 import time
-import urllib.parse
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
-MC_FOLDER = "Modern Commercials"
 PAGE_SIZE = 200
 RETRIES = 3
 RETRY_WAIT_S = 120
@@ -69,43 +72,40 @@ def _paths(item: dict) -> list[str]:
     return [loc["path"] for loc in media.get("locations", []) if "path" in loc]
 
 
-def _ad_id(item: dict, pool: str) -> str | None:
-    """The ad id of a search result: its file stem under `<Modern Commercials>/<pool>/`.
+def _ad_id(item: dict) -> str | None:
+    """The ad id of a search result: the file stem of its path, else its title.
 
-    Tunarr search results for an Unraid Plex source may omit the file path
-    (`mediaItem` is optional); the title is then the file stem, i.e. the ad id.
-    A path outside the pool folder gives None.
+    Search results may omit the file path (`mediaItem` is optional); the title of a
+    local program is then its file stem, i.e. the ad id.
     """
     paths = _paths(item)
     if not paths:
         return item.get("title")
-    marker = f"/{MC_FOLDER}/{pool}/"
-    hit = next((x for x in paths if marker in x), None)
-    return None if hit is None else posixpath.splitext(posixpath.basename(hit))[0]
+    return posixpath.splitext(posixpath.basename(paths[0]))[0]
 
 
-def programs_for_pool(programs: list[dict], pool: str, ad_ids: set[str]) -> list[dict]:
+def programs_for_pool(programs: list[dict], ad_ids: set[str]) -> list[dict]:
     """One search result per ad in `ad_ids` (the ads delivered to this pool).
 
-    Anything else is dropped: retired or kids-blocked ads whose programs Tunarr still
-    lists, other folders, and programs Tunarr marked `missing` (it keeps vanished files
-    with that state instead of removing them).
+    `programs` must come from the pool's own library. Anything else is dropped: retired
+    or kids-blocked ads whose programs Tunarr still lists, and programs Tunarr marked
+    `missing` (it keeps vanished files with that state instead of removing them).
     """
     out = []
     seen: set[str] = set()
     for p in programs:
         if p.get("state") == "missing":
             continue
-        ad_id = _ad_id(p, pool)
+        ad_id = _ad_id(p)
         if ad_id is not None and ad_id in ad_ids and ad_id not in seen:
             seen.add(ad_id)
             out.append(p)
     return out
 
 
-def sync_pool(client, list_id: str | None, pool: str, ad_ids: set[str],
+def sync_pool(client, list_id: str | None, ad_ids: set[str],
               library_id: str | None = None) -> SyncResult:
-    """Replace the pool's filler list, but only once Tunarr lists every ad in `ad_ids`.
+    """Replace the pool's filler list, but only once its library lists every ad in `ad_ids`.
 
     `scan_library` only queues a scan, so the first search may still see the old
     library; until the matched id set equals `ad_ids` the result is `tunarr_behind`.
@@ -114,19 +114,19 @@ def sync_pool(client, list_id: str | None, pool: str, ad_ids: set[str],
         return SyncResult(updated=False, reason="not_configured")
     if not ad_ids:
         return SyncResult(updated=False, reason="empty")
-    matched = programs_for_pool(client.library_programs(library_id), pool, ad_ids)
-    if {_ad_id(p, pool) for p in matched} != ad_ids:
+    matched = programs_for_pool(client.library_programs(library_id), ad_ids)
+    if {_ad_id(p) for p in matched} != ad_ids:
         return SyncResult(updated=False, reason="tunarr_behind")
     client.put_filler(list_id, matched)
     return SyncResult(updated=True, reason=None)
 
 
-def sync_with_retry(client, list_id: str | None, pool: str, ad_ids: set[str],
+def sync_with_retry(client, list_id: str | None, ad_ids: set[str],
                     sleep: Callable[[float], None] = time.sleep,
                     library_id: str | None = None) -> SyncResult:
     result = SyncResult(updated=False, reason="tunarr_behind")
     for attempt in range(RETRIES):
-        result = sync_pool(client, list_id, pool, ad_ids, library_id=library_id)
+        result = sync_pool(client, list_id, ad_ids, library_id=library_id)
         if result.reason != "tunarr_behind":
             return result
         if attempt < RETRIES - 1:
@@ -134,25 +134,25 @@ def sync_with_retry(client, list_id: str | None, pool: str, ad_ids: set[str],
     return result
 
 
-def plex_server(media_sources: list[dict], media_source_id: str) -> tuple[str, str | None]:
-    """(uri, token) of a Plex media source from `GET /media-sources`."""
-    for m in media_sources:
-        if m.get("id") == media_source_id:
-            token = m.get("accessToken")
-            if not token:
-                raise ValueError(
-                    f"media source {media_source_id} has no accessToken; "
-                    "Tunarr's API does not expose it, supply it another way")
-            return m["uri"], token
-    raise KeyError(f"media source {media_source_id} not found")
+def sync_pools(client, tunarr: dict, filler_list_ids: dict, delivered: dict[str, set[str]],
+               sleep: Callable[[float], None] = time.sleep,
+               pools: Iterable[str] = ("kids", "general")) -> dict[str, str]:
+    """Per pool: scan its library, then replace its filler list from that library only.
 
-
-def plex_refresh_url(uri: str, token: str, section_key: str, folder: str) -> str:
-    """Partial-refresh URL. It carries the Plex token: never log or print it."""
-    q = urllib.parse.urlencode({"path": folder, "X-Plex-Token": token})
-    return f"{uri.rstrip('/')}/library/sections/{section_key}/refresh?{q}"
-
-
-def plex_refresh(url: str) -> None:
-    with urllib.request.urlopen(url, timeout=60):
-        pass
+    Returns pool -> "updated" or the reason it was not (not_configured, empty,
+    tunarr_behind). A pool without a media source, library or list makes no calls.
+    """
+    source = tunarr.get("media_source_id")
+    libraries = tunarr.get("libraries") or {}
+    out = {}
+    for pool in pools:
+        library_id, list_id = libraries.get(pool), filler_list_ids.get(pool)
+        ad_ids = delivered.get(pool, set())
+        if not (source and library_id and list_id):
+            out[pool] = "not_configured"
+            continue
+        if ad_ids:
+            client.scan_library(source, library_id)
+        r = sync_with_retry(client, list_id, ad_ids, sleep=sleep, library_id=library_id)
+        out[pool] = "updated" if r.updated else (r.reason or "not_updated")
+    return out
