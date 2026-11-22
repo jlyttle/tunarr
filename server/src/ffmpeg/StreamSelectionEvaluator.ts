@@ -85,6 +85,14 @@ export function buildCelContext(
   };
 }
 
+export type TextSubtitleResolver = (
+  lineupItem: ContentBackedStreamLineupItem,
+  stream: SubtitleStreamDetails,
+) => Promise<SubtitleStreamDetails | undefined>;
+
+const extractTextSubtitle: TextSubtitleResolver = (lineupItem, stream) =>
+  SubtitleStreamPicker.getSubtitleDetailsWithExtractedPath(lineupItem, stream);
+
 export async function evaluateStreamSelectionProfile(
   profile: StreamSelectionProfile,
   audioStreams: NonEmptyArray<AudioStreamDetails>,
@@ -92,6 +100,7 @@ export async function evaluateStreamSelectionProfile(
   celService: CelEvaluationService,
   celContext: StreamSelectionCelContext,
   lineupItem: ContentBackedStreamLineupItem,
+  resolveText: TextSubtitleResolver = extractTextSubtitle,
 ): Promise<StreamSelectionResult> {
   for (const rule of profile.rules) {
     const conditionResult = celService.evaluate(rule.condition, celContext);
@@ -106,6 +115,7 @@ export async function evaluateStreamSelectionProfile(
         rule.subtitleAction,
         subtitleStreams,
         lineupItem,
+        resolveText,
       );
       return { audioStream, subtitleStream };
     }
@@ -204,6 +214,7 @@ async function resolveSubtitleAction(
   action: SubtitleAction,
   subtitleStreams: SubtitleStreamDetails[] | undefined,
   lineupItem: ContentBackedStreamLineupItem,
+  resolveText: TextSubtitleResolver,
 ): Promise<SubtitleStreamDetails | null> {
   switch (action.type) {
     case 'disable':
@@ -217,11 +228,7 @@ async function resolveSubtitleAction(
       if (!defaultStream) {
         return null;
       }
-      const extracted =
-        await SubtitleStreamPicker.getSubtitleDetailsWithExtractedPath(
-          lineupItem,
-          defaultStream,
-        );
+      const extracted = await resolveText(lineupItem, defaultStream);
       if (extracted) {
         return extracted;
       }
@@ -254,6 +261,7 @@ async function resolveSubtitleAction(
             streamMatchesLanguage(stream, lang),
           ),
           lineupItem,
+          resolveText,
         );
         if (match) {
           return match;
@@ -266,6 +274,7 @@ async function resolveSubtitleAction(
         action,
         subtitleStreams.filter(isUntaggedStream),
         lineupItem,
+        resolveText,
       );
     }
   }
@@ -275,6 +284,7 @@ async function findSubtitleMatch(
   action: Extract<SubtitleAction, { type: 'by_language' }>,
   candidates: SubtitleStreamDetails[],
   lineupItem: ContentBackedStreamLineupItem,
+  resolveText: TextSubtitleResolver,
 ): Promise<SubtitleStreamDetails | null> {
   for (const stream of candidates) {
     // Filter type check
@@ -297,11 +307,7 @@ async function findSubtitleMatch(
 
     // For embedded text-based subs, verify extraction
     if (!isImageBasedSubtitle(stream.codec) && stream.type === 'embedded') {
-      const extracted =
-        await SubtitleStreamPicker.getSubtitleDetailsWithExtractedPath(
-          lineupItem,
-          stream,
-        );
+      const extracted = await resolveText(lineupItem, stream);
       if (extracted) {
         return extracted;
       }

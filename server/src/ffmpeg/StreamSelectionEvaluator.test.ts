@@ -851,6 +851,64 @@ describe('evaluateStreamSelectionProfile', () => {
     });
   });
 
+  describe('injected text subtitle resolver', () => {
+    const embeddedText = makeSubtitleStream({
+      index: 2,
+      default: true,
+      languageCodeISO6392: 'eng',
+    });
+
+    function evaluateWith(
+      subtitleAction: StreamSelectionRule['subtitleAction'],
+      resolveText: (
+        item: ContentBackedStreamLineupItem,
+        stream: SubtitleStreamDetails,
+      ) => Promise<SubtitleStreamDetails | undefined>,
+    ) {
+      return evaluateStreamSelectionProfile(
+        makeProfile([makeRule({ subtitleAction })]),
+        audioStreams,
+        [embeddedText],
+        makeCelService(true),
+        celContext,
+        lineupItem,
+        resolveText,
+      );
+    }
+
+    const byLanguage: StreamSelectionRule['subtitleAction'] = {
+      type: 'by_language',
+      languages: ['eng'],
+      filterType: 'any',
+      allowImageBased: true,
+      allowExternal: true,
+    };
+
+    it('by_language picks an embedded text track only when the resolver returns it', async () => {
+      const none = await evaluateWith(byLanguage, () =>
+        Promise.resolve(undefined),
+      );
+      expect(none.subtitleStream).toBeNull();
+
+      const some = await evaluateWith(byLanguage, (_item, stream) =>
+        Promise.resolve(stream),
+      );
+      expect(some.subtitleStream).toBe(embeddedText);
+    });
+
+    it('default action consults the resolver for the default text track', async () => {
+      const none = await evaluateWith({ type: 'default' }, () =>
+        Promise.resolve(undefined),
+      );
+      expect(none.subtitleStream).toBeNull();
+
+      const some = await evaluateWith({ type: 'default' }, (_item, stream) =>
+        Promise.resolve(stream),
+      );
+      expect(some.subtitleStream).toBe(embeddedText);
+    });
+  });
+
   describe('subtitle action: by_language', () => {
     it('finds subtitle by language code', async () => {
       const subs: SubtitleStreamDetails[] = [
