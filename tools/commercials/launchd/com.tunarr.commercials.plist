@@ -6,15 +6,14 @@
   <string>com.tunarr.commercials</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/jon/Projects/tunarr/tools/commercials/.venv/bin/commercials</string>
-    <string>run</string>
+    <string>/Users/jon/.local/share/tunarr-commercials/app/tools/commercials/launchd/run-daily.sh</string>
   </array>
   <key>WorkingDirectory</key>
-  <string>/Users/jon/Projects/tunarr/tools/commercials</string>
+  <string>/Users/jon/.local/share/tunarr-commercials/app/tools/commercials</string>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
-    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <string>/Users/jon/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
   <key>StartCalendarInterval</key>
   <dict>

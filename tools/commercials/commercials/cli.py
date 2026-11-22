@@ -17,7 +17,7 @@ from commercials.catalog import Catalog, load_catalog
 from commercials.deliver import HOST, SSH
 from commercials.networks import find_network, load_networks
 from commercials.paths import config_dir, media_root, state_root
-from commercials.report import latest_report, markdown
+from commercials.report import latest_report, markdown, notification
 from commercials.retention import POOLS
 from commercials.runner import (
     PLEX_URL,
@@ -115,6 +115,21 @@ def real_tools(cfg_dir: Path) -> Tools:
     )
 
 
+OSASCRIPT = "/usr/bin/osascript"
+NOTIFY_SCRIPT = ("on run argv", 'display notification (item 1 of argv) with title "Tunarr commercials"', "end run")
+
+
+def notify(text: str) -> None:
+    """macOS notification. The text is an argument, never part of the AppleScript source."""
+    args = [OSASCRIPT]
+    for line in NOTIFY_SCRIPT:
+        args += ["-e", line]
+    try:
+        subprocess.run([*args, text], capture_output=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        pass  # a missed notification must not fail the run
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     cfg_dir = config_dir()
     ctx = RunContext(media=media_root(), state=state_root(), config_dir=cfg_dir, today=date.today())
@@ -123,6 +138,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     report = run(opts, ctx, real_tools(cfg_dir))
     if not opts.dry_run:
         print(markdown(report))
+        if (text := notification(report)) is not None:
+            notify(text)
     return 1 if report.failures else 0
 
 

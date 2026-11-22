@@ -3,10 +3,11 @@ from datetime import date
 from commercials.catalog import Catalog
 
 POOLS = ("kids", "general")
+FLOOR_S = 10800  # 3 hours of unique ads per pool
 
 
 def select_active(
-    catalog: Catalog, today: date, retention_days: int = 56, floor_s: float = 10800
+    catalog: Catalog, today: date, retention_days: int = 56, floor_s: float = FLOOR_S
 ) -> dict[str, set[str]]:
     """Choose active ads per pool and update ad statuses.
 

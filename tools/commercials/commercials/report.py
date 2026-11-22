@@ -22,6 +22,8 @@ class Report:
     chapters_unreliable: list[str] = field(default_factory=list)
     # network slug -> compilations skipped until network_refs/<slug>.json exists
     needs_network_refs: dict[str, int] = field(default_factory=dict)
+    # pool -> hours, for pools below the retention floor
+    under_floor: dict[str, float] = field(default_factory=dict)
 
     @classmethod
     def from_json(cls, d: dict) -> "Report":
@@ -45,6 +47,8 @@ def markdown(r: Report) -> str:
         "| Pool | Hours |",
         "| --- | --- |",
         *(f"| {pool} | {hours:.2f} |" for pool, hours in sorted(r.pool_hours.items())),
+        *(["", "Under the 3 h floor: " + ", ".join(f"{p} ({h:.2f} h)" for p, h in sorted(r.under_floor.items()))]
+          if r.under_floor else []),
         "",
         "## Rejections",
         "",
@@ -86,6 +90,20 @@ def markdown(r: Report) -> str:
         "",
     ]
     return "\n".join(out)
+
+
+def notification(r: Report) -> str | None:
+    """Short text for a desktop notification, or None when the run needs no attention.
+
+    Counts only: failure text can carry hosts or URLs, so it stays in the report.
+    """
+    parts = []
+    if r.failures:
+        parts.append(f"{len(r.failures)} failure" + ("s" if len(r.failures) > 1 else ""))
+    parts += [f"{p} pool under the floor ({h:.2f} h)" for p, h in sorted(r.under_floor.items())]
+    parts += [f"{p} list not updated ({v})" for p, v in sorted(r.sync.items())
+              if p != "status" and v != "updated"]
+    return "; ".join(parts) or None
 
 
 def write_report(r: Report, dir: Path) -> Path:

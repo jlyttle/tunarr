@@ -98,11 +98,19 @@ Reports go to `$COMMERCIALS_STATE/reports/<timestamp>.json` and `.md`: added and
 
 ### launchd
 
-`launchd/com.tunarr.commercials.plist` runs `commercials run` daily at 04:00 (nice 10, low-priority IO) from `/Users/jon/Projects/tunarr/tools/commercials/.venv`, logging to `~/Library/Logs/tunarr-commercials.log`. Install:
+The daily job runs from a dedicated checkout of this repo at `~/.local/share/tunarr-commercials/app`, not from a development checkout, so switching branches or editing code never changes what runs at 04:00. Code and config both come from that checkout: the config folder is `$COMMERCIALS_CONFIG` when set, else the `config/` folder next to the package that runs. Make config changes (`add-ref`, filler list ids) in the app checkout, or point `COMMERCIALS_CONFIG` at one folder for both.
+
+Install once (as a git worktree of your clone, on the branch that should run):
 
 ```
+git worktree add ~/.local/share/tunarr-commercials/app feature/modern-commercials
+cd ~/.local/share/tunarr-commercials/app/tools/commercials && uv sync
 cp launchd/com.tunarr.commercials.plist ~/Library/LaunchAgents/
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tunarr.commercials.plist
 ```
 
-It needs the ssh key for `root@192.168.1.227` usable without a prompt, and `uv sync` run in the main checkout.
+To update the job, pull or check out the new commit in the app checkout. `launchd/com.tunarr.commercials.plist` runs `launchd/run-daily.sh` daily at 04:00 (nice 10, low-priority IO), logging to `~/Library/Logs/tunarr-commercials.log`. The wrapper runs `uv sync --upgrade-package yt-dlp` first (YouTube breaks old yt-dlp versions; a failed update posts a notification and the run goes ahead with the installed version), then `commercials run`. It needs the ssh key for `root@192.168.1.227` usable without a prompt, and `uv` on the plist's `PATH` (`~/.local/bin` or `/opt/homebrew/bin`).
+
+### Staying visible
+
+The report's `under_floor` lists pools below the 3 h floor with their hours. After a real run (not `--dry-run`), `commercials run` posts a macOS notification (`osascript`) when there is any failure, a pool is under the floor, or a pool's filler list was not updated (for example `tunarr_behind`). The text has counts and pool names only, never failure messages, so no host, URL or token reaches the notification.

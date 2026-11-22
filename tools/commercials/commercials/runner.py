@@ -24,7 +24,7 @@ from commercials.networks import Network, load_networks, missing_refs, networks_
 from commercials.pools import apply_blocklist, blocklist_hit, chapter_text_for, enforce_kids_block, load_blocklist
 from commercials.promo_filter import promo_verdict
 from commercials.report import Report, write_report
-from commercials.retention import POOLS, select_active
+from commercials.retention import FLOOR_S, POOLS, select_active
 from commercials.split import (
     Segment,
     boundaries,
@@ -427,6 +427,7 @@ def run(opts: RunOptions, ctx: RunContext, tools: Tools) -> Report:
     report.retired = sorted(i for i, a in catalog.ads.items()
                             if a.status == "retired" and before.get(i) == "active")
     report.pool_hours = pool_hours(catalog, active)
+    report.under_floor = {p: round(h, 2) for p, h in report.pool_hours.items() if h < FLOOR_S / 3600}
     save_catalog(catalog, cat_path)
 
     will_sync = opts.sync and sync_configured(cfg)

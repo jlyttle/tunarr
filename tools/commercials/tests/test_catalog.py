@@ -83,3 +83,12 @@ def test_kids_blocked_round_trips(tmp_path: Path):
     del raw["ads"]["a1"]["kids_blocked"]  # catalogs written before the field load as False
     p.write_text(json.dumps(raw))
     assert load_catalog(p).ads["a1"].kids_blocked is False
+
+
+def test_config_dir_env_overrides_package_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    from commercials.paths import config_dir
+
+    monkeypatch.setenv("COMMERCIALS_CONFIG", str(tmp_path / "cfg"))
+    assert config_dir() == tmp_path / "cfg"
+    monkeypatch.delenv("COMMERCIALS_CONFIG")
+    assert config_dir() == Path(__file__).resolve().parent.parent / "config"

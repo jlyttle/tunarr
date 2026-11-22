@@ -14,4 +14,6 @@ PACKAGE_CONFIG = Path(__file__).resolve().parent.parent / "config"
 
 
 def config_dir() -> Path:
-    return PACKAGE_CONFIG
+    """`$COMMERCIALS_CONFIG`, else the config/ folder of the checkout the package runs from."""
+    env = os.environ.get("COMMERCIALS_CONFIG")
+    return Path(env).expanduser() if env else PACKAGE_CONFIG

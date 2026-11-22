@@ -492,7 +492,10 @@ def test_launchd_plist():
     with open(ROOT / "launchd" / "com.tunarr.commercials.plist", "rb") as f:
         p = plistlib.load(f)
     assert p["Label"] == "com.tunarr.commercials"
-    assert p["ProgramArguments"][-1] == "run"
+    app = "/Users/jon/.local/share/tunarr-commercials/app/tools/commercials"
+    assert p["ProgramArguments"] == [f"{app}/launchd/run-daily.sh"]
+    assert p["WorkingDirectory"] == app
+    assert "/Users/jon/Projects/tunarr" not in json.dumps(p)  # never the main checkout
     assert p["StartCalendarInterval"] == {"Hour": 4, "Minute": 0}
     assert p["StandardOutPath"].endswith("Library/Logs/tunarr-commercials.log")
     assert p["StandardErrorPath"] == p["StandardOutPath"]
@@ -678,3 +681,45 @@ def test_kids_blocked_file_leaves_kids_folder_even_when_sync_fails(tmp_path):
     fakes.sync = boom
     run(RunOptions(), c, fakes.tools())
     assert fakes.removes == [[remote]]
+
+
+def test_run_daily_wrapper_upgrades_ytdlp_then_runs():
+    script = ROOT / "launchd" / "run-daily.sh"
+    text = script.read_text()
+    assert script.stat().st_mode & 0o111
+    assert text.index("uv sync --upgrade-package yt-dlp") < text.index("commercials run")
+    subprocess.run(["sh", "-n", str(script)], check=True)
+
+
+def test_report_flags_pools_under_floor(tmp_path):
+    _, report = run_with(tmp_path, Fakes([comp("v1")]), deliver=False, sync=False)
+    assert report.under_floor == {"general": pytest.approx(40 / 3600, abs=0.01), "kids": 0.0}
+
+
+def test_cmd_run_notifies_only_when_needed(monkeypatch, tmp_path):
+    from commercials import cli
+    from commercials.report import Report
+
+    sent = []
+    monkeypatch.setattr(cli, "notify", sent.append)
+    monkeypatch.setattr(cli, "real_tools", lambda d: None)
+    monkeypatch.setenv("COMMERCIALS_STATE", str(tmp_path))
+    monkeypatch.setenv("COMMERCIALS_MEDIA", str(tmp_path))
+    clean = Report(added=[], retired=[], rejected_by_reason={}, pool_hours={}, failures=[])
+    monkeypatch.setattr(cli, "run", lambda opts, ctx, tools: clean)
+    assert cli.main(["run"]) == 0 and sent == []
+    bad = Report(added=[], retired=[], rejected_by_reason={}, pool_hours={}, failures=["x"])
+    monkeypatch.setattr(cli, "run", lambda opts, ctx, tools: bad)
+    assert cli.main(["run"]) == 1 and sent == ["1 failure"]
+    monkeypatch.setattr(cli, "run", lambda opts, ctx, tools: bad)
+    assert cli.main(["run", "--dry-run"]) == 1 and sent == ["1 failure"]  # dry runs stay quiet
+
+
+def test_notify_passes_text_as_an_argument(monkeypatch):
+    from commercials import cli
+
+    calls = []
+    monkeypatch.setattr(cli.subprocess, "run", lambda args, **kw: calls.append(args))
+    cli.notify('2 failures; "quoted"')
+    assert calls[0][0] == "/usr/bin/osascript"
+    assert calls[0][-1] == '2 failures; "quoted"'  # never spliced into the script
